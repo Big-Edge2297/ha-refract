@@ -1,0 +1,218 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Refract",
+        "description": "In the Refract app open Integrations > Access and connected apps, create a personal key and paste it here. Enable the permissions you want Home Assistant to use.",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Refract",
+        "description": "Your key was rejected or revoked. Paste a new one for the same account.",
+        "data": {
+          "api_key": "API key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "That key was rejected. Check it was copied in full.",
+      "invalid_key_format": "Refract keys start with rfk_.",
+      "missing_profile_scope": "The key needs the 'See your public profile' permission.",
+      "cannot_connect": "Could not reach Refract.",
+      "unknown": "Unexpected error, see the log."
+    },
+    "abort": {
+      "already_configured": "This Refract account is already set up.",
+      "reauth_successful": "Re-authentication succeeded.",
+      "wrong_account": "That key belongs to a different Refract account."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Refract options",
+        "data": {
+          "scan_interval": "Update interval (minutes)"
+        }
+      }
+    }
+  },
+  "services": {
+    "add_to_watchlist": {
+      "name": "Add to watchlist",
+      "description": "Put a title on your Refract watchlist.",
+      "fields": {
+        "media_type": {
+          "name": "Type",
+          "description": "Whether the title is a movie or a show."
+        },
+        "refract_id": {
+          "name": "Refract ID",
+          "description": "The title's Refract id. Use this, or one of the external ids below."
+        },
+        "tmdb_id": {
+          "name": "TMDB ID",
+          "description": "The title's TMDB id."
+        },
+        "imdb_id": {
+          "name": "IMDb ID",
+          "description": "The title's IMDb id (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB ID",
+          "description": "The title's TheTVDB id."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Which Refract account to use. Defaults to the first one."
+        }
+      }
+    },
+    "set_status": {
+      "name": "Set status",
+      "description": "Add a title to your library or move it to another status.",
+      "fields": {
+        "media_type": {
+          "name": "Type",
+          "description": "Whether the title is a movie or a show."
+        },
+        "status": {
+          "name": "Status",
+          "description": "planned, in_progress, up_to_date or completed."
+        },
+        "refract_id": {
+          "name": "Refract ID",
+          "description": "The title's Refract id. Use this, or one of the external ids below."
+        },
+        "tmdb_id": {
+          "name": "TMDB ID",
+          "description": "The title's TMDB id."
+        },
+        "imdb_id": {
+          "name": "IMDb ID",
+          "description": "The title's IMDb id (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB ID",
+          "description": "The title's TheTVDB id."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Which Refract account to use. Defaults to the first one."
+        }
+      }
+    },
+    "mark_episode_watched": {
+      "name": "Mark episode watched",
+      "description": "Mark an episode as watched (or unwatched). Works with TMDB, IMDb or TVDB ids of the show.",
+      "fields": {
+        "season": {
+          "name": "Season",
+          "description": "Season number (TMDB numbering)."
+        },
+        "number": {
+          "name": "Episode",
+          "description": "Episode number in the season (TMDB numbering)."
+        },
+        "watched_at": {
+          "name": "Watched at",
+          "description": "When it was watched. Defaults to now."
+        },
+        "watched": {
+          "name": "Watched",
+          "description": "Turn off to mark the episode as not watched."
+        },
+        "refract_id": {
+          "name": "Refract ID",
+          "description": "The title's Refract id. Use this, or one of the external ids below."
+        },
+        "tmdb_id": {
+          "name": "TMDB ID",
+          "description": "The title's TMDB id."
+        },
+        "imdb_id": {
+          "name": "IMDb ID",
+          "description": "The title's IMDb id (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB ID",
+          "description": "The title's TheTVDB id."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Which Refract account to use. Defaults to the first one."
+        }
+      }
+    },
+    "log_movie_play": {
+      "name": "Log movie play",
+      "description": "Log that you watched a movie.",
+      "fields": {
+        "watched_at": {
+          "name": "Watched at",
+          "description": "When it was watched. Defaults to now."
+        },
+        "refract_id": {
+          "name": "Refract ID",
+          "description": "The title's Refract id. Use this, or one of the external ids below."
+        },
+        "tmdb_id": {
+          "name": "TMDB ID",
+          "description": "The title's TMDB id."
+        },
+        "imdb_id": {
+          "name": "IMDb ID",
+          "description": "The title's IMDb id (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB ID",
+          "description": "The title's TheTVDB id."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Which Refract account to use. Defaults to the first one."
+        }
+      }
+    },
+    "log_rewatch": {
+      "name": "Log episode rewatch",
+      "description": "Log a rewatch of an episode you have already watched.",
+      "fields": {
+        "season": {
+          "name": "Season",
+          "description": "Season number (TMDB numbering)."
+        },
+        "number": {
+          "name": "Episode",
+          "description": "Episode number in the season (TMDB numbering)."
+        },
+        "watched_at": {
+          "name": "Watched at",
+          "description": "When it was watched. Defaults to now."
+        },
+        "refract_id": {
+          "name": "Refract ID",
+          "description": "The title's Refract id. Use this, or one of the external ids below."
+        },
+        "tmdb_id": {
+          "name": "TMDB ID",
+          "description": "The title's TMDB id."
+        },
+        "imdb_id": {
+          "name": "IMDb ID",
+          "description": "The title's IMDb id (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB ID",
+          "description": "The title's TheTVDB id."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Which Refract account to use. Defaults to the first one."
+        }
+      }
+    }
+  }
+}

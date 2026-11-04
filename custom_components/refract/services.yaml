@@ -1,0 +1,111 @@
+add_to_watchlist:
+  fields:
+    media_type:
+      required: true
+      default: show
+      selector: {select: {options: [movie, show]}}
+    refract_id:
+      selector: {text: {}}
+    tmdb_id:
+      example: 95396
+      selector: {number: {mode: box, min: 1}}
+    imdb_id:
+      example: tt11280740
+      selector: {text: {}}
+    tvdb_id:
+      selector: {number: {mode: box, min: 1}}
+    config_entry_id:
+      selector: {config_entry: {integration: refract}}
+
+set_status:
+  fields:
+    media_type:
+      required: true
+      default: show
+      selector: {select: {options: [movie, show]}}
+    status:
+      required: true
+      example: completed
+      selector: {select: {custom_value: true, options: [planned, in_progress, up_to_date, completed]}}
+    refract_id:
+      selector: {text: {}}
+    tmdb_id:
+      example: 95396
+      selector: {number: {mode: box, min: 1}}
+    imdb_id:
+      example: tt11280740
+      selector: {text: {}}
+    tvdb_id:
+      selector: {number: {mode: box, min: 1}}
+    config_entry_id:
+      selector: {config_entry: {integration: refract}}
+
+mark_episode_watched:
+  fields:
+    season:
+      required: true
+      example: 2
+      selector: {number: {mode: box, min: 0}}
+    number:
+      required: true
+      example: 4
+      selector: {number: {mode: box, min: 1}}
+    watched_at:
+      selector: {datetime: {}}
+    watched:
+      default: true
+      selector: {boolean: {}}
+    refract_id:
+      selector: {text: {}}
+    tmdb_id:
+      example: 95396
+      selector: {number: {mode: box, min: 1}}
+    imdb_id:
+      example: tt11280740
+      selector: {text: {}}
+    tvdb_id:
+      selector: {number: {mode: box, min: 1}}
+    config_entry_id:
+      selector: {config_entry: {integration: refract}}
+
+log_movie_play:
+  fields:
+    watched_at:
+      selector: {datetime: {}}
+    refract_id:
+      selector: {text: {}}
+    tmdb_id:
+      example: 95396
+      selector: {number: {mode: box, min: 1}}
+    imdb_id:
+      example: tt11280740
+      selector: {text: {}}
+    tvdb_id:
+      selector: {number: {mode: box, min: 1}}
+    config_entry_id:
+      selector: {config_entry: {integration: refract}}
+
+log_rewatch:
+  fields:
+    season:
+      required: true
+      example: 2
+      selector: {number: {mode: box, min: 0}}
+    number:
+      required: true
+      example: 4
+      selector: {number: {mode: box, min: 1}}
+    watched_at:
+      selector: {datetime: {}}
+    refract_id:
+      selector: {text: {}}
+    tmdb_id:
+      example: 95396
+      selector: {number: {mode: box, min: 1}}
+    imdb_id:
+      example: tt11280740
+      selector: {text: {}}
+    tvdb_id:
+      selector: {number: {mode: box, min: 1}}
+    config_entry_id:
+      selector: {config_entry: {integration: refract}}
