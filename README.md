@@ -9,6 +9,13 @@ Unofficial [Home Assistant](https://www.home-assistant.io) integration for [Refr
 
 > Not affiliated with Refract. Use at your own risk and keep your key private.
 
+## Dashboard card
+
+A matching dashboard card is available:
+[Refract Stats Card](https://github.com/Big-Edge2297/ha-refract-card).
+It shows your watch time, library breakdown, streak and what to watch next.
+Install it through HACS as a custom repository (category **Dashboard**).
+
 ## Install with HACS (custom repository)
 
 1. In Home Assistant open **HACS**, then the three-dot menu, then **Custom repositories**.
