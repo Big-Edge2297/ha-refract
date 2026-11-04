@@ -1,5 +1,8 @@
 # Refract for Home Assistant
 
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
+[![GitHub Release](https://img.shields.io/github/v/release/Big-Edge2297/ha-refract)](https://github.com/Big-Edge2297/ha-refract/releases)
+
 Unofficial [Home Assistant](https://www.home-assistant.io) integration for [Refract](https://getrefract.app), the cross-media tracker for movies, TV and anime. It uses Refract's official [personal API keys](https://getrefract.app/developers).
 
 - Sensors for your library, watch stats, what's up next and what you watched last
@@ -16,12 +19,18 @@ A matching dashboard card is available:
 It shows your watch time, library breakdown, streak and what to watch next.
 Install it through HACS as a custom repository (category **Dashboard**).
 
-## Install with HACS (custom repository)
+## Installation
 
-1. In Home Assistant open **HACS**, then the three-dot menu, then **Custom repositories**.
-2. Add `https://github.com/Big-Edge2297/ha-refract` with category **Integration**.
-3. Find **Refract** in HACS, click **Download**, then restart Home Assistant.
-4. Go to **Settings > Devices & services > Add integration > Refract**.
+### HACS (recommended)
+
+Refract is available in the default [HACS](https://hacs.xyz) store, so no custom repository is needed.
+
+1. Open **HACS** in Home Assistant.
+2. Search for **Refract** and open it.
+3. Click **Download**, then confirm.
+4. **Restart Home Assistant**.
+5. Go to **Settings > Devices & services > Add integration**, search for **Refract**, and paste your API key.
+
 
 ## Create your API key
 
