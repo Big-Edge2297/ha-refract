@@ -11,6 +11,7 @@ from homeassistant.helpers.typing import ConfigType
 from .api import RefractApiClient
 from .const import CONF_API_KEY, DOMAIN
 from .coordinator import RefractConfigEntry, RefractCoordinator, RefractData
+from .frontend import async_register_card
 from .services import async_setup_services
 
 PLATFORMS = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO]
@@ -18,8 +19,9 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register actions (once, not per account)."""
+    """Register actions and the dashboard card (once, not per account)."""
     async_setup_services(hass)
+    await async_register_card(hass)
     return True
 
 
