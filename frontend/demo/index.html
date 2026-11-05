@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Refract stats card demo</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: var(--primary-background-color); color: var(--primary-text-color); }
+  body.light { --primary-background-color:#fafafa; --card-background-color:#fff; --secondary-background-color:#e5e5e5; --primary-text-color:#212121; --secondary-text-color:#727272; --divider-color:#e0e0e0; --primary-color:#03a9f4; }
+  body.dark { --primary-background-color:#111111; --card-background-color:#1c1c1c; --secondary-background-color:#282828; --primary-text-color:#e1e1e1; --secondary-text-color:#9b9b9b; --divider-color:#ffffff1f; --primary-color:#03a9f4; }
+  .bar { display:flex; flex-wrap:wrap; gap:16px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--divider-color); font-size:14px; }
+  .bar label { display:flex; gap:6px; align-items:center; }
+  .stage { padding:16px; display:flex; justify-content:center; }
+  #host { width:520px; max-width:100%; }
+  #log { padding:0 16px 16px; font:12px/1.5 ui-monospace, monospace; color:var(--secondary-text-color); white-space:pre-wrap; }
+</style>
+</head>
+<body class="dark">
+<div class="bar">
+  <label>Theme <select id="theme"><option>dark</option><option>light</option></select></label>
+  <label>Width <input id="width" type="range" min="300" max="900" value="520" /> <span id="wv">520</span>px</label>
+  <label>Layout <select id="layout"><option>full</option><option>compact</option></select></label>
+  <label>Streak <select id="streak"><option>gauge</option><option>dots</option></select></label>
+  <label>Duration <select id="dur"><option>days_hours</option><option>hours</option><option>auto</option></select></label>
+  <label><input id="actions" type="checkbox" /> Mark watched button</label>
+</div>
+<div class="stage"><div id="host"></div></div>
+<div id="log"></div>
+
+<script>
+  /* Minimal stand-ins for Home Assistant's own elements, only for this demo. */
+  class HaCard extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" }).innerHTML =
+        `<style>:host{display:block;background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:12px}</style><slot></slot>`;
+    }
+  }
+  class HaIcon extends HTMLElement {
+    static get observedAttributes() { return ["icon"]; }
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" }).innerHTML =
+        `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"><style>:host{display:inline-flex;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);font-size:var(--mdc-icon-size,24px)}i{line-height:1}</style><i></i>`;
+    }
+    attributeChangedCallback() { this.shadowRoot.querySelector("i").className = "mdi mdi-" + (this.getAttribute("icon") || "").replace("mdi:", ""); }
+    set icon(v) { this.setAttribute("icon", v); }
+  }
+  class HaRelativeTime extends HTMLElement {
+    set datetime(v) {
+      const h = (new Date(v) - Date.now()) / 36e5;
+      this.textContent = new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(Math.round(h), "hour");
+    }
+    set hass(_) {}
+  }
+  customElements.define("ha-card", HaCard);
+  customElements.define("ha-icon", HaIcon);
+  customElements.define("ha-relative-time", HaRelativeTime);
+</script>
+
+<script type="module">
+  import "/custom_components/refract/www/refract-stats-card.js";
+
+  const P = "refract_codex_";
+  const show = (title, year, refract, tmdb) => ({ type: "show", is_anime: false, ids: { refract, tmdb }, title, original_title: title, year });
+  const item = (s, ep, aired, remaining) => ({ show: s, status: "in_progress", next_episode: ep, aired_episodes: aired, remaining_episodes: remaining });
+  const westworld = item(show("Westworld", 2016, "357ebd89", 63247),
+    { season: 1, number: 7, name: "Trompe L'Oeil", aired: true, is_season_premiere: false, is_season_finale: false, is_mid_season_finale: false }, 36, 30);
+  const queue = [
+    westworld,
+    item(show("Lupin", 2021, "f65e21d1", 96677), { season: 3, number: 1, name: "Chapter 1", aired: true, is_season_premiere: true }, 20, 9),
+    item(show("Severance", 2022, "aa11", 95396), { season: 2, number: 5, name: "Trojan's Horse", aired: true }, 19, 5),
+    item(show("Andor", 2022, "bb22", 83867), { season: 2, number: 12, name: "Jedha, Kyber, Erso", aired: true, is_season_finale: true }, 24, 1),
+    item(show("Slow Horses", 2022, "cc33", 95480), { season: 4, number: 3, name: "Episode 3", aired: false }, 24, 8),
+    item(show("The Bear", 2022, "dd44", 136315), { season: 3, number: 2, name: "Next", aired: true }, 28, 18),
+    item(show("Silo", 2023, "ee55", 125988), { season: 2, number: 4, name: "Episode 4", aired: true }, 20, 12),
+  ];
+  const e = (key, state, attributes = {}, domain = "sensor") => [`${domain}.${P}${key}`, { entity_id: `${domain}.${P}${key}`, state: String(state), attributes: { friendly_name: `Refract (Codex) ${key}`, ...attributes } }];
+  const hoursAgo = (h) => new Date(Date.now() - h * 36e5).toISOString();
+  const states = Object.fromEntries([
+    e("library_total", 896), e("completed", 803), e("in_progress", 3), e("watchlist", 63), e("up_to_date", 23),
+    e("movies", 693), e("tv_shows", 202), e("anime", 1),
+    e("last_watched", hoursAgo(16), { title: "Westworld", season: 1, episode: 6 }),
+    e("shows_waiting", 20, { items: queue }), e("next_up", "Westworld", westworld),
+    e("stats_anime_episodes_watched", 291), e("stats_movies_watched", 661), e("stats_shows_episodes_watched", 7668),
+    e("stats_streak_current_days", 6), e("stats_streak_longest_days", 24),
+    e("stats_watch_time_anime_minutes", 7322), e("stats_watch_time_movies_minutes", 78542),
+    e("stats_watch_time_shows_minutes", 298044), e("stats_watch_time_total_minutes", 383908),
+  ]);
+
+  const log = (m) => (document.getElementById("log").textContent = `${new Date().toLocaleTimeString()}  ${m}\n` + document.getElementById("log").textContent);
+  const hass = {
+    states, locale: { language: "en", time_zone: "local" }, config: { time_zone: "UTC" },
+    services: { refract: { mark_episode_watched: {} } },
+    callService: async (d, s, data) => log(`callService ${d}.${s} ${JSON.stringify(data)}`),
+    callWS: async () => { throw new Error("demo"); },
+  };
+
+  const host = document.getElementById("host");
+  const card = document.createElement("refract-stats-card");
+  host.appendChild(card);
+  const $ = (id) => document.getElementById(id);
+  const apply = () => {
+    document.body.className = $("theme").value;
+    host.style.width = $("width").value + "px";
+    $("wv").textContent = $("width").value;
+    card.setConfig({
+      type: "custom:refract-stats-card", entity: `sensor.${P}next_up`,
+      layout: $("layout").value, streak_style: $("streak").value, duration_format: $("dur").value,
+      show_actions: $("actions").checked,
+    });
+    card.hass = { ...hass };
+  };
+  document.querySelectorAll(".bar select, .bar input").forEach((el) => el.addEventListener("input", apply));
+  apply();
+</script>
+</body>
+</html>
