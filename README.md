@@ -16,10 +16,7 @@ Unofficial [Home Assistant](https://www.home-assistant.io) integration for [Refr
 
 ## Dashboard card
 
-A matching dashboard card is available:
-[Refract Stats Card](https://github.com/Big-Edge2297/ha-refract-card).
-It shows your watch time, library breakdown, streak and what to watch next.
-Install it through HACS as a custom repository (category **Dashboard**).
+A dashboard card for your stats is included with the integration. After installing or updating, restart Home Assistant, hard-refresh your browser, and add **Refract stats** from the card picker. See [docs/dashboard-card.md](docs/dashboard-card.md) for options.
 
 ## Installation
 
