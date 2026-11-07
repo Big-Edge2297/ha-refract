@@ -16,7 +16,7 @@ for (const key of Object.getOwnPropertyNames(dom.window)) {
 
 const { RefractStatsCard } = await import("../src/refract-stats-card");
 await import("../src/editor");
-const { makeHass, PREFIX, last7Days, states: baseStates } = await import("./fixture");
+const { makeHass, PREFIX, last7Days, catchUpShows, westworld, states: baseStates } = await import("./fixture");
 const { weekdayName } = await import("../src/format");
 
 type Card = InstanceType<typeof RefractStatsCard>;
@@ -240,10 +240,11 @@ test("last 7 days with nothing watched says so and names no busiest day", async 
   assert.doesNotMatch(t, /Busiest day/);
 });
 
-test("catch-up backlog: headline, estimate, rows and the ready badge", async () => {
+test("catch-up backlog: headline, estimate and rows, without a ready badge", async () => {
   const el = await mount({});
   const t = text(el);
-  assert.match(t, /Catch-up backlog Ready now 39 aired episodes waiting, about 1 d 5 h/);
+  assert.match(t, /Catch-up backlog 39 aired episodes waiting, about 1 d 5 h/);
+  assert.doesNotMatch(t, /Ready now/);
   const rows = [...el.shadowRoot!.querySelectorAll(".c-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
   assert.deepEqual(rows, ["Westworld 30", "Lupin 9"]);
   assert.equal(el.shadowRoot!.querySelector(".poster"), null);
@@ -425,6 +426,121 @@ test("a failing action shows an error state", async () => {
   const button = el.shadowRoot!.querySelector(".action")!;
   assert.equal(button.getAttribute("data-state"), "error");
   assert.equal(button.getAttribute("title"), "Rate limited");
+});
+
+const WS = { services: { refract: { mark_episode_watched: {} } } };
+const nextTile = (el: Card) => (el.shadowRoot!.querySelector(".panel.next")?.textContent ?? "").replace(/\s+/g, " ").trim();
+const rowFor = (el: Card, title: string) =>
+  [...el.shadowRoot!.querySelectorAll(".c-row")].find((r) => r.querySelector(".c-name")?.textContent === title) as HTMLElement | undefined;
+
+test("clicking a backlog show puts it in Next up and marks its episode", async () => {
+  const calls: any[] = [];
+  const el = await mount({ show_actions: true, confirm_actions: false }, makeHass({ ...WS, callService: async (...a: any[]) => void calls.push(a) }));
+  assert.match(nextTile(el), /Westworld/);
+  assert.equal(rowFor(el, "Westworld")!.getAttribute("role"), null, "the show already in Next up isn't pickable");
+
+  await click(el, rowFor(el, "Lupin")!);
+  assert.match(nextTile(el), /Lupin 2021 S3 E1 · Chapter 1/);
+  assert.match(nextTile(el), /11 of 20 aired episodes/);
+  assert.match(nextTile(el), /Back to up next/);
+  assert.equal(rowFor(el, "Lupin")!.getAttribute("aria-pressed"), "true");
+
+  await click(el, el.shadowRoot!.querySelector(".action"));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(calls[0], ["refract", "mark_episode_watched", { season: 3, number: 1, tmdb_id: 96677 }]);
+});
+
+test("the picked show stays in Next up and moves on to its next episode after marking", async () => {
+  const el = await mount({ show_actions: true, confirm_actions: false }, makeHass(WS));
+  await click(el, rowFor(el, "Lupin")!);
+  const lupinAfter = { ...catchUpShows[1], remaining: 8, next_episode: { ...catchUpShows[1].next_episode, number: 2, name: "Chapter 2", is_season_premiere: false } };
+  const states = {
+    ...baseStates,
+    [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "38", attributes: { show_count: 2, shows: [catchUpShows[0], lupinAfter] } },
+  };
+  el.hass = makeHass({ ...WS, states });
+  await el.updateComplete;
+  assert.match(nextTile(el), /Lupin 2021 S3 E2 · Chapter 2/);
+});
+
+test("back to up next, clicking the row again, or finishing the show returns to the default", async () => {
+  const el = await mount({ show_actions: true });
+  await click(el, rowFor(el, "Lupin")!);
+  await click(el, el.shadowRoot!.querySelector(".next .link.reset"));
+  assert.match(nextTile(el), /Westworld/);
+  assert.doesNotMatch(nextTile(el), /Back to up next/);
+
+  await click(el, rowFor(el, "Lupin")!);
+  await click(el, rowFor(el, "Lupin")!);
+  assert.match(nextTile(el), /Westworld/);
+
+  await click(el, rowFor(el, "Lupin")!);
+  const states = {
+    ...baseStates,
+    [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "30", attributes: { show_count: 1, shows: [catchUpShows[0]] } },
+  };
+  el.hass = makeHass({ states });
+  await el.updateComplete;
+  assert.match(nextTile(el), /Westworld/, "a show with nothing left falls back to the default");
+  el.hass = makeHass();
+  await el.updateComplete;
+  assert.match(nextTile(el), /Westworld/, "and doesn't jump back if it returns later");
+});
+
+test("switching shows cancels a pending confirmation", async () => {
+  const calls: any[] = [];
+  const el = await mount({ show_actions: true }, makeHass({ ...WS, callService: async (...a: any[]) => void calls.push(a) }));
+  await click(el, el.shadowRoot!.querySelector(".action")); // Westworld asks "Mark watched?"
+  assert.match(el.shadowRoot!.querySelector(".action")!.textContent!, /Mark watched\?/);
+  await click(el, rowFor(el, "Lupin")!);
+  assert.match(nextTile(el), /Lupin/);
+  assert.doesNotMatch(el.shadowRoot!.querySelector(".action")!.textContent!, /Mark watched\?/, "starts over for the new show");
+  assert.equal(calls.length, 0);
+});
+
+test("backlog rows can be picked with the keyboard", async () => {
+  const el = await mount({ show_actions: true });
+  const row = rowFor(el, "Lupin")!;
+  assert.equal(row.getAttribute("tabindex"), "0");
+  row.dispatchEvent(new (dom.window as any).KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  await el.updateComplete;
+  assert.match(nextTile(el), /Lupin/);
+});
+
+test("backlog rows aren't pickable when Next up is hidden or the episode is unknown", async () => {
+  const hidden = await mount({ show_next_up: false });
+  assert.equal(hidden.shadowRoot!.querySelectorAll(".c-row.pickable").length, 0);
+
+  const bare = catchUpShows.map(({ next_episode, aired_episodes, ...rest }) => rest);
+  const states = {
+    ...baseStates,
+    [`sensor.${PREFIX}shows_waiting`]: { entity_id: "w", state: "1", attributes: { items: [] } },
+    [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "39", attributes: { show_count: 2, shows: bare } },
+  };
+  const el = await mount({}, makeHass({ states }));
+  assert.equal(el.shadowRoot!.querySelectorAll(".c-row.pickable").length, 0, "no episode to mark, nothing to pick");
+});
+
+test("older integrations: the next episode comes from the shows waiting sensor", async () => {
+  const bare = catchUpShows.map(({ next_episode, aired_episodes, ...rest }) => rest);
+  const states = {
+    ...baseStates,
+    [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "39", attributes: { show_count: 2, shows: bare } },
+  };
+  const el = await mount({}, makeHass({ states }));
+  await click(el, rowFor(el, "Lupin")!);
+  assert.match(nextTile(el), /Lupin 2021 S3 E1 · Chapter 1/);
+});
+
+test("a pending confirmation doesn't carry over when the episode changes underneath it", async () => {
+  const calls: any[] = [];
+  const el = await mount({ show_actions: true }, makeHass({ ...WS, callService: async (...a: any[]) => void calls.push(a) }));
+  await click(el, el.shadowRoot!.querySelector(".action")); // confirm for Westworld S1 E7
+  const moved = { ...westworld, next_episode: { ...westworld.next_episode, number: 8 } };
+  el.hass = makeHass({ ...WS, callService: async (...a: any[]) => void calls.push(a), states: { ...baseStates, [`sensor.${PREFIX}next_up`]: { entity_id: "n", state: "Westworld", attributes: moved } } });
+  await el.updateComplete;
+  await click(el, el.shadowRoot!.querySelector(".action"));
+  assert.equal(calls.filter((c) => c[1] === "mark_episode_watched").length, 0, "asks again for the new episode");
 });
 
 test("friendly messages for missing config or unknown entities", async () => {

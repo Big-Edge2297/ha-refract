@@ -22,6 +22,13 @@ export interface ShowItem {
   posterUrl?: string;
 }
 
+/** Identifies a show across sensors: TMDB id first, then Refract id, then the title. */
+export function showKey(x: { tmdbId?: number; refractId?: string; title: string }): string {
+  if (x.tmdbId !== undefined) return `tmdb:${x.tmdbId}`;
+  if (x.refractId) return `refract:${x.refractId}`;
+  return `title:${x.title.toLowerCase()}`;
+}
+
 export type NextUp = { kind: "hidden" } | { kind: "empty" } | { kind: "item"; item: ShowItem };
 
 export interface DayCount {
@@ -47,7 +54,10 @@ export interface CatchupShow {
   remaining: number;
   isAnime: boolean;
   tmdbId?: number;
+  refractId?: string;
   posterUrl?: string;
+  /** The next episode of this show, when the integration provides it. Lets the card mark it watched. */
+  next?: ShowItem;
 }
 export interface Catchup {
   total: number;
@@ -251,18 +261,45 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
   if (catchState && catchState.state !== "unavailable" && catchState.state !== "unknown") {
     const total = parseNum(catchState) ?? 0;
     const raw: unknown[] = Array.isArray(catchState.attributes.shows) ? catchState.attributes.shows : [];
+    // Older integration versions don't put the next episode on the backlog rows;
+    // the "shows waiting" sensor has it for the first few shows.
+    const waiting = new Map<string, ShowItem>();
+    const waitingState = ent("shows_waiting");
+    if (waitingState && Array.isArray(waitingState.attributes.items)) {
+      for (const entry of waitingState.attributes.items) {
+        const parsed = parseShowItem(entry);
+        if (parsed) waiting.set(showKey(parsed), parsed);
+      }
+    }
     const shows = raw
       .map((r: any): CatchupShow | undefined => {
         const remaining = num(r?.remaining);
         if (typeof r?.title !== "string" || remaining === undefined) return undefined;
-        return {
+        const posterUrl = typeof r.poster_url === "string" && r.poster_url ? r.poster_url : undefined;
+        const refractId = typeof r.refract_id === "string" && r.refract_id ? r.refract_id : undefined;
+        const row = {
           title: r.title,
           year: num(r.year),
           remaining,
           isAnime: !!r.is_anime,
           tmdbId: num(r.tmdb_id),
-          posterUrl: typeof r.poster_url === "string" && r.poster_url ? r.poster_url : undefined,
+          refractId,
+          posterUrl,
         };
+        let next: ShowItem | undefined = parseShowItem(
+          {
+            show: { title: r.title, year: r.year, is_anime: r.is_anime, ids: { tmdb: r.tmdb_id, refract: refractId } },
+            next_episode: r.next_episode,
+            aired_episodes: r.aired_episodes,
+            remaining_episodes: remaining,
+            poster_url: posterUrl,
+          },
+        );
+        if (next && (next.season === undefined || next.number === undefined)) next = undefined;
+        next ??= waiting.get(showKey(row));
+        if (next && (next.season === undefined || next.number === undefined)) next = undefined;
+        if (next) next = { ...next, posterUrl: posterUrl ?? next.posterUrl, remaining: next.remaining ?? remaining };
+        return { ...row, next };
       })
       .filter((x): x is CatchupShow => !!x);
     catchup = { total, minutes: num(catchState.attributes.estimated_minutes), showCount: num(catchState.attributes.show_count) ?? shows.length, shows };

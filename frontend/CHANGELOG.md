@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.8
+
+- **New:** tap a show in the catch-up backlog to show it in Next up and mark its next episode watched. **Back to up next** returns to the default; the tile follows the show to its next episode after marking
+- **Changed:** removed the "Ready now" badge from the catch-up backlog
+- **Changed:** a pending "Mark watched?" confirmation is cancelled when the tile switches to another show or episode
+- Older integrations still work: the next episode is then read from the *Shows waiting* sensor, which covers the first few shows
+
 ## 0.3.7
 
 - **New:** change the order of the sections in the card settings (*Section order*) or with `section_order` in YAML. The header stays on top, streak and average share a row when they are neighbours, and the compact layout follows the same order

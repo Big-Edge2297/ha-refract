@@ -58,8 +58,8 @@ export const last7Days = [
 ];
 
 export const catchUpShows = [
-  { title: "Westworld", year: 2016, is_anime: false, remaining: 30, tmdb_id: 63247, poster_url: null },
-  { title: "Lupin", year: 2021, is_anime: false, remaining: 9, tmdb_id: 96677, poster_url: null },
+  { title: "Westworld", year: 2016, is_anime: false, remaining: 30, aired_episodes: 36, next_episode: westworld.next_episode, tmdb_id: 63247, refract_id: westworld.show.ids.refract, poster_url: null },
+  { title: "Lupin", year: 2021, is_anime: false, remaining: 9, aired_episodes: 20, next_episode: lupin.next_episode, tmdb_id: 96677, refract_id: lupin.show.ids.refract, poster_url: null },
 ];
 
 export const airingEpisodes = [

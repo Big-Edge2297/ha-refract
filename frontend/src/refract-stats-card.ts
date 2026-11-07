@@ -6,7 +6,7 @@ import { CARD_TYPE, DOMAIN, EDITOR_TYPE } from "./const";
 import { discover, type Discovery } from "./discovery";
 import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, timeOfDay, weekdayName } from "./format";
 import { languageOf, t } from "./localize";
-import { buildModel, type CatchupShow, type Model, type ShowItem } from "./model";
+import { buildModel, showKey, type CatchupShow, type Model, type ShowItem } from "./model";
 import { cardStyles } from "./styles";
 import { DEFAULT_CONFIG, resolveSectionOrder, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
 
@@ -29,6 +29,10 @@ export class RefractStatsCard extends LitElement {
   private _disc?: Discovery;
   private _discFor?: { config: RefractCardConfig; entities: unknown; devices: unknown };
   private _actionTimer?: number;
+  /** Show picked in the catch-up backlog to take over the Next up tile. Not persisted. */
+  private _selected?: string;
+  /** Which episode the confirm / busy state belongs to, so it can't leak onto another one. */
+  private _actionTarget = "";
 
   // ------------------------------------------------------------ HA hooks
 
@@ -466,15 +470,56 @@ export class RefractStatsCard extends LitElement {
     </div>`;
   }
 
+  /** The catch-up show picked to replace the default next up, if it still has an episode to mark. */
+  private _pickedShow(m: Model): CatchupShow | undefined {
+    if (!this._selected) return undefined;
+    const picked = m.catchup?.shows.find((x) => showKey(x) === this._selected && x.next);
+    const defaultKey = m.next.kind === "item" ? showKey(m.next.item) : undefined;
+    if (!picked || !this._cfg.show_next_up || showKey(picked) === defaultKey) {
+      this._selected = undefined; // finished, hidden or already the default: go back to normal
+      return undefined;
+    }
+    return picked;
+  }
+
+  private _selectShow(x: CatchupShow): void {
+    if (!x.next) return;
+    const key = showKey(x);
+    this._selected = this._selected === key ? undefined : key;
+    this._clearAction();
+    this.requestUpdate();
+    if (this._selected) {
+      void this.updateComplete.then(() => {
+        const tile = this.renderRoot.querySelector(".panel.next") as HTMLElement | null;
+        tile?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      });
+    }
+  }
+
+  private _clearSelection(): void {
+    this._selected = undefined;
+    this._clearAction();
+    this.requestUpdate();
+  }
+
+  private _clearAction(): void {
+    window.clearTimeout(this._actionTimer);
+    this._actionState = "idle";
+    this._actionError = "";
+    this._actionTarget = "";
+  }
+
   private _next(m: Model, posters: boolean): TemplateResult | typeof nothing {
-    if (m.next.kind === "hidden") return nothing;
-    if (m.next.kind === "empty") {
+    const picked = this._pickedShow(m);
+    const nextUp = picked ? ({ kind: "item", item: picked.next! } as const) : m.next;
+    if (nextUp.kind === "hidden") return nothing;
+    if (nextUp.kind === "empty") {
       return html`<div class="panel next">
         <div class="label">${t(this.hass, "next.title")}</div>
         <div class="empty">${t(this.hass, "empty.nothing_up_next")}</div>
       </div>`;
     }
-    const item = m.next.item;
+    const item = nextUp.item;
     const lang = languageOf(this.hass);
     const episode = item.season !== undefined && item.number !== undefined ? `S${item.season} E${item.number}` : "";
     const sub = [episode, item.episodeName].filter(Boolean).join(" · ");
@@ -488,6 +533,9 @@ export class RefractStatsCard extends LitElement {
         <div class="next-head">
           <span class="label">${t(this.hass, "next.title")}</span>
           ${item.isAnime ? html`<span class="badge">${t(this.hass, "badge.anime")}</span>` : nothing} ${this._badge(item)}
+          ${picked
+            ? html`<button class="link reset" @click=${() => this._clearSelection()}>${t(this.hass, "next.reset")}</button>`
+            : nothing}
         </div>
         <div class="next-main">
           <div>
@@ -571,7 +619,9 @@ export class RefractStatsCard extends LitElement {
 
   private async _markWatched(item: ShowItem): Promise<void> {
     if (this._actionState === "busy") return;
-    if (this._cfg.confirm_actions && this._actionState !== "confirm") {
+    const target = `${showKey(item)}:${item.season}:${item.number}`;
+    if (this._cfg.confirm_actions && (this._actionState !== "confirm" || this._actionTarget !== target)) {
+      this._actionTarget = target;
       this._actionState = "confirm";
       this._resetActionLater(3000);
       return;
@@ -613,6 +663,7 @@ export class RefractStatsCard extends LitElement {
     const expandable = c.shows.length > limit;
     const rows = this._catchupExpanded ? c.shows : c.shows.slice(0, limit);
     const max = Math.max(1, ...c.shows.map((x) => x.remaining));
+    const defaultKey = m.next.kind === "item" ? showKey(m.next.item) : undefined;
     const about =
       c.minutes !== undefined && c.total > 0
         ? `, ${t(this.hass, "catchup.about", { time: durationText(c.minutes, this._cfg.duration_format, lang) })}`
@@ -621,7 +672,6 @@ export class RefractStatsCard extends LitElement {
     return html`<div class="panel catchup">
       <div class="panel-head">
         <span class="label">${t(this.hass, "catchup.title")}</span>
-        ${c.total > 0 ? html`<span class="badge ok">${t(this.hass, "catchup.ready")}</span>` : nothing}
       </div>
       ${c.total > 0
         ? html`<div class="catch-line">
@@ -629,7 +679,7 @@ export class RefractStatsCard extends LitElement {
             <span class="muted">${t(this.hass, "catchup.waiting")}${about}</span>
           </div>`
         : html`<div class="empty">${t(this.hass, "catchup.none")}</div>`}
-      ${rows.map((x) => this._catchupRow(x, max, posters, lang))}
+      ${rows.map((x) => this._catchupRow(x, max, posters, lang, defaultKey))}
       ${expandable
         ? html`<button class="link" @click=${() => (this._catchupExpanded = !this._catchupExpanded)}>
             ${this._catchupExpanded
@@ -640,12 +690,31 @@ export class RefractStatsCard extends LitElement {
     </div>`;
   }
 
-  private _catchupRow(x: CatchupShow, max: number, posters: boolean, lang: string): TemplateResult {
-    return html`<div class="c-row">
-      ${posters ? this._poster(x.posterUrl, x.title, "sm") : nothing}
+  private _catchupRow(x: CatchupShow, max: number, posters: boolean, lang: string, defaultKey?: string): TemplateResult {
+    const key = showKey(x);
+    // The default show is already in the Next up tile, so only the others can be picked.
+    const pickable = this._cfg.show_next_up && !!x.next && key !== defaultKey;
+    const selected = pickable && this._selected === key;
+    const body = html`${posters ? this._poster(x.posterUrl, x.title, "sm") : nothing}
       <span class="c-name" title=${x.title}>${x.title}</span>
       <div class="progress" role="img" aria-label="${x.remaining}"><span style="width:${(x.remaining / max) * 100}%"></span></div>
-      <b class="c-count">${fmtNumber(x.remaining, lang)}</b>
+      <b class="c-count">${fmtNumber(x.remaining, lang)}</b>`;
+    if (!pickable) return html`<div class="c-row">${body}</div>`;
+    return html`<div
+      class="c-row pickable ${selected ? "selected" : ""}"
+      role="button"
+      tabindex="0"
+      aria-pressed=${selected ? "true" : "false"}
+      title=${t(this.hass, "catchup.pick", { title: x.title })}
+      @click=${() => this._selectShow(x)}
+      @keydown=${(ev: KeyboardEvent) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          this._selectShow(x);
+        }
+      }}
+    >
+      ${body}
     </div>`;
   }
 

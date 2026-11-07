@@ -211,6 +211,17 @@ def poster_candidates(up_next: list[dict[str, Any]], limit: int = 10) -> list[in
     return ids
 
 
+_NEXT_EPISODE_KEYS = ("season", "number", "name", "aired", "is_season_premiere", "is_season_finale", "is_mid_season_finale")
+
+
+def _next_episode(item: dict[str, Any]) -> dict[str, Any] | None:
+    """The next unwatched episode of a show, so a card can offer to mark it watched."""
+    episode = item.get("next_episode")
+    if not isinstance(episode, dict) or episode.get("season") is None or episode.get("number") is None:
+        return None
+    return {key: episode[key] for key in _NEXT_EPISODE_KEYS if key in episode}
+
+
 def build_backlog(
     up_next: list[dict[str, Any]],
     posters: dict[int, str],
@@ -233,6 +244,8 @@ def build_backlog(
                 "year": show.get("year"),
                 "is_anime": bool(show.get("is_anime")),
                 "remaining": remaining,
+                "aired_episodes": item.get("aired_episodes") if isinstance(item.get("aired_episodes"), int) else None,
+                "next_episode": _next_episode(item),
                 "tmdb_id": tmdb,
                 "refract_id": (show.get("ids") or {}).get("refract"),
                 "poster_url": posters.get(tmdb) if tmdb is not None else None,

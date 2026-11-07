@@ -2,6 +2,16 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.8
+
+### Added
+- **Mark an episode of any show you're watching**: tap a show in the *Catch-up backlog* to put it in the *Next up* tile, then use **Mark watched** on its next episode. The tile stays on that show and moves to its following episode after you mark one; **Back to up next** (or tapping the row again) returns to the default. Needs *Next up* to be shown and works with the existing `show_actions` and `confirm_actions` options
+- The `catch_up` sensor's `shows` attribute now includes each show's `next_episode` and `aired_episodes`
+
+### Changed
+- The "Ready now" badge is gone from the *Catch-up backlog*
+- A pending "Mark watched?" confirmation now belongs to one episode and is cancelled when the tile switches to another show or the episode changes underneath it
+
 ## 0.3.7
 
 ### Added

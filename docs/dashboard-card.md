@@ -14,7 +14,7 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
 | **Last 7 days** | Episodes and movies per day as stacked bars, with the busiest day named | watch history |
-| **Next up** | The show (with poster), episode number and name, progress through aired episodes, premiere or finale badges and an optional **Mark watched** button | history |
+| **Next up** | The show (with poster), episode number and name, progress through aired episodes, premiere or finale badges and an optional **Mark watched** button. Tap a show in the catch-up backlog to show it here instead | history |
 | **Catch-up backlog** | How many aired episodes are waiting across all your shows, an estimate of the time, and the biggest backlogs as bars | history |
 | **Airing this week** | Episodes airing in the next 7 days for the shows you follow, with premiere and finale pills and the air time when Refract knows it | library |
 
@@ -151,6 +151,12 @@ show_actions: true
 ```
 
 The button calls the integration's `refract.mark_episode_watched` action. It stays hidden when that action isn't available (for example when the API key can't write) or when the next episode hasn't aired yet. The editor warns you in that case.
+
+### Marking an episode of another show
+
+Next up normally shows one show. To mark an episode of a different show you're watching, tap its row in the **Catch-up backlog**. The Next up tile switches to that show and its next episode, and the **Mark watched** button works on it. After you mark it, the tile stays on that show and moves on to its following episode, so you can mark several in a row. Tap **Back to up next** (or the row again) to return to the default show. The tile also returns by itself once the show has nothing left in the backlog.
+
+Rows can be tapped only while **Next up** is shown, and only when the integration knows the show's next episode. The show already in Next up can't be tapped, because it is already there. The choice is not saved: reloading the dashboard returns to the default show. This needs integration 0.3.8 or newer for every row; with an older integration only the first few shows in the backlog can be picked.
 
 With `confirm_actions` on (the default), the first tap changes the button to "Mark watched?" for three seconds and the second tap does it. After a successful call the card asks Home Assistant to refresh the Refract sensors; they update as soon as Refract responds.
 

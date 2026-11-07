@@ -106,7 +106,7 @@ Each show is looked up once and the result is cached on disk. Posters are loaded
 | `calendar.*_upcoming_episodes` | library |
 | `todo.*_watchlist` (items can be removed) | library |
 | `sensor.*_shows_waiting`, `sensor.*_next_up` (with `poster_url` when a TMDB key is set) | history |
-| `sensor.*_catch_up` (aired episodes waiting across all shows, per-show counts, estimated minutes) | history |
+| `sensor.*_catch_up` (aired episodes waiting across all shows, per-show counts and next episode, estimated minutes) | history |
 | `sensor.*_last_7_days` (episodes and movies per day, busiest day) | history + fetch watch history |
 | `sensor.*_average_per_week` (estimated hours per week, change against the 4 weeks before) | history + fetch watch history |
 | `sensor.*_stats_*` (one per numeric field from your profile stats) | history |

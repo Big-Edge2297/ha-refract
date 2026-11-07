@@ -172,6 +172,22 @@ def test_backlog_totals_sorting_and_posters():
     assert len(a.build_backlog(UP_NEXT, {}, None, limit=2)["shows"]) == 2
 
 
+def test_backlog_shows_carry_their_next_episode():
+    item = show("Lupin", 9, 7)
+    item["aired_episodes"] = 20
+    item["next_episode"] = {"season": 3, "number": 1, "name": "Chapter 1", "aired": True, "episode_tmdb_id": 99,
+                            "is_season_premiere": True, "is_season_finale": False, "is_mid_season_finale": False}
+    row = a.build_backlog([item, show("Plain", 3, 8)], {}, None)["shows"][0]
+    assert row["title"] == "Lupin" and row["aired_episodes"] == 20
+    assert row["next_episode"] == {"season": 3, "number": 1, "name": "Chapter 1", "aired": True,
+                                   "is_season_premiere": True, "is_season_finale": False, "is_mid_season_finale": False}
+    plain = a.build_backlog([show("Plain", 3, 8)], {}, None)["shows"][0]
+    assert plain["next_episode"] is None and plain["aired_episodes"] is None
+    broken = show("Broken", 3, 9)
+    broken["next_episode"] = {"season": 1}
+    assert a.build_backlog([broken], {}, None)["shows"][0]["next_episode"] is None
+
+
 def _show(title, tmdb, anime=False):
     return {"type": "show", "is_anime": anime, "ids": {"refract": "r", "tmdb": tmdb}, "title": title, "year": 2026}
 

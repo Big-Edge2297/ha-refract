@@ -453,10 +453,6 @@ export const cardStyles = css`
     background: color-mix(in srgb, var(--c-accent) 16%, transparent);
     color: var(--c-accent);
   }
-  .badge.ok {
-    background: color-mix(in srgb, var(--c-completed) 16%, transparent);
-    color: var(--c-completed);
-  }
   .badge.warn {
     background: color-mix(in srgb, var(--c-watchlist) 22%, transparent);
     color: var(--warning-color, #b37400);
@@ -541,6 +537,21 @@ export const cardStyles = css`
     gap: 12px;
     padding: 5px 0;
   }
+  .c-row.pickable {
+    margin: 0 -8px;
+    padding: 5px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .c-row.pickable:hover {
+    background: color-mix(in srgb, var(--c-accent) 8%, transparent);
+  }
+  .c-row.pickable.selected {
+    background: color-mix(in srgb, var(--c-accent) 16%, transparent);
+  }
+  .c-row.pickable:focus-visible {
+    outline: 2px solid var(--c-accent);
+  }
   .c-name {
     flex: 0 0 38%;
     min-width: 0;
@@ -571,6 +582,9 @@ export const cardStyles = css`
   }
   .link:focus-visible {
     outline: 2px solid var(--c-accent);
+  }
+  .link.reset {
+    margin: 0 0 0 auto;
   }
 
   /* airing this week */
