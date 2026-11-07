@@ -2,6 +2,11 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.5
+
+### Fixed
+- Fixed: empty manifest in 0.3.4
+
 ## 0.3.4
 
 ### Changed
