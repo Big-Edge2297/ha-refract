@@ -28,6 +28,8 @@ const en: Dict = {
   "status.up_to_date": "Up to date",
   "status.watchlist": "Watchlist",
   "status.in_progress": "In progress",
+  "status.on_hold": "On hold",
+  "status.dropped": "Dropped",
   "status.other": "Other",
   "watch.title": "Watch time",
   "streak.title": "Streak",

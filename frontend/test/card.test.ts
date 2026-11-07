@@ -69,6 +69,34 @@ test("library status bar and watch-time split", async () => {
   assert.match(t, /78%/);
 });
 
+function withStatuses(byStatus: Record<string, number>) {
+  const key = `sensor.${PREFIX}library_total`;
+  return makeHass({ states: { ...baseStates, [key]: { ...baseStates[key], attributes: { ...baseStates[key].attributes, by_status: byStatus } } } });
+}
+
+test("library shows every status Refract reports, including on hold and dropped", async () => {
+  const el = await mount({}, withStatuses({ completed: 803, up_to_date: 23, in_progress: 3, planned: 64, on_hold: 2, dropped: 2 }));
+  const t = text(el);
+  assert.match(t, /Completed 803/);
+  assert.match(t, /Watchlist 64/);
+  assert.match(t, /On hold 2/);
+  assert.match(t, /Dropped 2/);
+  assert.doesNotMatch(t, /Other/);
+  assert.equal(el.shadowRoot!.querySelectorAll(".status-bar > span").length, 6);
+  const legend = [...el.shadowRoot!.querySelectorAll(".status-legend .swatch")].map((x) => x.getAttribute("style"));
+  assert.match(legend[4]!, /--c-on-hold/);
+  assert.match(legend[5]!, /--c-dropped/);
+});
+
+test("library statuses: aliases merge, empty ones are skipped and unknown ones get a readable name", async () => {
+  const el = await mount({}, withStatuses({ completed: 5, paused: 1, on_hold: 2, never: 0, "waiting-room": 3 }));
+  const t = text(el);
+  assert.match(t, /Completed 5/);
+  assert.match(t, /On hold 3/, "paused and on_hold are the same status");
+  assert.match(t, /Waiting room 3/);
+  assert.doesNotMatch(t, /Never/);
+});
+
 test("sections appear in the designed order", async () => {
   const t = text(await mount({ show_actions: false }));
   const order = ["Total watch time", "Watch time TV shows", "Library Completed", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+
+- **New:** the library bar shows every status you use, including **On hold** and **Dropped**, instead of lumping them into "Other". Other statuses Refract may add appear with a readable name
+- New styling variables `--refract-color-on-hold` and `--refract-color-dropped`
+- With an older integration version (no `by_status` data) the bar keeps the four main statuses plus "Other"
+
 ## 0.3.3
 
 - **Fixed:** durations under a day no longer show a zero ("about 21 h" instead of "about 0 d 21 h"), including in the watch-time split

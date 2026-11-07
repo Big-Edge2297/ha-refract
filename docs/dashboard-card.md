@@ -10,7 +10,7 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 |---|---|---|
 | **Watch time** | Total time as days and hours, a library/movies/episodes summary, and the fun stat in a highlighted pill ("about 8.8 months of nonstop viewing") | profile stats |
 | **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares | profile stats |
-| **Library** | A status bar for completed, up to date, in progress, watchlist and other, with counts | library |
+| **Library** | A status bar with a count for every status you use: completed, up to date, in progress, watchlist, on hold, dropped and any other status Refract adds | library |
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
 | **Last 7 days** | Episodes and movies per day as stacked bars, with the busiest day named | watch history |
@@ -169,7 +169,7 @@ Add one card per account and pick an entity from each.
 - **Last 7 days** counts the days Refract has on record. Episodes watched with no date recorded can't appear in it. The busiest day is the day with the most episodes and movies in those seven days (the latest day wins a tie).
 - **Watch history is refreshed hourly**, and straight after you mark something watched through Home Assistant. Turn it off in the integration options if you don't want the extra requests; the two sections that need it then disappear.
 - **The catch-up backlog** counts aired episodes you haven't watched across every show you're watching, including the one shown as next up. The time is an estimate from your average episode length.
-- **"Other" in the library bar** is the difference between your library total and the sum of the status counts, so the bar always adds up.
+- **The library bar** lists every status that has at least one title, taken from the `by_status` attribute of the library total sensor (statuses are ordered completed, up to date, in progress, watchlist, on hold, dropped, then any others alphabetically; "paused" counts as on hold). If that attribute is missing, for example with an older integration version, the card shows the four main statuses plus **Other**, the difference between your library total and their sum, so the bar always adds up.
 - **Episodes** in the summary is TV episodes plus anime episodes.
 - **The fun stat** needs at least a day of watch time. In `rotate` mode it changes once a day.
 
@@ -181,7 +181,7 @@ The card follows your Home Assistant theme. These optional theme variables overr
 |---|---|
 | `--refract-color-movies`, `--refract-color-shows`, `--refract-color-anime` | Category colors |
 | `--refract-color-accent` | Progress, streak, next up |
-| `--refract-color-completed`, `--refract-color-up-to-date`, `--refract-color-watchlist`, `--refract-color-in-progress` | Library status bar |
+| `--refract-color-completed`, `--refract-color-up-to-date`, `--refract-color-watchlist`, `--refract-color-in-progress`, `--refract-color-on-hold`, `--refract-color-dropped` | Library status bar |
 | `--refract-tile-background` | Summary tiles |
 | `--refract-hero-font` | The large watch time numbers |
 

@@ -2,6 +2,11 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.4
+
+### Changed
+- The library bar on the card shows every status, including **On hold** and **Dropped**, instead of "Other"
+
 ## 0.3.3
 
 ### Fixed

@@ -68,6 +68,12 @@ export interface AiringItem {
   airAt?: string;
 }
 
+export interface StatusCount {
+  /** Normalised status key: completed, up_to_date, in_progress, planned, on_hold, dropped, or anything else Refract adds. */
+  key: string;
+  count: number;
+}
+
 export interface Model {
   found: boolean;
   accountMain: string;
@@ -84,6 +90,8 @@ export interface Model {
     upToDate?: number;
     watchlist?: number;
     other?: number;
+    /** Every status with at least one title, when the integration reports them. */
+    statuses?: StatusCount[];
   };
   moviesWatched?: number;
   episodesWatched?: number;
@@ -129,6 +137,30 @@ export function parseShowItem(obj: any, fallbackTitle?: string): ShowItem | unde
   };
 }
 
+const STATUS_ORDER = ["completed", "up_to_date", "in_progress", "planned", "on_hold", "dropped"];
+const STATUS_ALIASES: Record<string, string> = { watchlist: "planned", paused: "on_hold", onhold: "on_hold", abandoned: "dropped" };
+
+/** `by_status` from the library total sensor -> counts in a stable order, known statuses first. */
+export function parseStatuses(raw: unknown): StatusCount[] | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const merged = new Map<string, number>();
+  for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
+    const count = num(value);
+    if (count === undefined || count <= 0) continue;
+    const normal = name.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    const key = STATUS_ALIASES[normal] ?? normal;
+    merged.set(key, (merged.get(key) ?? 0) + count);
+  }
+  if (!merged.size) return undefined;
+  const rank = (key: string) => {
+    const i = STATUS_ORDER.indexOf(key);
+    return i === -1 ? STATUS_ORDER.length : i;
+  };
+  return [...merged.entries()]
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => rank(a.key) - rank(b.key) || a.key.localeCompare(b.key));
+}
+
 export function buildModel(hass: HomeAssistant, discovery: Discovery, config: RefractCardConfig): Model {
   const ent = (key: RefractKey) => {
     const id = discovery.entities[key];
@@ -149,6 +181,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
   const watchlist = n("watchlist");
   const statusSum = sum([completed, inProgress, upToDate, watchlist]);
   const other = total !== undefined && statusSum !== undefined ? Math.max(0, total - statusSum) : undefined;
+  const statuses = parseStatuses(ent("library_total")?.attributes?.by_status);
 
   const showsMin = n("stats_watch_time_shows_minutes");
   const moviesMin = n("stats_watch_time_movies_minutes");
@@ -257,7 +290,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     accountSub: name.sub,
     last,
     minutes: { total: totalMin, shows: showsMin, movies: moviesMin, anime: animeMin },
-    library: { total, movies, shows, anime, completed, inProgress, upToDate, watchlist, other },
+    library: { total, movies, shows, anime, completed, inProgress, upToDate, watchlist, other, statuses },
     moviesWatched: n("stats_movies_watched"),
     episodesWatched: sum([n("stats_shows_episodes_watched"), n("stats_anime_episodes_watched")]),
     streak: current !== undefined ? { current, longest: Math.max(longest ?? current, current) } : undefined,

@@ -13,6 +13,8 @@ export const cardStyles = css`
     --c-up-to-date: var(--refract-color-up-to-date, var(--c-accent));
     --c-watchlist: var(--refract-color-watchlist, #eda100);
     --c-in-progress: var(--refract-color-in-progress, #e87ba4);
+    --c-on-hold: var(--refract-color-on-hold, #8a96a8);
+    --c-dropped: var(--refract-color-dropped, #d9534f);
     --track: var(--divider-color, rgba(127, 127, 127, 0.3));
     --tile-bg: var(--refract-tile-background, var(--secondary-background-color, rgba(127, 127, 127, 0.12)));
     --hero-font: var(--refract-hero-font, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif);

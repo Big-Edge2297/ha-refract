@@ -231,26 +231,47 @@ export class RefractStatsCard extends LitElement {
   private _library(m: Model): TemplateResult | typeof nothing {
     const lang = languageOf(this.hass);
     const lib = m.library;
-    const statuses = (
-      [
-        ["status.completed", lib.completed, "var(--c-completed)"],
-        ["status.up_to_date", lib.upToDate, "var(--c-up-to-date)"],
-        ["status.in_progress", lib.inProgress, "var(--c-in-progress)"],
-        ["status.watchlist", lib.watchlist, "var(--c-watchlist)"],
-        ["status.other", lib.other && lib.other > 0 ? lib.other : undefined, "var(--track)"],
-      ] as Array<[string, number | undefined, string]>
-    ).filter(([, v]) => v !== undefined) as Array<[string, number, string]>;
+    const COLORS: Record<string, string> = {
+      completed: "var(--c-completed)",
+      up_to_date: "var(--c-up-to-date)",
+      in_progress: "var(--c-in-progress)",
+      planned: "var(--c-watchlist)",
+      on_hold: "var(--c-on-hold)",
+      dropped: "var(--c-dropped)",
+    };
+    const LABELS: Record<string, string> = { planned: "status.watchlist" };
+    const labelOf = (key: string): string => {
+      const i18n = LABELS[key] ?? `status.${key}`;
+      const known = t(this.hass, i18n);
+      if (known !== i18n) return known;
+      const words = key.replace(/_/g, " ");
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    };
+    // Every status Refract reports; without that data, the four known ones plus "Other".
+    const statuses: Array<[string, number, string]> = lib.statuses
+      ? lib.statuses.map((x): [string, number, string] => [labelOf(x.key), x.count, COLORS[x.key] ?? "var(--track)"])
+      : (
+          [
+            ["status.completed", lib.completed, "var(--c-completed)"],
+            ["status.up_to_date", lib.upToDate, "var(--c-up-to-date)"],
+            ["status.in_progress", lib.inProgress, "var(--c-in-progress)"],
+            ["status.watchlist", lib.watchlist, "var(--c-watchlist)"],
+            ["status.other", lib.other && lib.other > 0 ? lib.other : undefined, "var(--track)"],
+          ] as Array<[string, number | undefined, string]>
+        )
+          .filter(([, v]) => v !== undefined)
+          .map(([k, v, color]): [string, number, string] => [t(this.hass, k), v as number, color]);
     if (!statuses.length) return nothing;
 
     return html`<div class="panel library">
       <div class="label" style="margin-bottom:10px">${t(this.hass, "library.title")}</div>
-      <div class="status-bar" role="img" aria-label=${statuses.map(([k, v]) => `${t(this.hass, k)} ${v}`).join(", ")}>
+      <div class="status-bar" role="img" aria-label=${statuses.map(([label, v]) => `${label} ${v}`).join(", ")}>
         ${statuses.map(([, v, color]) => html`<span style="flex:${v} 1 0; background:${color}"></span>`)}
       </div>
       <div class="status-legend">
         ${statuses.map(
-          ([k, v, color]) =>
-            html`<span><span class="swatch sm" style="background:${color}"></span>${t(this.hass, k)} ${fmtNumber(v, lang)}</span>`,
+          ([label, v, color]) =>
+            html`<span><span class="swatch sm" style="background:${color}"></span>${label} ${fmtNumber(v, lang)}</span>`,
         )}
       </div>
     </div>`;

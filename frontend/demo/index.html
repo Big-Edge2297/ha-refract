@@ -6,6 +6,8 @@
 <title>Refract stats card demo</title>
 <style>
   :root { color-scheme: light dark; }
+  /* @font-face is ignored inside a shadow root, so the icon font is declared here for the ha-icon stand-in */
+  @font-face { font-family: "Material Design Icons"; src: url("https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.woff2?v=7.4.47") format("woff2"); }
   body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: var(--primary-background-color); color: var(--primary-text-color); }
   body.light { --primary-background-color:#fafafa; --card-background-color:#fff; --secondary-background-color:#e5e5e5; --primary-text-color:#212121; --secondary-text-color:#727272; --divider-color:#e0e0e0; --primary-color:#03a9f4; }
   body.dark { --primary-background-color:#111111; --card-background-color:#1c1c1c; --secondary-background-color:#282828; --primary-text-color:#e1e1e1; --secondary-text-color:#9b9b9b; --divider-color:#ffffff1f; --primary-color:#03a9f4; }
@@ -79,7 +81,7 @@
   const e = (key, state, attributes = {}, domain = "sensor") => [`${domain}.${P}${key}`, { entity_id: `${domain}.${P}${key}`, state: String(state), attributes: { friendly_name: `Refract (sample_user) ${key}`, ...attributes } }];
   const hoursAgo = (h) => new Date(Date.now() - h * 36e5).toISOString();
   const states = Object.fromEntries([
-    e("library_total", 896), e("completed", 803), e("in_progress", 3), e("watchlist", 63), e("up_to_date", 23),
+    e("library_total", 897, { by_status: { completed: 803, up_to_date: 23, in_progress: 3, planned: 64, on_hold: 2, dropped: 2 } }), e("completed", 803), e("in_progress", 3), e("watchlist", 63), e("up_to_date", 23),
     e("movies", 693), e("tv_shows", 202), e("anime", 1),
     e("last_watched", hoursAgo(16), { title: "Westworld", season: 1, episode: 6 }),
     e("shows_waiting", 20, { items: queue }), e("next_up", "Westworld", westworld),
@@ -90,8 +92,14 @@
   ]);
 
   const day = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
-  const poster = (c1, c2) => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="185" height="278"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="185" height="278" fill="url(#g)"/></svg>`);
-  const art = { Westworld: poster("#8a6a4a", "#2f2418"), "The Bear": poster("#b5483a", "#3a1712"), Silo: poster("#4a6a7a", "#16222a"), Lupin: null };
+  const poster = (c1, c2, title) => {
+    // Typographic stand-in artwork (not real posters): gradient, a big initial and the title.
+    const words = title.toUpperCase().split(" ");
+    const lines = words.length > 1 ? [words[0], words.slice(1).join(" ")] : [words[0]];
+    const text = lines.map((l, i) => `<text x="92" y="${252 + (i - (lines.length - 1)) * 24}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="21" letter-spacing="2" fill="#fff">${l}</text>`).join("");
+    return "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="185" height="278"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="185" height="278" fill="url(#g)"/><text x="92" y="170" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="170" fill="#fff" fill-opacity=".16">${title[0]}</text>${text}</svg>`);
+  };
+  const art = { Westworld: poster("#8a6a4a", "#2f2418", "Westworld"), "The Bear": poster("#b5483a", "#3a1712", "The Bear"), Silo: poster("#4a6a7a", "#16222a", "Silo"), Lupin: poster("#2f5d62", "#0f1f26", "Lupin") };
   const days7 = [[3, 0], [0, 0], [2, 1], [4, 0], [1, 1], [0, 0], [2, 0]].map(([ep, mv], i) => ({ date: day(i - 6), episodes: ep, movies: mv }));
   const backlog = [["Westworld", 30, 63247], ["The Bear", 18, 136315], ["Silo", 12, 125988], ["Lupin", 9, 96677]].map(([title, remaining, tmdb_id]) => ({ title, year: 2020, is_anime: false, remaining, tmdb_id, poster_url: null }));
   const airing = [[0, "Westworld", 1, 10, false, false, true, "08:00"], [1, "Severance", 2, 6, false, false, false, "02:00"], [3, "Frieren", 1, 4, true, true, false, null]].map(([d, show, season, number, is_anime, premiere, finale, time]) => ({ date: day(d), show, season, number, title: null, is_anime, premiere, finale, air_at: time ? `${day(d)}T${time}:00.000Z` : null }));

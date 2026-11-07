@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { accountName, discover, matchKey, splitAccountName } from "../src/discovery";
-import { buildModel } from "../src/model";
+import { buildModel, parseStatuses } from "../src/model";
 import { PREFIX, makeHass, states } from "./fixture";
 
 test("matchKey prefers the longest key and splits the prefix", () => {
@@ -148,4 +148,21 @@ test("model: unavailable or unknown sensors are treated as missing", () => {
   const m = buildModel(hass, discover(hass, { entity: `sensor.${PREFIX}completed` }), { type: "x" });
   assert.equal(m.streak, undefined);
   assert.equal(m.next.kind, "empty");
+});
+
+
+test("parseStatuses: known statuses first, aliases merged, junk ignored", () => {
+  assert.deepEqual(
+    parseStatuses({ dropped: 2, zzz: 1, completed: 803, paused: 1, on_hold: 2, planned: 64, empty: 0, bad: "x" }),
+    [
+      { key: "completed", count: 803 },
+      { key: "planned", count: 64 },
+      { key: "on_hold", count: 3 },
+      { key: "dropped", count: 2 },
+      { key: "zzz", count: 1 },
+    ],
+  );
+  assert.equal(parseStatuses(undefined), undefined);
+  assert.equal(parseStatuses([1, 2]), undefined);
+  assert.equal(parseStatuses({ none: 0 }), undefined);
 });
