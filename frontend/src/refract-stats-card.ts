@@ -417,9 +417,8 @@ export class RefractStatsCard extends LitElement {
         ${cats.map(
           (x, i) =>
             html`<div class="watch-col">
-              <div class="row"><span class="swatch" style="background:${x.color}"></span>${t(this.hass, x.key)}</div>
+              <div class="row"><span class="swatch" style="background:${x.color}"></span>${t(this.hass, x.key)} (${pct[i]}%)</div>
               <div class="value">${durationText(x.minutes, fmt, lang)}</div>
-              <div class="label">${pct[i]}%</div>
             </div>`,
         )}
       </div>

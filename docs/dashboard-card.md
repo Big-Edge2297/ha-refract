@@ -8,7 +8,7 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 
 | Section | What you see | Needs |
 |---|---|---|
-| **Watch time** | Total time as days and hours, a library/movies/episodes summary, and the fun stat in a highlighted pill ("about 8.8 months of nonstop viewing") | profile stats |
+| **Watch time** | Total time as days and hours, a library/movies/episodes watched summary, and the fun stat in a highlighted pill ("about 8.8 months of nonstop viewing") | profile stats |
 | **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares | profile stats |
 | **Library** | A status bar with a count for every status you use: completed, up to date, in progress, watchlist, on hold, dropped and any other status Refract adds | library |
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
@@ -170,7 +170,7 @@ Add one card per account and pick an entity from each.
 - **Watch history is refreshed hourly**, and straight after you mark something watched through Home Assistant. Turn it off in the integration options if you don't want the extra requests; the two sections that need it then disappear.
 - **The catch-up backlog** counts aired episodes you haven't watched across every show you're watching, including the one shown as next up. The time is an estimate from your average episode length.
 - **The library bar** lists every status that has at least one title, taken from the `by_status` attribute of the library total sensor (statuses are ordered completed, up to date, in progress, watchlist, on hold, dropped, then any others alphabetically; "paused" counts as on hold). If that attribute is missing, for example with an older integration version, the card shows the four main statuses plus **Other**, the difference between your library total and their sum, so the bar always adds up.
-- **Episodes** in the summary is TV episodes plus anime episodes.
+- **Episodes watched** in the summary is TV episodes plus anime episodes.
 - **The fun stat** needs at least a day of watch time. In `rotate` mode it changes once a day.
 
 ## Styling

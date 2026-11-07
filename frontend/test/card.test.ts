@@ -49,7 +49,7 @@ test("renders the hero with human durations", async () => {
   assert.match(t, /Total watch time 266 days 14 hours/);
   assert.match(t, /Library 896/);
   assert.match(t, /Movies seen 661/);
-  assert.match(t, /Episodes 7,959/);
+  assert.match(t, /Episodes watched 7,959/);
   assert.match(t, /That's about 8\.8 months of nonstop viewing/);
   assert.doesNotMatch(t, /383,908|298,044|78,542|7,322/, "raw minutes never reach the card");
 });
@@ -66,7 +66,9 @@ test("library status bar and watch-time split", async () => {
   assert.match(t, /206 d 23 h/);
   assert.match(t, /54 d 13 h/);
   assert.match(t, /5 d 2 h/);
-  assert.match(t, /78%/);
+  assert.match(t, /TV shows \(78%\)/);
+  assert.match(t, /Movies \(20%\)/);
+  assert.match(t, /Anime \(2%\)/);
 });
 
 function withStatuses(byStatus: Record<string, number>) {

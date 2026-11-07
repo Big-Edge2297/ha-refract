@@ -11,7 +11,7 @@ const en: Dict = {
   "hero.total": "Total watch time",
   "hero.library": "Library",
   "hero.movies_seen": "Movies seen",
-  "hero.episodes": "Episodes",
+  "hero.episodes": "Episodes watched",
   "unit.days": "days",
   "unit.day": "day",
   "unit.hours": "hours",

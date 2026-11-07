@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.6
+
+- **Changed:** the summary tile says **Episodes watched** instead of "Episodes"
+- **Changed:** *Watch time* shows the percentage after each title, e.g. *TV shows (78%)*, *Movies (20%)*, *Anime (2%)*, rather than on a separate line
+
 ## 0.3.4
 
 - **New:** the library bar shows every status you use, including **On hold** and **Dropped**, instead of lumping them into "Other". Other statuses Refract may add appear with a readable name

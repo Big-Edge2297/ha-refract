@@ -2,6 +2,12 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.6
+
+### Changed
+- The summary tile on the card now reads **Episodes watched** instead of just "Episodes"
+- In **Watch time**, the share of each category now sits next to its title, e.g. *TV shows (78%)*, *Movies (20%)*, *Anime (2%)*, instead of on its own line below the duration
+
 ## 0.3.5
 
 ### Fixed
