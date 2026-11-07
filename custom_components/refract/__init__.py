@@ -9,10 +9,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
 from .api import RefractApiClient
-from .const import CONF_API_KEY, DOMAIN
+from .const import CONF_API_KEY, CONF_TMDB_API_KEY, DOMAIN
 from .coordinator import RefractConfigEntry, RefractCoordinator, RefractData
 from .frontend import async_register_card
 from .services import async_setup_services
+from .tmdb import TmdbClient
 
 PLATFORMS = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -26,8 +27,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: RefractConfigEntry) -> bool:
-    api = RefractApiClient(async_get_clientsession(hass), entry.data[CONF_API_KEY])
-    coordinator = RefractCoordinator(hass, entry, api)
+    session = async_get_clientsession(hass)
+    api = RefractApiClient(session, entry.data[CONF_API_KEY])
+    tmdb = None
+    if tmdb_key := entry.options.get(CONF_TMDB_API_KEY):
+        tmdb = TmdbClient(hass, session, tmdb_key)
+        await tmdb.async_load()
+    coordinator = RefractCoordinator(hass, entry, api, tmdb)
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = RefractData(api=api, coordinator=coordinator)

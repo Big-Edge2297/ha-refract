@@ -82,7 +82,45 @@ def _next_up_value(data: dict[str, Any]) -> str | None:
 
 
 def _next_up_attrs(data: dict[str, Any]) -> dict[str, Any]:
-    return dict(data["up_next"][0]) if data["up_next"] else {}
+    if not data["up_next"]:
+        return {}
+    first = dict(data["up_next"][0])
+    tmdb = ((first.get("show") or {}).get("ids") or {}).get("tmdb")
+    poster = data["posters"].get(tmdb) if tmdb is not None else None
+    if poster:
+        first["poster_url"] = poster
+    return first
+
+
+def _analytics(data: dict[str, Any]) -> dict[str, Any] | None:
+    return data.get("analytics")
+
+
+def _last_7_value(data: dict[str, Any]) -> int | None:
+    info = _analytics(data)
+    return info["episodes"] + info["movies"] if info else None
+
+
+def _last_7_attrs(data: dict[str, Any]) -> dict[str, Any]:
+    info = _analytics(data)
+    if not info:
+        return {}
+    return {
+        "days": info["days"],
+        "episodes": info["episodes"],
+        "movies": info["movies"],
+        "busiest_day": info["busiest"],
+    }
+
+
+def _average_value(data: dict[str, Any]) -> float | None:
+    info = _analytics(data)
+    return info["average"]["hours_per_week"] if info else None
+
+
+def _average_attrs(data: dict[str, Any]) -> dict[str, Any]:
+    info = _analytics(data)
+    return dict(info["average"]) if info else {}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -92,6 +130,7 @@ class RefractSensorDescription(SensorEntityDescription):
     scope: str
     value_fn: Callable[[dict[str, Any]], Any]
     attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
+    needs_history: bool = False
 
 
 def _library_sensor(key: str, name: str, icon: str, fn, attrs=None) -> RefractSensorDescription:
@@ -143,6 +182,48 @@ SENSORS: tuple[RefractSensorDescription, ...] = (
         attrs_fn=_next_up_attrs,
     ),
     RefractSensorDescription(
+        key="catch_up",
+        name="Catch up",
+        icon="mdi:playlist-check",
+        scope=SCOPE_HISTORY,
+        native_unit_of_measurement="episodes",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: d["backlog"]["total"],
+        attrs_fn=lambda d: {k: v for k, v in d["backlog"].items() if k != "total"},
+    ),
+    RefractSensorDescription(
+        key="last_7_days",
+        name="Last 7 days",
+        icon="mdi:chart-bar",
+        scope=SCOPE_HISTORY,
+        native_unit_of_measurement="views",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_last_7_value,
+        attrs_fn=_last_7_attrs,
+        needs_history=True,
+    ),
+    RefractSensorDescription(
+        key="average_per_week",
+        name="Average per week",
+        icon="mdi:calendar-week",
+        scope=SCOPE_HISTORY,
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement="h",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_average_value,
+        attrs_fn=_average_attrs,
+        needs_history=True,
+    ),
+    RefractSensorDescription(
+        key="airing_this_week",
+        name="Airing this week",
+        icon="mdi:calendar-star",
+        scope=SCOPE_LIBRARY,
+        native_unit_of_measurement="episodes",
+        value_fn=lambda d: len(d["airing"]),
+        attrs_fn=lambda d: {"episodes": d["airing"]},
+    ),
+    RefractSensorDescription(
         key="username",
         name="Username",
         icon="mdi:account",
@@ -162,8 +243,11 @@ async def async_setup_entry(
     coordinator = entry.runtime_data.coordinator
     scopes = coordinator.data["scopes"]
 
+    history_on = coordinator.data["history_enabled"]
     entities: list[SensorEntity] = [
-        RefractSensor(coordinator, desc) for desc in SENSORS if scopes.get(desc.scope)
+        RefractSensor(coordinator, desc)
+        for desc in SENSORS
+        if scopes.get(desc.scope) and (history_on or not desc.needs_history)
     ]
     # Stats: one sensor per numeric field, so new fields appear automatically.
     if scopes.get(SCOPE_HISTORY):
@@ -178,7 +262,7 @@ class RefractSensor(RefractEntity, SensorEntity):
     """Sensor driven by a description."""
 
     entity_description: RefractSensorDescription
-    _unrecorded_attributes = frozenset({"items"})
+    _unrecorded_attributes = frozenset({"items", "days", "shows", "episodes"})
 
     def __init__(self, coordinator: RefractCoordinator, description: RefractSensorDescription) -> None:
         super().__init__(coordinator, description.key)

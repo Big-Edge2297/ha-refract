@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFl
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -28,13 +29,16 @@ from .api import (
 )
 from .const import (
     CONF_API_KEY,
+    CONF_FETCH_HISTORY,
     CONF_SCAN_INTERVAL,
+    CONF_TMDB_API_KEY,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     LOGGER,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
 )
+from .tmdb import async_validate_key
 
 KEY_SCHEMA = vol.Schema(
     {vol.Required(CONF_API_KEY): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))}
@@ -109,14 +113,27 @@ class RefractConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class RefractOptionsFlow(OptionsFlow):
-    """Polling interval."""
+    """Polling interval, watch history and the optional TMDB poster key."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        options = self.config_entry.options
         if user_input is not None:
-            return self.async_create_entry(
-                data={CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL])}
-            )
-        current = self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            tmdb_key = (user_input.get(CONF_TMDB_API_KEY) or "").strip()
+            if tmdb_key and tmdb_key != options.get(CONF_TMDB_API_KEY):
+                error = await async_validate_key(async_get_clientsession(self.hass), tmdb_key)
+                if error:
+                    errors[CONF_TMDB_API_KEY] = error
+            if not errors:
+                data: dict[str, Any] = {
+                    CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
+                    CONF_FETCH_HISTORY: bool(user_input[CONF_FETCH_HISTORY]),
+                }
+                if tmdb_key:
+                    data[CONF_TMDB_API_KEY] = tmdb_key
+                return self.async_create_entry(data=data)
+
+        current = options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         schema = vol.Schema(
             {
                 vol.Required(CONF_SCAN_INTERVAL, default=current): NumberSelector(
@@ -127,7 +144,14 @@ class RefractOptionsFlow(OptionsFlow):
                         mode=NumberSelectorMode.BOX,
                         unit_of_measurement="min",
                     )
-                )
+                ),
+                vol.Required(
+                    CONF_FETCH_HISTORY, default=options.get(CONF_FETCH_HISTORY, True)
+                ): BooleanSelector(),
+                vol.Optional(
+                    CONF_TMDB_API_KEY,
+                    description={"suggested_value": options.get(CONF_TMDB_API_KEY, "")},
+                ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)

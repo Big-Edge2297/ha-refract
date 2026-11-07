@@ -182,3 +182,17 @@ export function streakDots(opts: {
     stillTimeToday: !todayFilled && current > 0 && lastIdx === today - 1,
   };
 }
+
+// ------------------------------------------------------------------- days
+
+/** `YYYY-MM-DD` of an instant in a time zone (undefined = the browser's). */
+export function isoDay(date: Date, timeZone?: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** Weekday name of a plain `YYYY-MM-DD` date, in the user's language. */
+export function weekdayName(iso: string, lang: string, style: "narrow" | "short" | "long"): string {
+  return new Intl.DateTimeFormat(lang, { weekday: style, timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
+}

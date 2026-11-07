@@ -1,3 +1,4 @@
+import { isoDay } from "../src/format";
 import type { HassEntity, HomeAssistant } from "../src/types";
 
 export const PREFIX = "refract_codex_";
@@ -43,6 +44,29 @@ const entity = (key: string, state: string, attributes: Record<string, unknown> 
   return [entity_id, { entity_id, state, attributes: { friendly_name: `Refract (Codex) ${key}`, ...attributes } }];
 };
 
+const dayOffset = (n: number): string => isoDay(new Date(Date.now() + n * 86_400_000), "UTC");
+
+/** Sample "last 7 days": 8 episodes and 3 movies, busiest day three days ago. */
+export const last7Days = [
+  { date: dayOffset(-6), episodes: 1, movies: 0 },
+  { date: dayOffset(-5), episodes: 0, movies: 0 },
+  { date: dayOffset(-4), episodes: 2, movies: 1 },
+  { date: dayOffset(-3), episodes: 3, movies: 1 },
+  { date: dayOffset(-2), episodes: 0, movies: 0 },
+  { date: dayOffset(-1), episodes: 2, movies: 1 },
+  { date: dayOffset(0), episodes: 0, movies: 0 },
+];
+
+export const catchUpShows = [
+  { title: "Westworld", year: 2016, is_anime: false, remaining: 30, tmdb_id: 63247, poster_url: null },
+  { title: "Lupin", year: 2021, is_anime: false, remaining: 9, tmdb_id: 96677, poster_url: null },
+];
+
+export const airingEpisodes = [
+  { date: dayOffset(0), show: "Westworld", season: 1, number: 10, title: "The Bicameral Mind", is_anime: false },
+  { date: dayOffset(2), show: "Frieren", season: 1, number: 3, title: null, is_anime: true },
+];
+
 export const states: Record<string, HassEntity> = Object.fromEntries([
   entity("library_total", "896"),
   entity("completed", "803"),
@@ -66,6 +90,10 @@ export const states: Record<string, HassEntity> = Object.fromEntries([
   entity("stats_watch_time_movies_minutes", "78542"),
   entity("stats_watch_time_shows_minutes", "298044"),
   entity("stats_watch_time_total_minutes", "383908"),
+  entity("catch_up", "39", { show_count: 2, estimated_minutes: 1755, shows: catchUpShows }),
+  entity("last_7_days", "11", { days: last7Days, episodes: 8, movies: 3, busiest_day: { date: dayOffset(-3), count: 4 } }),
+  entity("average_per_week", "2.5", { items_per_week: 2.8, change_percent: 12, window_days: 28, estimated: true }),
+  entity("airing_this_week", "2", { episodes: airingEpisodes }),
   entity("watchlist", "63", {}, "todo"),
 ]);
 

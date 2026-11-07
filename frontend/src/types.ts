@@ -51,20 +51,32 @@ export interface RefractCardConfig {
   /** Overrides the account name shown in the header. */
   name?: string;
   layout?: Layout;
-  streak_style?: StreakStyle;
-  show_streak_toggle?: boolean;
   duration_format?: DurationFormat;
   fun_stat?: boolean;
   fun_stat_mode?: FunStatMode;
+  /** Rows listed in the catch-up backlog. */
   queue_length?: number;
+  /** Rows listed in "Airing this week". */
+  airing_length?: number;
   show_hero?: boolean;
-  show_library?: boolean;
   show_watch_time?: boolean;
+  show_library?: boolean;
   show_streak?: boolean;
+  show_average?: boolean;
+  show_last_7_days?: boolean;
   show_next_up?: boolean;
-  show_queue?: boolean;
+  show_catchup?: boolean;
+  show_airing?: boolean;
+  /** Poster images (needs a TMDB key in the integration options). */
+  show_posters?: boolean;
   show_actions?: boolean;
   confirm_actions?: boolean;
+  /** @deprecated The streak is always shown as dots. Ignored. */
+  streak_style?: StreakStyle;
+  /** @deprecated Ignored. */
+  show_streak_toggle?: boolean;
+  /** @deprecated Renamed to `show_catchup`; still honoured when `show_catchup` is not set. */
+  show_queue?: boolean;
   /** Needed only for "Mark watched" when several Refract accounts exist. */
   config_entry_id?: string;
   color_movies?: string;
@@ -77,18 +89,21 @@ export interface RefractCardConfig {
 
 export const DEFAULT_CONFIG = {
   layout: "full",
-  streak_style: "gauge",
-  show_streak_toggle: true,
   duration_format: "days_hours",
   fun_stat: true,
   fun_stat_mode: "rotate",
   queue_length: 5,
+  airing_length: 5,
   show_hero: true,
-  show_library: true,
   show_watch_time: true,
+  show_library: true,
   show_streak: true,
+  show_average: true,
+  show_last_7_days: true,
   show_next_up: true,
-  show_queue: true,
+  show_catchup: true,
+  show_airing: true,
+  show_posters: true,
   show_actions: false,
   confirm_actions: true,
 } as const;

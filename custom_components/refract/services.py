@@ -82,6 +82,7 @@ def _action(
             ) from err
         except RefractError as err:
             raise HomeAssistantError(f"Refract: {err}") from err
+        data.coordinator.invalidate_history()
         await data.coordinator.async_request_refresh()
 
     return handler

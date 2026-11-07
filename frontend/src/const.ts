@@ -1,7 +1,7 @@
 export const CARD_TYPE = "refract-stats-card";
 export const EDITOR_TYPE = "refract-stats-card-editor";
 export const DOMAIN = "refract";
-export const DOCS_URL = "https://github.com/Big-Edge2297/ha-refract-card";
+export const DOCS_URL = "https://github.com/Big-Edge2297/ha-refract/blob/main/docs/dashboard-card.md";
 
 declare const __VERSION__: string;
 export const VERSION = typeof __VERSION__ === "string" ? __VERSION__ : "dev";
@@ -20,6 +20,10 @@ export const SENSOR_KEYS = [
   "shows_waiting",
   "next_up",
   "username",
+  "catch_up",
+  "last_7_days",
+  "average_per_week",
+  "airing_this_week",
   "stats_anime_episodes_watched",
   "stats_anime_titles",
   "stats_movies_watched",

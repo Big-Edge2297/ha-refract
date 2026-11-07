@@ -117,9 +117,11 @@ class RefractApiClient:
             raise RefractRateLimitError(int(retry) if retry.isdigit() else None)
         raise RefractRequestError(resp.status, code, detail)
 
-    async def _paginate(self, path: str, params: dict[str, Any] | None = None) -> list[dict]:
+    async def _paginate(
+        self, path: str, params: dict[str, Any] | None = None, page_size: int = 200
+    ) -> list[dict]:
         query = dict(params or {})
-        query["limit"] = 200
+        query["limit"] = page_size
         items: list[dict] = []
         for _ in range(MAX_PAGES):
             page = await self._request("GET", path, params=query)
@@ -137,8 +139,14 @@ class RefractApiClient:
         return await self._paginate("/library")
 
     async def get_up_next(self) -> list[dict[str, Any]]:
-        page = await self._request("GET", "/up-next", params={"limit": 20}, use_etag=True)
-        return page.get("data", []) if isinstance(page, dict) else (page or [])
+        """Every show being watched (the API pages at 50)."""
+        return await self._paginate("/up-next", page_size=50)
+
+    async def get_episode_history(self) -> list[dict[str, Any]]:
+        return await self._paginate("/history/episodes")
+
+    async def get_movie_history(self) -> list[dict[str, Any]]:
+        return await self._paginate("/history/movies")
 
     async def get_stats(self) -> dict[str, Any]:
         return await self._request("GET", "/stats", use_etag=True)

@@ -9,7 +9,7 @@ from typing import Any
 from homeassistant.components.calendar import CalendarEvent
 from homeassistant.util import dt as dt_util
 
-_DATE_KEYS = ("airs_at", "air_date", "aired_at", "air_datetime", "airdate", "aired", "date")
+from .analytics import iter_calendar_entries
 
 
 def item_title(item: dict[str, Any]) -> str | None:
@@ -34,45 +34,10 @@ def flatten_numbers(obj: dict[str, Any], prefix: str = "", depth: int = 0) -> It
             yield from flatten_numbers(value, full, depth + 1)
 
 
-def _air_value(obj: dict[str, Any]) -> str | None:
-    for key in _DATE_KEYS:
-        value = obj.get(key)
-        if isinstance(value, str) and value:
-            return value
-    return None
-
-
-def _show_title(obj: dict[str, Any]) -> str | None:
-    show = obj.get("show")
-    if isinstance(show, dict):
-        return show.get("title") or show.get("name")
-    return obj.get("show_title") or obj.get("series_title")
-
-
-def _iter_entries(
-    obj: Any, when: str | None = None, show: str | None = None
-) -> Iterator[tuple[dict[str, Any], str, str | None]]:
-    if isinstance(obj, list):
-        for entry in obj:
-            yield from _iter_entries(entry, when, show)
-    elif isinstance(obj, dict):
-        own = _air_value(obj)
-        show = _show_title(obj) or show
-        if "episodes" in obj and obj.get("title"):
-            show = obj["title"]
-        is_episode = any(k in obj for k in ("number", "episode_number", "season"))
-        if is_episode and (own or when):
-            yield obj, own or when, show
-            return
-        for value in obj.values():
-            if isinstance(value, (list, dict)):
-                yield from _iter_entries(value, own or when, show)
-
-
 def build_events(payload: Any) -> list[CalendarEvent]:
     """Turn a /v1/calendar payload into calendar events."""
     events: list[CalendarEvent] = []
-    for entry, when, show in _iter_entries(payload):
+    for entry, when, show in iter_calendar_entries(payload):
         season = entry.get("season")
         number = entry.get("number", entry.get("episode_number"))
         title = show or entry.get("title") or "Episode"

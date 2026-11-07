@@ -19,9 +19,50 @@ export interface ShowItem {
   remaining?: number;
   refractId?: string;
   tmdbId?: number;
+  posterUrl?: string;
 }
 
 export type NextUp = { kind: "hidden" } | { kind: "empty" } | { kind: "item"; item: ShowItem };
+
+export interface DayCount {
+  date: string;
+  episodes: number;
+  movies: number;
+}
+export interface Last7 {
+  days: DayCount[];
+  episodes: number;
+  movies: number;
+  busiest?: { date: string; count: number };
+}
+export interface Average {
+  hours?: number;
+  itemsPerWeek?: number;
+  changePct?: number | null;
+  estimated: boolean;
+}
+export interface CatchupShow {
+  title: string;
+  year?: number;
+  remaining: number;
+  isAnime: boolean;
+  tmdbId?: number;
+  posterUrl?: string;
+}
+export interface Catchup {
+  total: number;
+  minutes?: number;
+  showCount: number;
+  shows: CatchupShow[];
+}
+export interface AiringItem {
+  date: string;
+  show: string;
+  season?: number;
+  number?: number;
+  title?: string;
+  isAnime: boolean;
+}
 
 export interface Model {
   found: boolean;
@@ -44,8 +85,12 @@ export interface Model {
   episodesWatched?: number;
   streak?: { current: number; longest: number };
   next: NextUp;
-  queue: ShowItem[];
-  waiting?: number;
+  last7?: Last7;
+  average?: Average;
+  catchup?: Catchup;
+  /** undefined when the sensor doesn't exist; empty when nothing airs. */
+  airing?: AiringItem[];
+  hasPosters: boolean;
 }
 
 const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
@@ -76,11 +121,9 @@ export function parseShowItem(obj: any, fallbackTitle?: string): ShowItem | unde
     remaining: num(obj?.remaining_episodes),
     refractId: typeof show.ids?.refract === "string" ? show.ids.refract : undefined,
     tmdbId: num(show.ids?.tmdb),
+    posterUrl: typeof obj?.poster_url === "string" && obj.poster_url ? obj.poster_url : undefined,
   };
 }
-
-const sameShow = (a: ShowItem, b: ShowItem): boolean =>
-  a.refractId && b.refractId ? a.refractId === b.refractId : a.title === b.title && a.year === b.year;
 
 export function buildModel(hass: HomeAssistant, discovery: Discovery, config: RefractCardConfig): Model {
   const ent = (key: RefractKey) => {
@@ -128,12 +171,81 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     next = item ? { kind: "item", item } : { kind: "empty" };
   }
 
-  const waitingState = ent("shows_waiting");
-  const rawItems: unknown[] = Array.isArray(waitingState?.attributes?.items) ? waitingState!.attributes.items : [];
   const nextItem = next.kind === "item" ? next.item : undefined;
-  const queue = rawItems
-    .map((raw) => parseShowItem(raw))
-    .filter((item): item is ShowItem => !!item && !(nextItem && sameShow(item, nextItem)));
+
+  // last 7 days
+  let last7: Last7 | undefined;
+  const last7State = ent("last_7_days");
+  if (isUsable(last7State) && Array.isArray(last7State.attributes.days)) {
+    const days: DayCount[] = last7State.attributes.days
+      .map((d: any) => ({ date: String(d?.date ?? ""), episodes: num(d?.episodes) ?? 0, movies: num(d?.movies) ?? 0 }))
+      .filter((d: DayCount) => /^\d{4}-\d{2}-\d{2}$/.test(d.date));
+    if (days.length) {
+      const b = last7State.attributes.busiest_day;
+      last7 = {
+        days,
+        episodes: days.reduce((a, d) => a + d.episodes, 0),
+        movies: days.reduce((a, d) => a + d.movies, 0),
+        busiest: typeof b?.date === "string" && num(b?.count) ? { date: b.date, count: b.count } : undefined,
+      };
+    }
+  }
+
+  // average per week
+  let average: Average | undefined;
+  const avgState = ent("average_per_week");
+  if (avgState && avgState.state !== "unavailable") {
+    const hours = parseNum(avgState);
+    const perWeek = num(avgState.attributes.items_per_week);
+    if (hours !== undefined || perWeek !== undefined) {
+      const change = avgState.attributes.change_percent;
+      average = {
+        hours,
+        itemsPerWeek: perWeek,
+        changePct: typeof change === "number" ? change : null,
+        estimated: avgState.attributes.estimated !== false,
+      };
+    }
+  }
+
+  // catch-up backlog
+  let catchup: Catchup | undefined;
+  const catchState = ent("catch_up");
+  if (catchState && catchState.state !== "unavailable" && catchState.state !== "unknown") {
+    const total = parseNum(catchState) ?? 0;
+    const raw: unknown[] = Array.isArray(catchState.attributes.shows) ? catchState.attributes.shows : [];
+    const shows = raw
+      .map((r: any): CatchupShow | undefined => {
+        const remaining = num(r?.remaining);
+        if (typeof r?.title !== "string" || remaining === undefined) return undefined;
+        return {
+          title: r.title,
+          year: num(r.year),
+          remaining,
+          isAnime: !!r.is_anime,
+          tmdbId: num(r.tmdb_id),
+          posterUrl: typeof r.poster_url === "string" && r.poster_url ? r.poster_url : undefined,
+        };
+      })
+      .filter((x): x is CatchupShow => !!x);
+    catchup = { total, minutes: num(catchState.attributes.estimated_minutes), showCount: num(catchState.attributes.show_count) ?? shows.length, shows };
+  }
+
+  // airing this week
+  let airing: AiringItem[] | undefined;
+  const airState = ent("airing_this_week");
+  if (airState && airState.state !== "unavailable" && airState.state !== "unknown") {
+    const raw: unknown[] = Array.isArray(airState.attributes.episodes) ? airState.attributes.episodes : [];
+    airing = raw
+      .map((r: any): AiringItem | undefined =>
+        typeof r?.show === "string" && /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date))
+          ? { date: r.date, show: r.show, season: num(r.season), number: num(r.number), title: typeof r.title === "string" ? r.title : undefined, isAnime: !!r.is_anime }
+          : undefined,
+      )
+      .filter((x): x is AiringItem => !!x);
+  }
+
+  const hasPosters = !!nextItem?.posterUrl || !!catchup?.shows.some((x) => x.posterUrl);
 
   return {
     found,
@@ -146,7 +258,10 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     episodesWatched: sum([n("stats_shows_episodes_watched"), n("stats_anime_episodes_watched")]),
     streak: current !== undefined ? { current, longest: Math.max(longest ?? current, current) } : undefined,
     next,
-    queue,
-    waiting: parseNum(waitingState),
+    last7,
+    average,
+    catchup,
+    airing,
+    hasPosters,
   };
 }

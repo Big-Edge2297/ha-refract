@@ -124,16 +124,22 @@ export const cardStyles = css`
     font-variant-numeric: tabular-nums;
   }
   .fun {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    margin-top: 10px;
-    font-size: 13px;
-    color: var(--secondary-text-color);
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    background: color-mix(in srgb, var(--c-accent) 14%, transparent);
+    color: var(--primary-text-color);
   }
   .fun ha-icon {
-    --mdc-icon-size: 16px;
+    --mdc-icon-size: 18px;
     flex: none;
+    color: var(--c-accent);
   }
 
   /* panels */
@@ -148,14 +154,39 @@ export const cardStyles = css`
     padding: 14px;
     min-width: 0;
   }
-  .panel.library {
-    flex: 1.3 1 260px;
-  }
-  .panel.streak {
-    flex: 1 1 210px;
+  .panel.streak,
+  .panel.average {
+    flex: 1 1 190px;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    gap: 6px;
+  }
+  .metric {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric .unit {
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--secondary-text-color);
+  }
+  .metric .approx {
+    font-weight: 400;
+    color: var(--secondary-text-color);
+    margin-right: 2px;
+  }
+  .trend {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--secondary-text-color);
+  }
+  .trend.up {
+    color: var(--success-color, #1b8a5a);
+  }
+  .trend.down {
+    color: var(--error-color, #db4437);
   }
   .panel-head {
     display: flex;
@@ -174,47 +205,14 @@ export const cardStyles = css`
     width: 8px;
     height: 8px;
   }
-  .legend {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--secondary-text-color);
-  }
-  .legend span,
+  .legend-row span,
   .status-legend span {
     display: flex;
     align-items: center;
     gap: 6px;
   }
-  .donut-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
   svg .track {
     stroke: var(--track);
-  }
-  .donut {
-    width: 104px;
-    height: 104px;
-    flex: none;
-  }
-  .donut-value,
-  .gauge-value {
-    fill: var(--primary-text-color);
-    font-weight: 500;
-  }
-  .donut-value {
-    font-size: 18px;
-  }
-  .gauge-value {
-    font-size: 28px;
-  }
-  .donut-label,
-  .gauge-label {
-    fill: var(--secondary-text-color);
-    font-size: 11px;
   }
   .status-bar,
   .stack {
@@ -224,8 +222,8 @@ export const cardStyles = css`
     overflow: hidden;
   }
   .status-bar {
-    height: 10px;
-    margin-top: 14px;
+    height: 12px;
+    border-radius: 6px;
   }
   .stack {
     height: 14px;
@@ -237,58 +235,21 @@ export const cardStyles = css`
   .status-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 12px;
-    margin-top: 8px;
+    gap: 6px 14px;
+    margin-top: 10px;
     font-size: 12px;
     color: var(--secondary-text-color);
   }
 
   /* streak */
-  .seg {
-    display: flex;
-    gap: 2px;
-  }
-  .seg button {
-    all: unset;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    padding: 2px 6px;
-    border-radius: 6px;
-    color: var(--secondary-text-color);
-  }
-  .seg button[aria-pressed="true"] {
-    background: var(--tile-bg);
-    color: var(--primary-text-color);
-  }
-  .seg button:focus-visible {
-    outline: 2px solid var(--c-accent);
-  }
-  .seg ha-icon {
-    --mdc-icon-size: 16px;
-  }
-  .gauge {
-    width: 160px;
-    height: 96px;
-  }
-  .gauge-fill {
-    stroke: var(--c-accent);
-  }
   .streak-foot {
     font-size: 12px;
     color: var(--secondary-text-color);
-    text-align: center;
-  }
-  .dots-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    padding-top: 14px;
   }
   .dots {
     display: flex;
     gap: 8px;
+    margin: 6px 0 4px;
   }
   .dot-col {
     display: flex;
@@ -316,11 +277,6 @@ export const cardStyles = css`
   .dot.open.today {
     border-style: dashed;
     border-color: var(--secondary-text-color);
-  }
-  .dots-count {
-    font-size: 20px;
-    font-weight: 500;
-    text-align: center;
   }
 
   /* watch time */
@@ -350,6 +306,18 @@ export const cardStyles = css`
   /* next up */
   .panel.next {
     border-color: var(--c-accent);
+    display: flex;
+    gap: 14px;
+  }
+  .next-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .next-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 8px;
   }
   .next-main {
     display: flex;
@@ -393,6 +361,36 @@ export const cardStyles = css`
   }
   .next .progress {
     margin-top: 12px;
+  }
+  .poster {
+    position: relative;
+    flex: none;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tile-bg);
+    color: var(--secondary-text-color);
+    font-weight: 600;
+  }
+  .poster.lg {
+    width: 84px;
+    height: 126px;
+    border-radius: 10px;
+    font-size: 32px;
+  }
+  .poster.sm {
+    width: 28px;
+    height: 42px;
+    border-radius: 5px;
+    font-size: 13px;
+  }
+  .poster img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   .next-foot {
     display: flex;
@@ -449,66 +447,154 @@ export const cardStyles = css`
     background: color-mix(in srgb, var(--c-accent) 16%, transparent);
     color: var(--c-accent);
   }
+  .badge.ok {
+    background: color-mix(in srgb, var(--c-completed) 16%, transparent);
+    color: var(--c-completed);
+  }
   .badge.warn {
     background: color-mix(in srgb, var(--c-watchlist) 22%, transparent);
     color: var(--warning-color, #b37400);
   }
 
-  /* queue */
-  .panel.queue {
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-  .queue-head {
+  /* last 7 days */
+  .bars {
     display: flex;
-    justify-content: space-between;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .day {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    padding: 10px 0 4px;
+    gap: 6px;
+  }
+  .slot {
+    height: 84px;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+  }
+  .bar {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .bar.empty {
+    border-radius: 2px;
+    background: var(--track);
+  }
+  .seg {
+    min-height: 5px;
+    border-radius: 6px;
+  }
+  .seg.shows {
+    background: var(--c-shows);
+  }
+  .seg.movies {
+    background: var(--c-movies);
+  }
+  .day-label {
+    font-size: 12px;
+    color: var(--secondary-text-color);
+  }
+  .day.today .day-label {
+    color: var(--primary-text-color);
+    font-weight: 600;
+  }
+  .legend-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--secondary-text-color);
+  }
+  .legend-row span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend-row b {
+    color: var(--primary-text-color);
+  }
+
+  /* catch-up backlog */
+  .catch-line {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+    margin: 4px 0 12px;
+  }
+  .c-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 5px 0;
+  }
+  .c-name {
+    flex: 0 0 38%;
+    min-width: 0;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .c-row .progress {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+  }
+  .c-count {
+    flex: none;
+    min-width: 28px;
+    text-align: right;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
   }
   .link {
     all: unset;
     cursor: pointer;
+    display: inline-block;
+    margin-top: 8px;
     font-size: 12px;
     color: var(--c-accent);
   }
   .link:focus-visible {
     outline: 2px solid var(--c-accent);
   }
-  .q-row {
+
+  /* airing this week */
+  .a-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-    border-top: 1px solid var(--divider-color);
-  }
-  .q-main {
-    flex: 1;
-    min-width: 0;
-  }
-  .q-title {
+    gap: 10px;
+    padding: 5px 0;
     font-size: 14px;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
-  .q-ep {
+  .a-day {
+    flex: none;
+    min-width: 52px;
+    text-align: center;
     font-size: 12px;
+    font-weight: 600;
+    padding: 5px 0;
+    border-radius: 8px;
+    background: var(--tile-bg);
     color: var(--secondary-text-color);
+  }
+  .a-day.today {
+    background: color-mix(in srgb, var(--c-accent) 16%, transparent);
+    color: var(--c-accent);
+  }
+  .a-name {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .q-row .progress {
-    width: 90px;
-    flex: none;
-  }
-  .q-end {
-    flex: none;
-    min-width: 56px;
-    text-align: right;
-    font-size: 11px;
-    color: var(--secondary-text-color);
   }
 
   .empty {
@@ -521,8 +607,12 @@ export const cardStyles = css`
     .big .num {
       font-size: 44px;
     }
-    .q-row .progress {
-      width: 56px;
+    .c-name {
+      flex-basis: 34%;
+    }
+    .poster.lg {
+      width: 68px;
+      height: 102px;
     }
     .last {
       max-width: 55%;

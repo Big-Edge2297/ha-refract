@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0
+
+A redesigned card with new sections.
+
+- **New:** Last 7 days (episodes and movies per day, with the busiest day), Average per week (estimated hours with the change against the previous 4 weeks), Catch-up backlog, Airing this week
+- **New:** poster beside Next up and in the catch-up backlog, with the first letter as a fallback (needs a TMDB key in the integration options)
+- **New:** each section has its own switch: `show_average`, `show_last_7_days`, `show_catchup`, `show_airing`, `show_posters`, plus `airing_length`
+- **Changed:** the fun stat is a highlighted pill under the big watch time number
+- **Changed:** the library is a status bar (the donut is gone) and sits below the watch time split
+- **Changed:** the streak is a new tile with seven dots and your longest streak; the gauge and its switch are gone
+- **Changed:** the waiting queue is now the catch-up backlog; `show_queue` keeps working as an alias for `show_catchup`
+- `streak_style` and `show_streak_toggle` are ignored
+
 ## 0.2.0
 
 The card now ships inside the Refract integration instead of as a separate HACS plugin.

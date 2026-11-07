@@ -8,6 +8,8 @@ test("matchKey prefers the longest key and splits the prefix", () => {
   assert.deepEqual(matchKey("refract_codex_next_up"), { key: "next_up", prefix: "refract_codex_" });
   assert.deepEqual(matchKey("refract_codex_stats_watch_time_movies_minutes")?.key, "stats_watch_time_movies_minutes");
   assert.equal(matchKey("refract_codex_movies")?.key, "movies");
+  assert.equal(matchKey("refract_codex_last_7_days")?.key, "last_7_days");
+  assert.equal(matchKey("refract_codex_last_watched")?.key, "last_watched");
   assert.equal(matchKey("refract_codex_unrelated"), undefined);
 });
 
@@ -16,7 +18,9 @@ test("discovery by name prefix finds every sensor", () => {
   assert.equal(d.prefix, PREFIX);
   assert.equal(d.entities.library_total, `sensor.${PREFIX}library_total`);
   assert.equal(d.entities.watchlist, `sensor.${PREFIX}watchlist`); // sensor, not the todo entity
-  assert.equal(Object.keys(d.entities).length, 22);
+  assert.equal(Object.keys(d.entities).length, 26);
+  assert.equal(d.entities.catch_up, `sensor.${PREFIX}catch_up`);
+  assert.equal(d.entities.last_7_days, `sensor.${PREFIX}last_7_days`);
 });
 
 test("discovery works from a non-sensor anchor such as the todo list", () => {
@@ -66,10 +70,9 @@ test("model reproduces the numbers from the screenshots", () => {
   assert.deepEqual(m.streak, { current: 6, longest: 24 });
   assert.equal(m.minutes.total, 383908);
   assert.equal(m.last?.title, "Westworld");
-  assert.equal(m.waiting, 20);
 });
 
-test("model: next up, and a queue that excludes the next-up show", () => {
+test("model: next up", () => {
   const hass = makeHass();
   const m = buildModel(hass, discover(hass, { entity: `sensor.${PREFIX}next_up` }), { type: "x" });
   assert.equal(m.next.kind, "item");
@@ -78,18 +81,56 @@ test("model: next up, and a queue that excludes the next-up show", () => {
   assert.equal(m.next.item.season, 1);
   assert.equal(m.next.item.number, 7);
   assert.equal(m.next.item.tmdbId, 63247);
-  assert.deepEqual(m.queue.map((q) => q.title), ["Lupin"]);
-  assert.equal(m.queue[0].premiere, true);
+  assert.equal(m.next.item.posterUrl, undefined);
+});
+
+test("model: new sections", () => {
+  const hass = makeHass();
+  const m = buildModel(hass, discover(hass, { entity: `sensor.${PREFIX}next_up` }), { type: "x" });
+  assert.equal(m.last7?.days.length, 7);
+  assert.equal(m.last7?.episodes, 8);
+  assert.equal(m.last7?.movies, 3);
+  assert.equal(m.last7?.busiest?.count, 4);
+  assert.deepEqual(m.average, { hours: 2.5, itemsPerWeek: 2.8, changePct: 12, estimated: true });
+  assert.equal(m.catchup?.total, 39);
+  assert.equal(m.catchup?.minutes, 1755);
+  assert.deepEqual(m.catchup?.shows.map((x) => [x.title, x.remaining]), [["Westworld", 30], ["Lupin", 9]]);
+  assert.equal(m.airing?.length, 2);
+  assert.equal(m.airing?.[1].isAnime, true);
+  assert.equal(m.hasPosters, false);
+});
+
+test("model: poster urls come from next up and the backlog", () => {
+  const withPoster = {
+    ...states,
+    [`sensor.${PREFIX}next_up`]: { ...states[`sensor.${PREFIX}next_up`], attributes: { ...states[`sensor.${PREFIX}next_up`].attributes, poster_url: "https://img/w.jpg" } },
+  };
+  const hass = makeHass({ states: withPoster });
+  const m = buildModel(hass, discover(hass, { entity: `sensor.${PREFIX}next_up` }), { type: "x" });
+  assert.equal(m.next.kind === "item" && m.next.item.posterUrl, "https://img/w.jpg");
+  assert.equal(m.hasPosters, true);
+});
+
+test("model: sections without sensors are simply missing", () => {
+  const old = Object.fromEntries(
+    Object.entries(states).filter(([id]) => !/(catch_up|last_7_days|average_per_week|airing_this_week)$/.test(id)),
+  );
+  const hass = makeHass({ states: old });
+  const m = buildModel(hass, discover(hass, { entity: `sensor.${PREFIX}next_up` }), { type: "x" });
+  assert.equal(m.last7, undefined);
+  assert.equal(m.average, undefined);
+  assert.equal(m.catchup, undefined);
+  assert.equal(m.airing, undefined);
 });
 
 test("model: missing permissions hide data instead of showing zeros", () => {
-  const limited = Object.fromEntries(Object.entries(states).filter(([id]) => !id.includes("stats_") && !id.endsWith("next_up") && !id.endsWith("shows_waiting")));
+  const limited = Object.fromEntries(Object.entries(states).filter(([id]) => !id.includes("stats_") && !/(next_up|shows_waiting|catch_up|last_7_days|average_per_week)$/.test(id)));
   const hass = makeHass({ states: limited });
   const m = buildModel(hass, discover(hass, { entity: `sensor.${PREFIX}completed` }), { type: "x" });
   assert.equal(m.minutes.total, undefined);
   assert.equal(m.streak, undefined);
   assert.equal(m.next.kind, "hidden");
-  assert.equal(m.queue.length, 0);
+  assert.equal(m.catchup, undefined);
   assert.equal(m.library.total, 896);
 });
 

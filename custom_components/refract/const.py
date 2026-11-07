@@ -12,6 +12,8 @@ MAX_PAGES = 100
 
 CONF_API_KEY = "api_key"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_FETCH_HISTORY = "fetch_history"
+CONF_TMDB_API_KEY = "tmdb_api_key"
 DEFAULT_SCAN_INTERVAL = 15  # minutes
 MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 240
@@ -20,3 +22,9 @@ MAX_SCAN_INTERVAL = 240
 SCOPE_PROFILE = "profile"
 SCOPE_LIBRARY = "library"
 SCOPE_HISTORY = "history"
+
+# History (weekly stats) is heavy, so it is refreshed less often than the rest.
+HISTORY_REFRESH_MINUTES = 60
+
+TMDB_API_BASE = "https://api.themoviedb.org/3"
+TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w185"

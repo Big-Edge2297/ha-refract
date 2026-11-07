@@ -16,7 +16,8 @@ for (const key of Object.getOwnPropertyNames(dom.window)) {
 
 const { RefractStatsCard } = await import("../src/refract-stats-card");
 await import("../src/editor");
-const { makeHass, PREFIX } = await import("./fixture");
+const { makeHass, PREFIX, last7Days, states: baseStates } = await import("./fixture");
+const { weekdayName } = await import("../src/format");
 
 type Card = InstanceType<typeof RefractStatsCard>;
 const ENTITY = `sensor.${PREFIX}next_up`;
@@ -53,48 +54,200 @@ test("renders the hero with human durations", async () => {
   assert.doesNotMatch(t, /383,908|298,044|78,542|7,322/, "raw minutes never reach the card");
 });
 
-test("library, status bar and watch-time split", async () => {
-  const t = text(await mount({}));
-  assert.match(t, /Movies 693/);
-  assert.match(t, /TV shows 202/);
-  assert.match(t, /Anime 1/);
-  assert.match(t, /Completed 803/);
+test("library status bar and watch-time split", async () => {
+  const el = await mount({});
+  const t = text(el);
+  assert.match(t, /Library Completed 803/);
+  assert.match(t, /Up to date 23/);
+  assert.match(t, /In progress 3/);
+  assert.match(t, /Watchlist 63/);
   assert.match(t, /Other 4/);
+  assert.equal(el.shadowRoot!.querySelector("svg.donut"), null, "the donut is gone");
   assert.match(t, /206 d 23 h/);
   assert.match(t, /54 d 13 h/);
   assert.match(t, /5 d 2 h/);
   assert.match(t, /78%/);
 });
 
-test("next up and queue", async () => {
+test("sections appear in the designed order", async () => {
+  const t = text(await mount({ show_actions: false }));
+  const order = ["Total watch time", "Watch time TV shows", "Library Completed", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
+  const at = order.map((label) => t.indexOf(label));
+  assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
+  assert.deepEqual([...at].sort((x, y) => x - y), at, "in order");
+});
+
+test("the fun stat is a highlighted pill under the big number", async () => {
+  const el = await mount({ fun_stat_mode: "months" });
+  const fun = el.shadowRoot!.querySelector(".hero-main .fun");
+  assert.ok(fun, "inside the main hero block");
+  assert.match(fun!.textContent!, /8\.8 months of nonstop viewing/);
+  const off = await mount({ fun_stat: false });
+  assert.equal(off.shadowRoot!.querySelector(".fun"), null);
+});
+
+test("next up", async () => {
   const el = await mount({});
   const t = text(el);
   assert.match(t, /Next up Westworld 2016/);
   assert.match(t, /S1 E7 · Trompe L'Oeil/);
   assert.match(t, /6 of 36 aired episodes/);
   assert.match(t, /30 remaining/);
-  assert.match(t, /Waiting · 20 shows/);
-  assert.match(t, /Lupin/);
-  assert.match(t, /Premiere/);
-  assert.equal(el.shadowRoot!.querySelectorAll(".q-row").length, 1);
+  assert.equal(el.shadowRoot!.querySelector(".poster"), null, "no poster without a TMDB key");
 });
 
-test("streak: gauge by default, dots after switching, choice is remembered", async () => {
+test("streak is always dots, with the longest streak underneath", async () => {
   const el = await mount({});
-  assert.ok(el.shadowRoot!.querySelector("svg.gauge"));
-  assert.match(text(el), /Longest: 24 days/);
-  await click(el, el.shadowRoot!.querySelector('button[aria-label="Dots view"]'));
-  assert.equal(el.shadowRoot!.querySelectorAll(".dot").length, 7);
   assert.equal(el.shadowRoot!.querySelector("svg.gauge"), null);
-  assert.match(text(el), /6 days/);
-  const again = await mount({});
-  assert.equal(again.shadowRoot!.querySelectorAll(".dot").length, 7, "remembered across cards");
+  assert.equal(el.shadowRoot!.querySelectorAll(".dot").length, 7);
+  assert.match(text(el), /Streak 6 days/);
+  assert.match(text(el), /Longest: 24 days/);
 });
 
-test("streak_style: dots in config, and the switch can be hidden", async () => {
-  const el = await mount({ streak_style: "dots", show_streak_toggle: false });
+test("the old streak options are accepted and ignored", async () => {
+  const el = await mount({ streak_style: "gauge", show_streak_toggle: true });
   assert.equal(el.shadowRoot!.querySelectorAll(".dot").length, 7);
-  assert.equal(el.shadowRoot!.querySelector(".seg"), null);
+  assert.equal(el.shadowRoot!.querySelector(".seg button"), null);
+});
+
+test("average per week shows an estimated figure and the trend", async () => {
+  const t = text(await mount({}));
+  assert.match(t, /Average per week ~2\.5 h/);
+  assert.match(t, /▲ 12% vs previous 4 weeks/);
+});
+
+test("average per week falls back to viewings when hours are unknown", async () => {
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}average_per_week`]: { entity_id: "a", state: "unknown", attributes: { items_per_week: 3.5, change_percent: -8, estimated: true } } },
+  });
+  const t = text(await mount({}, hass));
+  assert.match(t, /Average per week 3\.5 a week/);
+  assert.match(t, /▼ 8%/);
+});
+
+test("last 7 days: one bar per day, today marked, busiest day named, totals in the legend", async () => {
+  const el = await mount({});
+  const root = el.shadowRoot!;
+  assert.equal(root.querySelectorAll(".bars .day").length, 7);
+  assert.equal(root.querySelectorAll(".bars .day.today").length, 1);
+  assert.equal(root.querySelectorAll(".bars .bar.empty").length, 3, "days with nothing watched get a flat stub");
+  const busiest = weekdayName(last7Days[3].date, "en", "long");
+  assert.match(text(el), new RegExp(`Busiest day · ${busiest}`));
+  assert.match(text(el), /Episodes 8 Movies 3/);
+  const tallest = Math.max(...[...root.querySelectorAll<HTMLElement>(".bar")].map((b) => parseInt(b.style.height)));
+  assert.equal(tallest, 84, "the busiest day fills the chart");
+});
+
+test("last 7 days with nothing watched says so and names no busiest day", async () => {
+  const days = last7Days.map((d) => ({ ...d, episodes: 0, movies: 0 }));
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}last_7_days`]: { entity_id: "l", state: "0", attributes: { days, episodes: 0, movies: 0, busiest_day: null } } },
+  });
+  const t = text(await mount({}, hass));
+  assert.match(t, /Nothing watched in the last 7 days/);
+  assert.doesNotMatch(t, /Busiest day/);
+});
+
+test("catch-up backlog: headline, estimate, rows and the ready badge", async () => {
+  const el = await mount({});
+  const t = text(el);
+  assert.match(t, /Catch-up backlog Ready now 39 aired episodes waiting, about 1 d 5 h/);
+  const rows = [...el.shadowRoot!.querySelectorAll(".c-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
+  assert.deepEqual(rows, ["Westworld 30", "Lupin 9"]);
+  assert.equal(el.shadowRoot!.querySelector(".poster"), null);
+  const widths = [...el.shadowRoot!.querySelectorAll<HTMLElement>(".c-row .progress > span")].map((s) => s.style.width);
+  assert.deepEqual(widths, ["100%", "30%"], "bars are relative to the biggest backlog");
+});
+
+test("catch-up backlog when there is nothing waiting", async () => {
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "0", attributes: { show_count: 0, shows: [] } } },
+  });
+  const t = text(await mount({}, hass));
+  assert.match(t, /You're all caught up/);
+  assert.doesNotMatch(t, /Ready now/);
+});
+
+test("catch-up length limit with show all", async () => {
+  const many = Array.from({ length: 8 }, (_, i) => ({ title: `Show ${i}`, year: 2000 + i, is_anime: false, remaining: 10 - i, tmdb_id: i, poster_url: null }));
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "52", attributes: { show_count: 8, shows: many } } },
+  });
+  const el = await mount({ queue_length: 3 }, hass);
+  assert.equal(el.shadowRoot!.querySelectorAll(".c-row").length, 3);
+  assert.match(text(el), /Show all 8/);
+  await click(el, el.shadowRoot!.querySelector(".catchup .link"));
+  assert.equal(el.shadowRoot!.querySelectorAll(".c-row").length, 8);
+  assert.match(text(el), /Show less/);
+});
+
+test("airing this week: weekday chips, today highlighted, anime colored", async () => {
+  const el = await mount({});
+  const rows = [...el.shadowRoot!.querySelectorAll(".a-row")];
+  assert.equal(rows.length, 2);
+  assert.match(rows[0].textContent!, /Today\s+Westworld S1 · E10/);
+  assert.ok(rows[0].querySelector(".a-day.today"));
+  assert.match(rows[1].textContent!, /Frieren S1 · E3/);
+  assert.match(rows[1].querySelector<HTMLElement>(".swatch")!.getAttribute("style")!, /--c-anime/);
+});
+
+test("airing this week with nothing scheduled", async () => {
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}airing_this_week`]: { entity_id: "a", state: "0", attributes: { episodes: [] } } },
+  });
+  assert.match(text(await mount({}, hass)), /Nothing airing in the next 7 days/);
+});
+
+test("airing length limit", async () => {
+  const items = Array.from({ length: 6 }, (_, i) => ({ date: last7Days[6].date, show: `Show ${i}`, season: 1, number: i + 1, is_anime: false }));
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}airing_this_week`]: { entity_id: "a", state: "6", attributes: { episodes: items } } },
+  });
+  const el = await mount({ airing_length: 2 }, hass);
+  assert.equal(el.shadowRoot!.querySelectorAll(".a-row").length, 2);
+  await click(el, el.shadowRoot!.querySelector(".airing .link"));
+  assert.equal(el.shadowRoot!.querySelectorAll(".a-row").length, 6);
+});
+
+function withPosters() {
+  const nextKey = `sensor.${PREFIX}next_up`;
+  const shows = [
+    { title: "Westworld", year: 2016, is_anime: false, remaining: 30, tmdb_id: 63247, poster_url: "https://img/ww.jpg" },
+    { title: "Lupin", year: 2021, is_anime: false, remaining: 9, tmdb_id: 96677, poster_url: null },
+  ];
+  return makeHass({
+    states: {
+      ...baseStates,
+      [nextKey]: { ...baseStates[nextKey], attributes: { ...baseStates[nextKey].attributes, poster_url: "https://img/ww.jpg" } },
+      [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "39", attributes: { show_count: 2, shows } },
+    },
+  });
+}
+
+test("posters: next up gets a poster slot and the backlog gets thumbnails, with an initial as fallback", async () => {
+  const el = await mount({}, withPosters());
+  const root = el.shadowRoot!;
+  const big = root.querySelector(".panel.next .poster.lg");
+  assert.ok(big, "poster slot beside next up");
+  assert.equal(big!.querySelector("img")!.getAttribute("src"), "https://img/ww.jpg");
+  const thumbs = [...root.querySelectorAll(".c-row .poster.sm")];
+  assert.equal(thumbs.length, 2);
+  assert.ok(thumbs[0].querySelector("img"));
+  assert.equal(thumbs[1].querySelector("img"), null, "no poster for Lupin");
+  assert.equal(thumbs[1].textContent!.trim(), "L", "falls back to the initial");
+});
+
+test("posters: a broken image hides itself and reveals the initial", async () => {
+  const el = await mount({}, withPosters());
+  const img = el.shadowRoot!.querySelector(".panel.next .poster img") as HTMLImageElement;
+  img.dispatchEvent(new window.Event("error"));
+  assert.equal(img.style.display, "none");
+  assert.equal(el.shadowRoot!.querySelector(".panel.next .poster")!.textContent!.trim(), "W");
+});
+
+test("posters can be turned off", async () => {
+  const el = await mount({ show_posters: false }, withPosters());
+  assert.equal(el.shadowRoot!.querySelector(".poster"), null);
 });
 
 test("compact layout keeps hero, streak and next up only", async () => {
@@ -102,30 +255,20 @@ test("compact layout keeps hero, streak and next up only", async () => {
   assert.match(t, /Total watch time/);
   assert.match(t, /Streak/);
   assert.match(t, /Next up/);
-  assert.doesNotMatch(t, /Waiting|Watch time Shows|Completed 803/);
+  assert.doesNotMatch(t, /Catch-up|Airing|Last 7 days|Average per week|Library Completed|Watch time Shows/);
 });
 
 test("section toggles hide sections", async () => {
-  const t = text(await mount({ show_hero: false, show_queue: false, show_next_up: false }));
-  assert.doesNotMatch(t, /Total watch time|Waiting|Next up/);
+  const t = text(
+    await mount({ show_hero: false, show_catchup: false, show_next_up: false, show_airing: false, show_last_7_days: false, show_average: false, show_streak: false }),
+  );
+  assert.doesNotMatch(t, /Total watch time|Catch-up|Next up|Airing|Last 7 days|Average per week|Streak/);
   assert.match(t, /Completed 803/);
 });
 
-test("queue length limit with show all", async () => {
-  const hass = makeHass();
-  const many = Array.from({ length: 8 }, (_, i) => ({
-    show: { title: `Show ${i}`, year: 2000 + i, is_anime: false, ids: { refract: `id-${i}`, tmdb: i } },
-    next_episode: { season: 1, number: 2, aired: true },
-    aired_episodes: 10,
-    remaining_episodes: 5,
-  }));
-  hass.states = { ...hass.states, [`sensor.${PREFIX}shows_waiting`]: { entity_id: "x", state: "8", attributes: { items: many } } };
-  const el = await mount({ queue_length: 3 }, hass);
-  assert.equal(el.shadowRoot!.querySelectorAll(".q-row").length, 3);
-  assert.match(text(el), /Show all 8/);
-  await click(el, el.shadowRoot!.querySelector(".queue .link"));
-  assert.equal(el.shadowRoot!.querySelectorAll(".q-row").length, 8);
-  assert.match(text(el), /Show less/);
+test("show_queue still hides the catch-up backlog, and show_catchup wins when both are set", async () => {
+  assert.doesNotMatch(text(await mount({ show_queue: false })), /Catch-up backlog/);
+  assert.match(text(await mount({ show_queue: false, show_catchup: true })), /Catch-up backlog/);
 });
 
 test("mark watched is off by default", async () => {
@@ -247,6 +390,15 @@ test("editor emits a clean config without defaults", async () => {
   assert.deepEqual(emitted, { type: "custom:refract-stats-card", entity: ENTITY, layout: "compact", show_actions: true });
   await editor.updateComplete;
   assert.ok(editor.shadowRoot.querySelector("ha-alert"), "warns when the action is unavailable");
+});
+
+test("editor shows the legacy show_queue value on the catch-up switch", async () => {
+  const editor = document.createElement("refract-stats-card-editor") as any;
+  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY, show_queue: false });
+  editor.hass = makeHass();
+  document.body.appendChild(editor);
+  await editor.updateComplete;
+  assert.equal(editor.shadowRoot.querySelector("ha-form").data.show_catchup, false);
 });
 
 test("loading the bundle twice doesn't throw and keeps the first registration", async () => {

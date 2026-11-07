@@ -21,7 +21,7 @@
   <label>Theme <select id="theme"><option>dark</option><option>light</option></select></label>
   <label>Width <input id="width" type="range" min="300" max="900" value="520" /> <span id="wv">520</span>px</label>
   <label>Layout <select id="layout"><option>full</option><option>compact</option></select></label>
-  <label>Streak <select id="streak"><option>gauge</option><option>dots</option></select></label>
+  <label><input id="posters" type="checkbox" checked /> Posters (placeholder art)</label>
   <label>Duration <select id="dur"><option>days_hours</option><option>hours</option><option>auto</option></select></label>
   <label><input id="actions" type="checkbox" /> Mark watched button</label>
 </div>
@@ -76,7 +76,7 @@
     item(show("The Bear", 2022, "dd44", 136315), { season: 3, number: 2, name: "Next", aired: true }, 28, 18),
     item(show("Silo", 2023, "ee55", 125988), { season: 2, number: 4, name: "Episode 4", aired: true }, 20, 12),
   ];
-  const e = (key, state, attributes = {}, domain = "sensor") => [`${domain}.${P}${key}`, { entity_id: `${domain}.${P}${key}`, state: String(state), attributes: { friendly_name: `Refract (Codex) ${key}`, ...attributes } }];
+  const e = (key, state, attributes = {}, domain = "sensor") => [`${domain}.${P}${key}`, { entity_id: `${domain}.${P}${key}`, state: String(state), attributes: { friendly_name: `Refract (sample_user) ${key}`, ...attributes } }];
   const hoursAgo = (h) => new Date(Date.now() - h * 36e5).toISOString();
   const states = Object.fromEntries([
     e("library_total", 896), e("completed", 803), e("in_progress", 3), e("watchlist", 63), e("up_to_date", 23),
@@ -88,6 +88,27 @@
     e("stats_watch_time_anime_minutes", 7322), e("stats_watch_time_movies_minutes", 78542),
     e("stats_watch_time_shows_minutes", 298044), e("stats_watch_time_total_minutes", 383908),
   ]);
+
+  const day = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+  const poster = (c1, c2) => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="185" height="278"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="185" height="278" fill="url(#g)"/></svg>`);
+  const art = { Westworld: poster("#8a6a4a", "#2f2418"), "The Bear": poster("#b5483a", "#3a1712"), Silo: poster("#4a6a7a", "#16222a"), Lupin: null };
+  const days7 = [[3, 0], [0, 0], [2, 1], [4, 0], [1, 1], [0, 0], [2, 0]].map(([ep, mv], i) => ({ date: day(i - 6), episodes: ep, movies: mv }));
+  const backlog = [["Westworld", 30, 63247], ["The Bear", 18, 136315], ["Silo", 12, 125988], ["Lupin", 9, 96677]].map(([title, remaining, tmdb_id]) => ({ title, year: 2020, is_anime: false, remaining, tmdb_id, poster_url: null }));
+  const airing = [[0, "Westworld", 1, 10, false], [1, "Severance", 2, 6, false], [3, "Frieren", 1, 4, true]].map(([d, show, season, number, is_anime]) => ({ date: day(d), show, season, number, title: null, is_anime }));
+  const withArt = (on) => ({
+    next: on ? { ...westworld, poster_url: art.Westworld } : westworld,
+    catchup: backlog.map((b) => ({ ...b, poster_url: on ? art[b.title] : null })),
+  });
+  const dynamic = (on) => {
+    const a = withArt(on);
+    return Object.fromEntries([
+      e("next_up", "Westworld", a.next),
+      e("catch_up", 69, { show_count: 4, estimated_minutes: 3105, shows: a.catchup }),
+      e("last_7_days", 13, { days: days7, episodes: 12, movies: 2, busiest_day: { date: day(-3), count: 4 } }),
+      e("average_per_week", 9.4, { items_per_week: 11.5, change_percent: 12, window_days: 28, estimated: true }),
+      e("airing_this_week", 3, { episodes: airing }),
+    ]);
+  };
 
   const log = (m) => (document.getElementById("log").textContent = `${new Date().toLocaleTimeString()}  ${m}\n` + document.getElementById("log").textContent);
   const hass = {
@@ -107,10 +128,10 @@
     $("wv").textContent = $("width").value;
     card.setConfig({
       type: "custom:refract-stats-card", entity: `sensor.${P}next_up`,
-      layout: $("layout").value, streak_style: $("streak").value, duration_format: $("dur").value,
+      layout: $("layout").value, duration_format: $("dur").value,
       show_actions: $("actions").checked,
     });
-    card.hass = { ...hass };
+    card.hass = { ...hass, states: { ...states, ...dynamic($("posters").checked) } };
   };
   document.querySelectorAll(".bar select, .bar input").forEach((el) => el.addEventListener("input", apply));
   apply();
