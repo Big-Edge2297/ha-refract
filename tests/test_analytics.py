@@ -172,13 +172,43 @@ def test_backlog_totals_sorting_and_posters():
     assert len(a.build_backlog(UP_NEXT, {}, None, limit=2)["shows"]) == 2
 
 
-def test_parse_calendar_flat_grouped_by_day_and_by_show():
+def _show(title, tmdb, anime=False):
+    return {"type": "show", "is_anime": anime, "ids": {"refract": "r", "tmdb": tmdb}, "title": title, "year": 2026}
+
+
+# the shape GET /v1/calendar really returns
+REAL_CALENDAR = {
+    "start": "2026-11-07",
+    "end": "2026-11-13",
+    "timezone": "Asia/Nicosia",
+    "data": [
+        {"show": _show("VisionQuest", 213375), "episode": {"season": 1, "number": 8}, "episode_tmdb_id": 7063227,
+         "name": "Forever", "air_date": "2026-11-10", "air_time": {"kind": "instant", "at": "2026-11-10T08:00:00.000Z"},
+         "is_season_premiere": False, "is_season_finale": True, "is_mid_season_finale": False, "watched": False},
+        {"show": _show("Frieren", 1, anime=True), "episode": {"season": 2, "number": 5}, "episode_tmdb_id": 1,
+         "name": None, "air_date": "2026-11-13", "air_time": {"kind": "date"},
+         "is_season_premiere": True, "is_season_finale": False, "is_mid_season_finale": False, "watched": True},
+    ],
+}
+
+
+def test_parse_real_refract_calendar():
+    first, second = a.parse_calendar(REAL_CALENDAR)
+    assert first == {
+        "date": "2026-11-10", "air_at": "2026-11-10T08:00:00.000Z", "show": "VisionQuest", "season": 1, "number": 8,
+        "title": "Forever", "tmdb_id": 213375, "is_anime": False, "premiere": False, "finale": True, "watched": False,
+    }
+    assert second["show"] == "Frieren" and second["is_anime"] is True and second["premiere"] is True
+    assert second["air_at"] is None, "only an exact instant counts as a time"
+    assert second["watched"] is True and second["title"] is None
+
+
+def test_parse_calendar_simpler_layouts():
     flat = {"data": [{"show": {"title": "Flat", "ids": {"tmdb": 9}}, "season": 2, "number": 6, "air_date": "2026-11-06", "title": "Ep"}]}
     by_day = {"days": [{"date": "2026-11-07", "episodes": [{"show": {"title": "Day"}, "season": 1, "number": 3}]}]}
     by_show = [{"title": "Show", "episodes": [{"season": 1, "number": 4, "airs_at": "2026-11-08T20:00:00Z"}]}]
-    assert a.parse_calendar(flat) == [
-        {"date": "2026-11-06", "show": "Flat", "season": 2, "number": 6, "title": "Ep", "tmdb_id": 9}
-    ]
+    f = a.parse_calendar(flat)[0]
+    assert (f["date"], f["show"], f["season"], f["number"], f["title"], f["tmdb_id"]) == ("2026-11-06", "Flat", 2, 6, "Ep", 9)
     assert a.parse_calendar(by_day)[0]["show"] == "Day" and a.parse_calendar(by_day)[0]["date"] == "2026-11-07"
     assert a.parse_calendar(by_show)[0]["show"] == "Show" and a.parse_calendar(by_show)[0]["number"] == 4
     assert a.parse_calendar({"nothing": "here"}) == []
@@ -194,3 +224,9 @@ def test_upcoming_window_and_anime_flag():
     out = a.upcoming(eps, TODAY, 7, {"last day"})
     assert [e["show"] for e in out] == ["Today", "Last Day"]
     assert out[1]["is_anime"] is True and out[0]["is_anime"] is False
+
+
+def test_upcoming_prefers_the_anime_flag_from_the_calendar():
+    parsed = a.parse_calendar(REAL_CALENDAR)
+    out = a.upcoming(parsed, date(2026, 11, 7), 7, anime_titles=set())
+    assert [(e["show"], e["is_anime"]) for e in out] == [("VisionQuest", False), ("Frieren", True)]

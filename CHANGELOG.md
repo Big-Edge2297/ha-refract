@@ -2,6 +2,11 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.2
+
+### Fixed
+- **Airing this week** and the **calendar** now read Refract's real calendar layout: episode names, the anime flag per show, season premiere/finale flags and the exact air time (calendar events are timed instead of all-day when Refract knows the time)
+
 ## 0.3.1
 
 ### Fixed

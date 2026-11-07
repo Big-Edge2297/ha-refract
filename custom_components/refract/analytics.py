@@ -263,7 +263,9 @@ def iter_calendar_entries(
         show = _show_title(obj) or show
         if "episodes" in obj and obj.get("title"):
             show = obj["title"]
-        is_episode = any(k in obj for k in ("number", "episode_number", "season"))
+        is_episode = any(k in obj for k in ("number", "episode_number", "season")) or isinstance(
+            obj.get("episode"), dict
+        )
         if is_episode and (own or when):
             yield obj, own or when, show
             return
@@ -273,23 +275,40 @@ def iter_calendar_entries(
 
 
 def parse_calendar(payload: Any) -> list[dict[str, Any]]:
-    """Calendar payload -> episodes with a plain date, sorted by date."""
+    """Calendar payload -> episodes with a plain date, sorted by date.
+
+    Understands Refract's layout (`show`, `episode: {season, number}`, `name`, `air_date`,
+    `air_time: {kind, at}`, season premiere/finale flags) and a few simpler ones.
+    """
     out = []
     for entry, when, show in iter_calendar_entries(payload):
         day = as_date(when)
         if day is None:
             continue
-        number = entry.get("number", entry.get("episode_number"))
-        title = entry.get("episode_title") or (entry.get("title") if show else None)
-        ids = ((entry.get("show") or {}).get("ids") or {}) if isinstance(entry.get("show"), dict) else {}
+        ep = entry["episode"] if isinstance(entry.get("episode"), dict) else entry
+        season = ep.get("season")
+        number = ep.get("number", ep.get("episode_number"))
+        show_obj = entry.get("show") if isinstance(entry.get("show"), dict) else {}
+        ids = show_obj.get("ids") or {}
+        air_time = entry.get("air_time")
+        air_at = (
+            air_time["at"]
+            if isinstance(air_time, dict) and air_time.get("kind") == "instant" and isinstance(air_time.get("at"), str)
+            else None
+        )
         out.append(
             {
                 "date": day.isoformat(),
+                "air_at": air_at,
                 "show": show or entry.get("title") or "Episode",
-                "season": entry.get("season") if isinstance(entry.get("season"), int) else None,
+                "season": season if isinstance(season, int) else None,
                 "number": number if isinstance(number, int) else None,
-                "title": title,
+                "title": entry.get("name") or entry.get("episode_title") or ep.get("name") or (entry.get("title") if show else None),
                 "tmdb_id": ids.get("tmdb") if isinstance(ids.get("tmdb"), int) else None,
+                "is_anime": show_obj.get("is_anime") if isinstance(show_obj.get("is_anime"), bool) else None,
+                "premiere": bool(entry.get("is_season_premiere")),
+                "finale": bool(entry.get("is_season_finale") or entry.get("is_mid_season_finale")),
+                "watched": bool(entry.get("watched")),
             }
         )
     out.sort(key=lambda e: (e["date"], str(e["show"]).lower()))
@@ -306,5 +325,6 @@ def upcoming(
     for ep in episodes:
         day = as_date(ep["date"])
         if day and today <= day <= end:
-            result.append({**ep, "is_anime": str(ep["show"]).lower() in anime_titles})
+            is_anime = ep["is_anime"] if isinstance(ep.get("is_anime"), bool) else str(ep["show"]).lower() in anime_titles
+            result.append({**ep, "is_anime": is_anime})
     return result

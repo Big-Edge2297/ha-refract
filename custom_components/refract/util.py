@@ -9,7 +9,7 @@ from typing import Any
 from homeassistant.components.calendar import CalendarEvent
 from homeassistant.util import dt as dt_util
 
-from .analytics import iter_calendar_entries
+from .analytics import parse_calendar
 
 
 def item_title(item: dict[str, Any]) -> str | None:
@@ -35,39 +35,25 @@ def flatten_numbers(obj: dict[str, Any], prefix: str = "", depth: int = 0) -> It
 
 
 def build_events(payload: Any) -> list[CalendarEvent]:
-    """Turn a /v1/calendar payload into calendar events."""
+    """Turn a /v1/calendar payload into calendar events (timed when Refract knows the time)."""
     events: list[CalendarEvent] = []
-    for entry, when, show in iter_calendar_entries(payload):
-        season = entry.get("season")
-        number = entry.get("number", entry.get("episode_number"))
-        title = show or entry.get("title") or "Episode"
+    for ep in parse_calendar(payload):
         code = ""
-        if isinstance(season, int) and isinstance(number, int):
-            code = f" S{season:02d}E{number:02d}"
-        episode_name = entry.get("episode_title") or (entry.get("title") if show else None)
+        if isinstance(ep["season"], int) and isinstance(ep["number"], int):
+            code = f" S{ep['season']:02d}E{ep['number']:02d}"
 
         start: date | datetime
         end: date | datetime
-        if len(when) == 10:
-            try:
-                start = date.fromisoformat(when)
-            except ValueError:
-                continue
-            end = start + timedelta(days=1)
-        else:
-            parsed = dt_util.parse_datetime(when)
-            if parsed is None:
-                continue
-            start = parsed if parsed.tzinfo else parsed.replace(tzinfo=dt_util.UTC)
+        air_at = dt_util.parse_datetime(ep["air_at"]) if ep["air_at"] else None
+        if air_at is not None:
+            start = air_at if air_at.tzinfo else air_at.replace(tzinfo=dt_util.UTC)
             end = start + timedelta(hours=1)
+        else:
+            start = date.fromisoformat(ep["date"])
+            end = start + timedelta(days=1)
 
         events.append(
-            CalendarEvent(
-                start=start,
-                end=end,
-                summary=f"{title}{code}",
-                description=episode_name,
-            )
+            CalendarEvent(start=start, end=end, summary=f"{ep['show']}{code}", description=ep["title"])
         )
-    events.sort(key=lambda e: (e.start_datetime_local))
+    events.sort(key=lambda e: e.start_datetime_local)
     return events
