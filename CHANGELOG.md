@@ -2,6 +2,16 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.1
+
+### Fixed
+- **Last 7 days** and **Average per week** were always empty: Refract reports the day watched as `{"local": "2026-11-04", "tz": "..."}` and the parser only understood plain dates
+- *Average per week* now uses the real episode runtimes Refract provides, and your average runtime only for the episodes and movies without one. The change against the previous 4 weeks is compared in hours when possible
+
+### Added
+- With `custom_components.refract: debug` logging, the log says how many history entries were read and how many had a usable date. If Refract returns history but no dates can be read, a warning with a redacted-safe sample is logged
+- Tests built from real Refract history responses
+
 ## 0.3.0
 
 ### Added

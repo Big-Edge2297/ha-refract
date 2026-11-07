@@ -24,8 +24,43 @@ def d(offset: int) -> date:
 def test_as_date_keeps_the_written_day():
     assert a.as_date("2026-11-04") == date(2026, 11, 4)
     assert a.as_date("2026-11-04T23:30:00-05:00") == date(2026, 11, 4)
+    assert a.as_date({"local": "2024-04-03", "tz": "Asia/Nicosia"}) == date(2024, 4, 3)
+    assert a.as_date({"tz": "Asia/Nicosia"}) is None
     assert a.as_date("nope") is None
     assert a.as_date(None) is None
+
+
+REAL_EPISODES = [
+    {
+        "show": {"type": "show", "is_anime": False, "ids": {"refract": "x", "tmdb": 100088}, "title": "The Last of Us", "year": 2023},
+        "episode": {"season": 0, "number": 1},
+        "episode_tmdb_id": None,
+        "watched_at": {"local": "2024-04-03", "tz": "Asia/Nicosia"},
+        "rewatch_count": 0,
+        "is_special": True,
+        "runtime_minutes": None,
+    },
+    {
+        "show": {"type": "show", "is_anime": False, "ids": {"refract": "x", "tmdb": 100088}, "title": "The Last of Us", "year": 2023},
+        "episode": {"season": 1, "number": 2},
+        "watched_at": {"local": "2026-11-04", "tz": "Asia/Nicosia"},
+        "rewatch_count": 1,
+        "is_special": False,
+        "runtime_minutes": 52,
+    },
+]
+REAL_MOVIES = [
+    {"id": "1", "movie": {"title": "Top Gun: Maverick", "ids": {"tmdb": 361743}}, "kind": "first_watch",
+     "watched_at": {"local": "2022-11-17", "tz": "Asia/Nicosia"}},
+    {"id": "2", "movie": {"title": "How to Make a Killing"}, "kind": "rewatch",
+     "watched_at": {"local": "2026-03-30", "tz": "Asia/Nicosia"}},
+]
+
+
+def test_real_refract_history_payloads():
+    assert list(a.iter_episode_watches(REAL_EPISODES)) == [(date(2024, 4, 3), None), (date(2026, 11, 4), 52)]
+    assert list(a.iter_episode_dates(REAL_EPISODES)) == [date(2024, 4, 3), date(2026, 11, 4)]
+    assert list(a.iter_play_dates(REAL_MOVIES)) == [date(2022, 11, 17), date(2026, 3, 30)]
 
 
 def test_episode_dates_flat_and_grouped():
@@ -59,14 +94,42 @@ def test_busiest_day_latest_wins_a_tie_and_none_when_empty():
     assert a.busiest_day(a.daily_counts([], [], TODAY)) is None
 
 
-def test_weekly_stats_and_change():
-    now = [d(-i) for i in range(0, 28, 2)]  # 14 in the last 28 days
-    before = [d(-28 - i) for i in range(0, 14)]  # 14 in the 28 days before
+def eps(*offsets, runtime=None):
+    return [(d(o), runtime) for o in offsets]
+
+
+def test_weekly_stats_items_and_change():
+    now = eps(*range(0, -28, -2))  # 14 in the last 28 days
+    before = eps(*range(-28, -42, -1))  # 14 in the 28 days before
     assert a.weekly_stats(now, [], TODAY)["items_per_week"] == 3.5
     assert a.weekly_stats(now, [], TODAY)["change_percent"] is None, "no baseline"
-    flat = a.weekly_stats(now + before[:7], [], TODAY)
-    assert flat["change_percent"] == 100
-    assert a.weekly_stats(now, before, TODAY)["change_percent"] == 0
+    assert a.weekly_stats(now + before[:7], [], TODAY)["change_percent"] == 100
+    assert a.weekly_stats(now, [d(-30)] * 14, TODAY)["change_percent"] == 0
+    assert a.weekly_stats(now, [], TODAY)["hours_per_week"] is None, "no runtimes and no defaults"
+
+
+def test_weekly_hours_use_real_runtimes_then_defaults():
+    # 4 episodes of 60 min, 4 unknown (default 30), 2 movies (default 120)
+    week = a.weekly_stats(eps(0, -1, -2, -3, runtime=60) + eps(-4, -5, -6, -7), [d(-8), d(-9)], TODAY,
+                          episode_default=30, movie_default=120)
+    assert week["items_per_week"] == 2.5  # 10 items over 4 weeks
+    assert week["hours_per_week"] == round((4 * 60 + 4 * 30 + 2 * 120) / 60 / 4, 1)  # 2.5 h
+    # the change compares hours when it can: 4 x 30 min before vs 2 x 60 min now
+    both = a.weekly_stats(eps(0, -1, runtime=60), [], TODAY, episode_default=30)
+    assert both["hours_per_week"] == 0.5
+    more = a.weekly_stats(eps(0, -1, runtime=60) + eps(-29, -30, -31, -32, runtime=30), [], TODAY, episode_default=30)
+    assert more["change_percent"] == 0, "120 min now vs 120 min before"
+
+
+def test_weekly_hours_unknown_when_a_runtime_is_missing_and_there_is_no_default():
+    assert a.weekly_stats(eps(0, runtime=None), [], TODAY)["hours_per_week"] is None
+    assert a.weekly_stats([], [d(0)], TODAY)["hours_per_week"] is None
+    assert a.weekly_stats([], [d(0)], TODAY, movie_default=100)["hours_per_week"] == round(100 / 60 / 4, 1)
+
+
+def test_average_movie_minutes():
+    assert a.average_movie_minutes({"watch_time_movies_minutes": 1200, "movies_watched": 10}) == 120
+    assert a.average_movie_minutes({}) is None
 
 
 def test_average_minutes():

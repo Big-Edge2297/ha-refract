@@ -18,7 +18,12 @@ _AIR_KEYS = ("airs_at", "air_date", "aired_at", "air_datetime", "airdate", "aire
 
 
 def as_date(value: Any) -> date | None:
-    """`YYYY-MM-DD` or an ISO datetime -> date, keeping the date as written."""
+    """`YYYY-MM-DD`, an ISO datetime or Refract's `{"local": "YYYY-MM-DD", "tz": ...}`.
+
+    The day is kept as written: Refract records it on the member's own calendar.
+    """
+    if isinstance(value, dict):
+        value = value.get("local") or value.get("date")
     if isinstance(value, str) and len(value) >= 10:
         try:
             return date.fromisoformat(value[:10])
@@ -38,19 +43,26 @@ def _first_date(obj: dict[str, Any], keys: tuple[str, ...]) -> date | None:
 # --------------------------------------------------------------- history
 
 
-def iter_episode_dates(payload: Any) -> Iterator[date]:
-    """Dates on which episodes were watched, from any nesting of the history."""
+def iter_episode_watches(payload: Any) -> Iterator[tuple[date, int | None]]:
+    """(day watched, runtime in minutes if Refract knows it) for every watched episode."""
     if isinstance(payload, list):
         for entry in payload:
-            yield from iter_episode_dates(entry)
+            yield from iter_episode_watches(entry)
     elif isinstance(payload, dict):
         found = _first_date(payload, _WATCH_KEYS)
         if found and any(key in payload for key in _EPISODE_KEYS):
-            yield found
+            runtime = payload.get("runtime_minutes")
+            yield found, runtime if isinstance(runtime, (int, float)) and runtime > 0 else None
             return
         for value in payload.values():
             if isinstance(value, (list, dict)):
-                yield from iter_episode_dates(value)
+                yield from iter_episode_watches(value)
+
+
+def iter_episode_dates(payload: Any) -> Iterator[date]:
+    """Just the days, for callers that don't need runtimes."""
+    for day, _ in iter_episode_watches(payload):
+        yield day
 
 
 def iter_play_dates(payload: Any) -> Iterator[date]:
@@ -91,20 +103,55 @@ def busiest_day(days: list[dict[str, Any]]) -> dict[str, Any] | None:
 
 
 def weekly_stats(
-    episodes: Iterable[date], movies: Iterable[date], today: date, window: int = 28
+    episodes: Iterable[tuple[date, int | None]],
+    movies: Iterable[date],
+    today: date,
+    window: int = 28,
+    episode_default: float | None = None,
+    movie_default: float | None = None,
 ) -> dict[str, Any]:
-    """Viewings per week over the last `window` days, against the window before."""
-    dates = list(episodes) + list(movies)
+    """Viewings (and hours, when runtimes are known) per week over the last `window` days.
 
-    def count(offset: int) -> int:
+    Episodes use Refract's runtime when it has one, otherwise `episode_default`; movies
+    use `movie_default`. The change compares against the `window` days before that.
+    """
+    eps, movs = list(episodes), list(movies)
+
+    def pick(offset: int) -> tuple[list[tuple[date, int | None]], list[date]]:
         end = today - timedelta(days=offset)
         start = end - timedelta(days=window - 1)
-        return sum(1 for d in dates if start <= d <= end)
+        return (
+            [e for e in eps if start <= e[0] <= end],
+            [m for m in movs if start <= m <= end],
+        )
 
-    current, previous = count(0), count(window)
-    change = None if previous == 0 else round((current - previous) / previous * 100)
+    def minutes(chosen: tuple[list[tuple[date, int | None]], list[date]]) -> float | None:
+        total = 0.0
+        for _, runtime in chosen[0]:
+            per = runtime or episode_default
+            if per is None:
+                return None
+            total += per
+        if chosen[1]:
+            if movie_default is None:
+                return None
+            total += movie_default * len(chosen[1])
+        return total
+
+    now, before = pick(0), pick(window)
+    items_now, items_before = len(now[0]) + len(now[1]), len(before[0]) + len(before[1])
+    minutes_now, minutes_before = minutes(now), minutes(before)
+    weeks = window / 7
+
+    if minutes_now is not None and minutes_before:
+        change: int | None = round((minutes_now - minutes_before) / minutes_before * 100)
+    elif items_before:
+        change = round((items_now - items_before) / items_before * 100)
+    else:
+        change = None
     return {
-        "items_per_week": round(current / (window / 7), 1),
+        "items_per_week": round(items_now / weeks, 1),
+        "hours_per_week": round(minutes_now / 60 / weeks, 1) if minutes_now is not None else None,
         "change_percent": change,
         "window_days": window,
     }
@@ -121,6 +168,13 @@ def average_minutes(flat_stats: dict[str, float]) -> tuple[float | None, float |
     )
     per_episode = episode_minutes / episodes if episodes and episode_minutes else None
     return per_item, per_episode
+
+
+def average_movie_minutes(flat_stats: dict[str, float]) -> float | None:
+    """Average movie runtime from the profile stats."""
+    minutes = flat_stats.get("watch_time_movies_minutes")
+    count = flat_stats.get("movies_watched", 0)
+    return minutes / count if minutes and count else None
 
 
 # --------------------------------------------------------------- backlog

@@ -14,10 +14,11 @@ from homeassistant.util import dt as dt_util
 
 from .analytics import (
     average_minutes,
+    average_movie_minutes,
     build_backlog,
     busiest_day,
     daily_counts,
-    iter_episode_dates,
+    iter_episode_watches,
     iter_play_dates,
     parse_calendar,
     poster_candidates,
@@ -94,11 +95,22 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except RefractError as err:
             LOGGER.debug("Could not refresh the watch history, keeping the last copy: %s", err)
             return self._history
-        self._history = {
-            "episodes": list(iter_episode_dates(episodes)),
-            "movies": list(iter_play_dates(movies)),
-            "at": now,
-        }
+        episode_watches = list(iter_episode_watches(episodes))
+        movie_plays = list(iter_play_dates(movies))
+        LOGGER.debug(
+            "Watch history: %d episode entries and %d movie entries from Refract, %d and %d with a usable date",
+            len(episodes),
+            len(movies),
+            len(episode_watches),
+            len(movie_plays),
+        )
+        if (episodes and not episode_watches) or (movies and not movie_plays):
+            LOGGER.warning(
+                "Refract returned watch history but no dates could be read from it, so 'Last 7 days' "
+                "and 'Average per week' will be empty. Please report this with a redacted sample: %s",
+                (episodes or movies)[0],
+            )
+        self._history = {"episodes": episode_watches, "movies": movie_plays, "at": now}
         self._history_stale = False
         return self._history
 
@@ -149,9 +161,15 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Weekly numbers from the cached history
         analytics = None
         if history:
-            days = daily_counts(history["episodes"], history["movies"], today)
-            week = weekly_stats(history["episodes"], history["movies"], today)
-            hours = round(week["items_per_week"] * per_item / 60, 1) if per_item else None
+            episode_days = [day for day, _ in history["episodes"]]
+            days = daily_counts(episode_days, history["movies"], today)
+            week = weekly_stats(
+                history["episodes"],
+                history["movies"],
+                today,
+                episode_default=per_episode or per_item,
+                movie_default=average_movie_minutes(flat) or per_item,
+            )
             analytics = {
                 "days": days,
                 "episodes": sum(d["episodes"] for d in days),
@@ -159,7 +177,6 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "busiest": busiest_day(days),
                 "average": {
                     **week,
-                    "hours_per_week": hours,
                     "avg_minutes_per_item": round(per_item) if per_item else None,
                     "estimated": True,
                 },
