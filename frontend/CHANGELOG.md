@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.7
+
+- **New:** change the order of the sections in the card settings (*Section order*) or with `section_order` in YAML. The header stays on top, streak and average share a row when they are neighbours, and the compact layout follows the same order
+
 ## 0.3.6
 
 - **Changed:** the summary tile says **Episodes watched** instead of "Episodes"

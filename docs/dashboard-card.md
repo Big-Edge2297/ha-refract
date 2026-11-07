@@ -74,6 +74,21 @@ show_last_7_days: false
 show_airing: false
 ```
 
+### Section order
+
+Change the order of the sections in the editor under **Section order** (arrows move a section up or down), or in YAML with `section_order`. The header always stays on top. Sections you leave out of the list follow in their default position, and the `show_*` switches still decide what is shown.
+
+```yaml
+type: custom:refract-stats-card
+entity: sensor.refract_sample_user_next_up
+section_order:
+  - next_up
+  - airing
+  - hero
+```
+
+The default order is `hero`, `watch_time`, `library`, `streak`, `average`, `last_7_days`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other. The compact layout uses the same order for the sections it shows.
+
 ### Compact layout
 
 ```yaml
@@ -94,6 +109,7 @@ layout: compact
 | `fun_stat_mode` | `rotate` | `rotate` (changes daily), `months`, `workweeks` or `lotr` |
 | `queue_length` | `5` | Catch-up rows shown before "Show all" |
 | `airing_length` | `5` | "Airing this week" rows shown before "Show all" |
+| `section_order` | see below | Order of the sections under the header (list of section names) |
 | `show_hero` | `true` | Watch time summary and fun stat |
 | `show_watch_time` | `true` | Watch time split |
 | `show_library` | `true` | Library status bar |

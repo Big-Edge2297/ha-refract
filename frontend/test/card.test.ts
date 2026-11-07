@@ -107,6 +107,49 @@ test("sections appear in the designed order", async () => {
   assert.deepEqual([...at].sort((x, y) => x - y), at, "in order");
 });
 
+test("section_order rearranges the sections", async () => {
+  const el = await mount({
+    show_actions: false,
+    section_order: ["airing", "next_up", "hero", "average", "library"],
+  });
+  const t = text(el);
+  const labels = ["Airing this week", "Next up", "Total watch time", "Average per week", "Library Completed", "Watch time TV shows", "Streak", "Last 7 days", "Catch-up backlog"];
+  const at = labels.map((label) => t.indexOf(label));
+  assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
+  assert.deepEqual([...at].sort((x, y) => x - y), at, "listed sections first, the rest in the default order");
+  assert.ok(t.indexOf("Refract Codex") < t.indexOf("Airing this week"), "header stays on top");
+});
+
+test("streak and average share a row only when they are neighbours", async () => {
+  const together = await mount({ section_order: ["average", "streak"] });
+  const rows = together.shadowRoot!.querySelectorAll(".grid");
+  assert.equal(rows.length, 1);
+  assert.match(rows[0].textContent!, /Average per week.*Streak/s);
+
+  const apart = await mount({ section_order: ["streak", "library", "average"] });
+  assert.equal(apart.shadowRoot!.querySelectorAll(".grid").length, 2, "one row each when separated");
+});
+
+test("section_order ignores unknown and duplicate entries and still honours show_* switches", async () => {
+  const { resolveSectionOrder, SECTION_IDS } = await import("../src/types");
+  assert.deepEqual(resolveSectionOrder(undefined), [...SECTION_IDS]);
+  assert.deepEqual(resolveSectionOrder("nope"), [...SECTION_IDS]);
+  const mixed = resolveSectionOrder(["airing", "bogus", "airing", "hero"]);
+  assert.deepEqual(mixed.slice(0, 2), ["airing", "hero"]);
+  assert.equal(mixed.length, SECTION_IDS.length);
+
+  const t = text(await mount({ section_order: ["airing", "hero"], show_airing: false }));
+  assert.doesNotMatch(t, /Airing this week/);
+  assert.match(t, /Total watch time/);
+});
+
+test("compact layout follows section_order too", async () => {
+  const t = text(await mount({ layout: "compact", section_order: ["next_up", "streak", "hero"] }));
+  const at = ["Next up", "Streak", "Total watch time"].map((l) => t.indexOf(l));
+  assert.ok(at.every((i) => i >= 0), `compact sections render: ${at}`);
+  assert.deepEqual([...at].sort((x, y) => x - y), at);
+});
+
 test("the fun stat is a highlighted pill under the big number", async () => {
   const el = await mount({ fun_stat_mode: "months" });
   const fun = el.shadowRoot!.querySelector(".hero-main .fun");
@@ -443,6 +486,37 @@ test("editor emits a clean config without defaults", async () => {
   assert.deepEqual(emitted, { type: "custom:refract-stats-card", entity: ENTITY, layout: "compact", show_actions: true });
   await editor.updateComplete;
   assert.ok(editor.shadowRoot.querySelector("ha-alert"), "warns when the action is unavailable");
+});
+
+test("editor reorders sections with the arrows and keeps the YAML clean", async () => {
+  const editor = document.createElement("refract-stats-card-editor") as any;
+  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY });
+  editor.hass = makeHass();
+  document.body.appendChild(editor);
+  await editor.updateComplete;
+  const rows = () => [...editor.shadowRoot.querySelectorAll(".order-row")] as HTMLElement[];
+  assert.equal(rows().length, 9);
+  assert.match(rows()[0].textContent!, /Watch time summary/);
+  assert.equal(editor.shadowRoot.querySelector(".order-reset"), null, "no reset button on the default order");
+
+  const emitted: any[] = [];
+  editor.addEventListener("config-changed", (e: CustomEvent) => emitted.push(e.detail.config));
+  (rows()[1].querySelectorAll("ha-icon-button")[0] as HTMLElement).click(); // move "Watch time split" up
+  await editor.updateComplete;
+  assert.deepEqual(emitted[0].section_order.slice(0, 3), ["watch_time", "hero", "library"]);
+  assert.equal(emitted[0].entity, ENTITY);
+  assert.match(rows()[0].textContent!, /Watch time split/);
+
+  // other edits keep the order
+  const form = editor.shadowRoot.querySelector("ha-form");
+  form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, layout: "compact" } } }));
+  assert.deepEqual(emitted[1].section_order.slice(0, 2), ["watch_time", "hero"]);
+
+  // moving it back to the default removes the option
+  (rows()[0].querySelectorAll("ha-icon-button")[1] as HTMLElement).click();
+  await editor.updateComplete;
+  assert.equal(emitted[2].section_order, undefined);
+  assert.equal(emitted[2].layout, "compact");
 });
 
 test("editor shows the legacy show_queue value on the catch-up switch", async () => {

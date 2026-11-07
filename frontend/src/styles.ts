@@ -645,4 +645,35 @@ export const editorStyles = css`
   ha-alert {
     display: block;
   }
+  .order {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 12px 12px;
+  }
+  .order .hint {
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    padding-bottom: 6px;
+  }
+  .order-row {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--divider-color);
+  }
+  .order-name {
+    flex: 1;
+    min-width: 0;
+  }
+  .order-reset {
+    align-self: flex-start;
+    margin-top: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--divider-color);
+    border-radius: 8px;
+    background: none;
+    color: var(--primary-color);
+    font: inherit;
+    cursor: pointer;
+  }
 `;

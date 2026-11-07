@@ -2,6 +2,11 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.7
+
+### Added
+- **Section order**: change the order of the card's sections in the card settings (new *Section order* panel with up/down arrows) or with `section_order` in YAML. Sections you leave out follow in their default position, and the `show_*` switches still apply
+
 ## 0.3.6
 
 ### Changed

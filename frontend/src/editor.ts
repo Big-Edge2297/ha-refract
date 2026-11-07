@@ -3,7 +3,7 @@ import { property, state } from "lit/decorators.js";
 import { defineOnce } from "./define";
 import { DOMAIN, EDITOR_TYPE } from "./const";
 import { editorStyles } from "./styles";
-import { DEFAULT_CONFIG, type HomeAssistant, type RefractCardConfig } from "./types";
+import { DEFAULT_CONFIG, SECTION_IDS, resolveSectionOrder, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
 
 const LABELS: Record<string, string> = {
   entity: "Refract entity",
@@ -30,6 +30,18 @@ const LABELS: Record<string, string> = {
   color_shows: "TV shows color",
   color_anime: "Anime color",
   color_accent: "Accent color",
+};
+
+const SECTION_NAMES: Record<SectionId, string> = {
+  hero: LABELS.show_hero,
+  watch_time: LABELS.show_watch_time,
+  library: LABELS.show_library,
+  streak: LABELS.show_streak,
+  average: LABELS.show_average,
+  last_7_days: LABELS.show_last_7_days,
+  next_up: LABELS.show_next_up,
+  catchup: LABELS.show_catchup,
+  airing: LABELS.show_airing,
 };
 
 const HELPERS: Record<string, string> = {
@@ -157,6 +169,7 @@ export class RefractStatsCardEditor extends LitElement {
         .computeHelper=${(s: { name: string }) => HELPERS[s.name]}
         @value-changed=${this._valueChanged}
       ></ha-form>
+      ${this._orderPanel()}
       ${actionMissing
         ? html`<ha-alert alert-type="warning">
             The button stays hidden until the <code>refract.mark_episode_watched</code> action is available. Check
@@ -164,6 +177,58 @@ export class RefractStatsCardEditor extends LitElement {
           </ha-alert>`
         : nothing}
     </div>`;
+  }
+
+  private _orderPanel(): TemplateResult {
+    const order = resolveSectionOrder(this._config?.section_order);
+    const isDefault = order.every((id, i) => id === SECTION_IDS[i]);
+    return html`<ha-expansion-panel outlined header="Section order" .leftChevron=${true}>
+      <div class="order">
+        <div class="hint">Use the arrows to move a section up or down. The header always stays on top.</div>
+        ${order.map(
+          (id, i) => html`<div class="order-row">
+            <span class="order-name">${SECTION_NAMES[id]}</span>
+            <ha-icon-button
+              label="Move up"
+              aria-label="Move ${SECTION_NAMES[id]} up"
+              ?disabled=${i === 0}
+              @click=${() => this._move(i, -1)}
+              ><ha-icon icon="mdi:arrow-up"></ha-icon
+            ></ha-icon-button>
+            <ha-icon-button
+              label="Move down"
+              aria-label="Move ${SECTION_NAMES[id]} down"
+              ?disabled=${i === order.length - 1}
+              @click=${() => this._move(i, 1)}
+              ><ha-icon icon="mdi:arrow-down"></ha-icon
+            ></ha-icon-button>
+          </div>`,
+        )}
+        ${isDefault
+          ? nothing
+          : html`<button class="order-reset" @click=${this._resetOrder}>Reset to default order</button>`}
+      </div>
+    </ha-expansion-panel>`;
+  }
+
+  private _move(index: number, delta: number): void {
+    const order = resolveSectionOrder(this._config?.section_order);
+    const to = index + delta;
+    if (to < 0 || to >= order.length) return;
+    [order[index], order[to]] = [order[to], order[index]];
+    this._setOrder(order);
+  }
+
+  private _resetOrder = (): void => this._setOrder([...SECTION_IDS]);
+
+  private _setOrder(order: SectionId[]): void {
+    if (!this._config) return;
+    const out: Record<string, unknown> = { ...(this._config as unknown as Record<string, unknown>) };
+    // The default order is not stored, so the YAML stays clean.
+    if (order.every((id, i) => id === SECTION_IDS[i])) delete out.section_order;
+    else out.section_order = order;
+    this._config = out as unknown as RefractCardConfig;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: out }, bubbles: true, composed: true }));
   }
 
   private _valueChanged(ev: CustomEvent): void {
@@ -182,7 +247,7 @@ export class RefractStatsCardEditor extends LitElement {
     delete out.show_streak_toggle;
     delete out.show_queue;
     const cfg = this._config as unknown as Record<string, unknown>;
-    for (const key of ["device_id", "config_entry_id", "entities"]) {
+    for (const key of ["device_id", "config_entry_id", "entities", "section_order"]) {
       if (cfg[key] !== undefined && out[key] === undefined) out[key] = cfg[key];
     }
     this._config = out as unknown as RefractCardConfig;

@@ -42,6 +42,35 @@ export type DurationFormat = "days_hours" | "hours" | "auto";
 export type FunStatMode = "rotate" | "months" | "workweeks" | "lotr";
 export type Layout = "full" | "compact";
 
+/** Sections that can be shown, hidden and reordered. The header always stays on top. */
+export const SECTION_IDS = [
+  "hero",
+  "watch_time",
+  "library",
+  "streak",
+  "average",
+  "last_7_days",
+  "next_up",
+  "catchup",
+  "airing",
+] as const;
+export type SectionId = (typeof SECTION_IDS)[number];
+
+/**
+ * Turns a configured order into a complete one: unknown and duplicate entries are
+ * dropped and any section the list leaves out follows in its default position.
+ */
+export function resolveSectionOrder(order: unknown): SectionId[] {
+  const out: SectionId[] = [];
+  if (Array.isArray(order)) {
+    for (const id of order) {
+      if ((SECTION_IDS as readonly unknown[]).includes(id) && !out.includes(id as SectionId)) out.push(id as SectionId);
+    }
+  }
+  for (const id of SECTION_IDS) if (!out.includes(id)) out.push(id);
+  return out;
+}
+
 export interface RefractCardConfig {
   type: string;
   /** Any entity of the Refract account. Siblings are discovered from it. */
@@ -58,6 +87,8 @@ export interface RefractCardConfig {
   queue_length?: number;
   /** Rows listed in "Airing this week". */
   airing_length?: number;
+  /** Order of the sections below the header. Sections left out follow in their default order. */
+  section_order?: SectionId[];
   show_hero?: boolean;
   show_watch_time?: boolean;
   show_library?: boolean;

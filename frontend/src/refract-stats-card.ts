@@ -8,7 +8,7 @@ import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, st
 import { languageOf, t } from "./localize";
 import { buildModel, type CatchupShow, type Model, type ShowItem } from "./model";
 import { cardStyles } from "./styles";
-import { DEFAULT_CONFIG, type HomeAssistant, type RefractCardConfig } from "./types";
+import { DEFAULT_CONFIG, resolveSectionOrder, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
 
 type ResolvedConfig = RefractCardConfig & Required<Pick<RefractCardConfig, keyof typeof DEFAULT_CONFIG>>;
 type ActionState = "idle" | "confirm" | "busy" | "done" | "error";
@@ -129,16 +129,38 @@ export class RefractStatsCard extends LitElement {
 
     const compact = c.layout === "compact";
     const posters = c.show_posters && m.hasPosters;
-    const streak = c.show_streak && m.streak ? this._streak(m) : nothing;
-    const average = !compact && c.show_average ? this._average(m) : nothing;
+    const sections: Record<SectionId, TemplateResult | typeof nothing> = {
+      hero: c.show_hero ? this._hero(m) : nothing,
+      watch_time: !compact && c.show_watch_time ? this._watchTime(m) : nothing,
+      library: !compact && c.show_library ? this._library(m) : nothing,
+      streak: c.show_streak && m.streak ? this._streak(m) : nothing,
+      average: !compact && c.show_average ? this._average(m) : nothing,
+      last_7_days: !compact && c.show_last_7_days ? this._last7(m) : nothing,
+      next_up: c.show_next_up ? this._next(m, posters) : nothing,
+      catchup: !compact && c.show_catchup ? this._catchup(m, posters) : nothing,
+      airing: !compact && c.show_airing ? this._airing(m) : nothing,
+    };
 
-    return html`<ha-card style=${styleMap(this._colorVars())}>
-      ${this._header(m)} ${c.show_hero ? this._hero(m) : nothing}
-      ${!compact && c.show_watch_time ? this._watchTime(m) : nothing} ${!compact && c.show_library ? this._library(m) : nothing}
-      ${streak === nothing && average === nothing ? nothing : html`<div class="grid">${streak}${average}</div>`}
-      ${!compact && c.show_last_7_days ? this._last7(m) : nothing} ${c.show_next_up ? this._next(m, posters) : nothing}
-      ${!compact && c.show_catchup ? this._catchup(m, posters) : nothing} ${!compact && c.show_airing ? this._airing(m) : nothing}
-    </ha-card>`;
+    // Streak and average share a row when they end up next to each other.
+    const body: Array<TemplateResult | typeof nothing> = [];
+    let row: TemplateResult[] = [];
+    const flush = () => {
+      if (row.length) body.push(html`<div class="grid">${row}</div>`);
+      row = [];
+    };
+    for (const id of resolveSectionOrder(c.section_order)) {
+      const part = sections[id];
+      if (part === nothing) continue;
+      if (id === "streak" || id === "average") {
+        row.push(part);
+      } else {
+        flush();
+        body.push(part);
+      }
+    }
+    flush();
+
+    return html`<ha-card style=${styleMap(this._colorVars())}> ${this._header(m)} ${body} </ha-card>`;
   }
 
   private _message(text: string): TemplateResult {
