@@ -63,8 +63,8 @@ export const catchUpShows = [
 ];
 
 export const airingEpisodes = [
-  { date: dayOffset(0), show: "Westworld", season: 1, number: 10, title: "The Bicameral Mind", is_anime: false },
-  { date: dayOffset(2), show: "Frieren", season: 1, number: 3, title: null, is_anime: true },
+  { date: dayOffset(0), show: "Westworld", season: 1, number: 10, title: "The Bicameral Mind", is_anime: false, premiere: false, finale: true, air_at: `${dayOffset(0)}T08:00:00.000Z` },
+  { date: dayOffset(2), show: "Frieren", season: 1, number: 3, title: null, is_anime: true, premiere: true, finale: false, air_at: null },
 ];
 
 export const states: Record<string, HassEntity> = Object.fromEntries([

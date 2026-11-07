@@ -102,6 +102,11 @@ def busiest_day(days: list[dict[str, Any]]) -> dict[str, Any] | None:
     return best
 
 
+# The change needs at least this many viewings in the earlier period, otherwise a quiet
+# stretch makes any normal month look like a huge jump.
+MIN_BASELINE_ITEMS = 4
+
+
 def weekly_stats(
     episodes: Iterable[tuple[date, int | None]],
     movies: Iterable[date],
@@ -113,7 +118,8 @@ def weekly_stats(
     """Viewings (and hours, when runtimes are known) per week over the last `window` days.
 
     Episodes use Refract's runtime when it has one, otherwise `episode_default`; movies
-    use `movie_default`. The change compares against the `window` days before that.
+    use `movie_default`. The change compares against the `window` days before that, and is
+    left out when that earlier period has fewer than MIN_BASELINE_ITEMS viewings.
     """
     eps, movs = list(episodes), list(movies)
 
@@ -143,12 +149,12 @@ def weekly_stats(
     minutes_now, minutes_before = minutes(now), minutes(before)
     weeks = window / 7
 
-    if minutes_now is not None and minutes_before:
-        change: int | None = round((minutes_now - minutes_before) / minutes_before * 100)
-    elif items_before:
-        change = round((items_now - items_before) / items_before * 100)
-    else:
-        change = None
+    change: int | None = None
+    if items_before >= MIN_BASELINE_ITEMS:
+        if minutes_now is not None and minutes_before:
+            change = round((minutes_now - minutes_before) / minutes_before * 100)
+        else:
+            change = round((items_now - items_before) / items_before * 100)
     return {
         "items_per_week": round(items_now / weeks, 1),
         "hours_per_week": round(minutes_now / 60 / weeks, 1) if minutes_now is not None else None,

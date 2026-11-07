@@ -25,7 +25,7 @@ export interface HomeAssistant {
   entities?: Record<string, EntityRegistryDisplayEntry>;
   devices?: Record<string, DeviceRegistryEntry>;
   services?: Record<string, Record<string, unknown>>;
-  locale?: { language: string; time_zone?: string };
+  locale?: { language: string; time_zone?: string; time_format?: string };
   config?: { time_zone?: string };
   language?: string;
   callService(

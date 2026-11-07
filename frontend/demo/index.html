@@ -94,7 +94,7 @@
   const art = { Westworld: poster("#8a6a4a", "#2f2418"), "The Bear": poster("#b5483a", "#3a1712"), Silo: poster("#4a6a7a", "#16222a"), Lupin: null };
   const days7 = [[3, 0], [0, 0], [2, 1], [4, 0], [1, 1], [0, 0], [2, 0]].map(([ep, mv], i) => ({ date: day(i - 6), episodes: ep, movies: mv }));
   const backlog = [["Westworld", 30, 63247], ["The Bear", 18, 136315], ["Silo", 12, 125988], ["Lupin", 9, 96677]].map(([title, remaining, tmdb_id]) => ({ title, year: 2020, is_anime: false, remaining, tmdb_id, poster_url: null }));
-  const airing = [[0, "Westworld", 1, 10, false], [1, "Severance", 2, 6, false], [3, "Frieren", 1, 4, true]].map(([d, show, season, number, is_anime]) => ({ date: day(d), show, season, number, title: null, is_anime }));
+  const airing = [[0, "Westworld", 1, 10, false, false, true, "08:00"], [1, "Severance", 2, 6, false, false, false, "02:00"], [3, "Frieren", 1, 4, true, true, false, null]].map(([d, show, season, number, is_anime, premiere, finale, time]) => ({ date: day(d), show, season, number, title: null, is_anime, premiere, finale, air_at: time ? `${day(d)}T${time}:00.000Z` : null }));
   const withArt = (on) => ({
     next: on ? { ...westworld, poster_url: art.Westworld } : westworld,
     catchup: backlog.map((b) => ({ ...b, poster_url: on ? art[b.title] : null })),

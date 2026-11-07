@@ -113,7 +113,26 @@ test("the old streak options are accepted and ignored", async () => {
 test("average per week shows an estimated figure and the trend", async () => {
   const t = text(await mount({}));
   assert.match(t, /Average per week ~2\.5 h/);
+  assert.match(t, /2\.8 episodes and movies a week/);
   assert.match(t, /▲ 12% vs previous 4 weeks/);
+});
+
+test("average per week says '1 episode or movie' for exactly one", async () => {
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}average_per_week`]: { entity_id: "a", state: "0.9", attributes: { items_per_week: 1, change_percent: null, estimated: true } } },
+  });
+  const t = text(await mount({}, hass));
+  assert.match(t, /1 episode or movie a week/);
+  assert.doesNotMatch(t, /vs previous/, "no percentage without a fair baseline");
+});
+
+test("the catch-up estimate under a day shows hours only", async () => {
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "33", attributes: { show_count: 1, estimated_minutes: 1260, shows: [{ title: "Westworld", remaining: 33, is_anime: false }] } } },
+  });
+  const t = text(await mount({}, hass));
+  assert.match(t, /33 aired episodes waiting, about 21 h/);
+  assert.doesNotMatch(t, /0 d/);
 });
 
 test("average per week falls back to viewings when hours are unknown", async () => {
@@ -186,6 +205,10 @@ test("airing this week: weekday chips, today highlighted, anime colored", async 
   const rows = [...el.shadowRoot!.querySelectorAll(".a-row")];
   assert.equal(rows.length, 2);
   assert.match(rows[0].textContent!, /Today\s+Westworld S1 · E10/);
+  assert.match(rows[0].querySelector(".badge.warn")!.textContent!, /Finale/);
+  assert.match(rows[0].querySelector(".a-time")!.textContent!, /8:00/, "exact air time, in the user's clock format");
+  assert.match(rows[1].querySelector(".badge.accent")!.textContent!, /Premiere/);
+  assert.equal(rows[1].querySelector(".a-time"), null, "no time when Refract doesn't know it");
   assert.ok(rows[0].querySelector(".a-day.today"));
   assert.match(rows[1].textContent!, /Frieren S1 · E3/);
   assert.match(rows[1].querySelector<HTMLElement>(".swatch")!.getAttribute("style")!, /--c-anime/);

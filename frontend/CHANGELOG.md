@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.3
+
+- **Fixed:** durations under a day no longer show a zero ("about 21 h" instead of "about 0 d 21 h"), including in the watch-time split
+- **New:** *Average per week* shows how many episodes and movies that is, under the hours
+- **New:** *Airing this week* shows Premiere and Finale pills and the air time (in your time zone and 12/24 hour setting) when Refract knows it
+- The percentage under *Average per week* is hidden unless the earlier period was a fair baseline (see the integration changelog)
+
 ## 0.3.0
 
 A redesigned card with new sections.

@@ -2,6 +2,16 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.3
+
+### Fixed
+- Durations under a day no longer show a zero: the catch-up estimate reads "about 21 h" rather than "about 0 d 21 h"
+
+### Changed
+- *Average per week* shows the number of episodes and movies behind the hours
+- *Airing this week* shows Premiere and Finale pills and the air time
+- The change against the previous 4 weeks is only shown when that earlier period had at least 4 viewings, so a quiet stretch no longer produces an inflated percentage
+
 ## 0.3.2
 
 ### Fixed

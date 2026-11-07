@@ -177,6 +177,10 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
     margin-right: 2px;
   }
+  .avg-items {
+    font-size: 13px;
+    color: var(--secondary-text-color);
+  }
   .trend {
     font-size: 13px;
     font-weight: 500;
@@ -590,7 +594,17 @@ export const cardStyles = css`
     background: color-mix(in srgb, var(--c-accent) 16%, transparent);
     color: var(--c-accent);
   }
+  .a-time {
+    flex: none;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .a-row .badge {
+    flex: none;
+  }
   .a-name {
+    flex: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;

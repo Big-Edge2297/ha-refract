@@ -12,11 +12,11 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares | profile stats |
 | **Library** | A status bar for completed, up to date, in progress, watchlist and other, with counts | library |
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
-| **Average per week** | Estimated hours per week over the last 4 weeks, and the change against the 4 weeks before | watch history |
+| **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
 | **Last 7 days** | Episodes and movies per day as stacked bars, with the busiest day named | watch history |
 | **Next up** | The show (with poster), episode number and name, progress through aired episodes, premiere or finale badges and an optional **Mark watched** button | history |
 | **Catch-up backlog** | How many aired episodes are waiting across all your shows, an estimate of the time, and the biggest backlogs as bars | history |
-| **Airing this week** | Episodes airing in the next 7 days for the shows you follow | library |
+| **Airing this week** | Episodes airing in the next 7 days for the shows you follow, with premiere and finale pills and the air time when Refract knows it | library |
 
 Sections hide themselves when their sensors don't exist, so a read-only API key still gives a clean card.
 
@@ -164,7 +164,8 @@ Add one card per account and pick an entity from each.
 ## Good to know
 
 - **Streak dots are inferred.** The sensors have no per-day history, so the seven dots are worked out from the streak length and the time of your last watch. If you watched yesterday but not yet today, today's dot is dashed and the card says there's still time. Days follow the time zone preference in your Home Assistant profile (browser or server).
-- **Average per week is an estimate.** Refract's history gives dates but not runtimes, so the hours are the number of episodes and movies you watched in the last 4 weeks, multiplied by your average runtime per item (total watch time divided by titles watched). It's marked with a `~`. The percentage compares the last 4 weeks with the 4 weeks before.
+- **Average per week is an estimate.** Refract's history gives dates but not runtimes, so the hours are the number of episodes and movies you watched in the last 4 weeks, multiplied by your average runtime per item (total watch time divided by titles watched). It's marked with a `~`. The percentage compares the last 4 weeks with the 4 weeks before, and is left out unless that earlier period had at least 4 viewings, so a quiet stretch doesn't make a normal month look like a huge jump.
+- **Air times** follow your Home Assistant time zone and 12/24 hour setting. The day chip uses the day Refract reports, so for a show airing late in the evening it can differ from your local day if your Home Assistant time zone differs from the one in your Refract profile.
 - **Last 7 days** counts the days Refract has on record. Episodes watched with no date recorded can't appear in it. The busiest day is the day with the most episodes and movies in those seven days (the latest day wins a tie).
 - **Watch history is refreshed hourly**, and straight after you mark something watched through Home Assistant. Turn it off in the integration options if you don't want the extra requests; the two sections that need it then disappear.
 - **The catch-up backlog** counts aired episodes you haven't watched across every show you're watching, including the one shown as next up. The time is an estimate from your average episode length.

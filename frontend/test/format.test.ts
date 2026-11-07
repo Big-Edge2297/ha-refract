@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { durationParts, durationText, funStatText, shares, streakDots } from "../src/format";
+import { durationParts, durationText, funStatText, shares, streakDots, timeOfDay } from "../src/format";
 
 test("duration: 383,908 minutes is 266 d 14 h", () => {
   assert.equal(durationText(383908), "266 d 14 h");
@@ -17,7 +17,10 @@ test("duration: hours format and auto format", () => {
   assert.equal(durationText(298044, "hours"), "4,967 h");
   assert.equal(durationText(200, "auto"), "3 h 20 min");
   assert.equal(durationText(45, "auto"), "45 min");
-  assert.equal(durationText(200, "days_hours"), "0 d 3 h");
+  assert.equal(durationText(200, "days_hours"), "3 h", "no zero days");
+  assert.equal(durationText(1260, "days_hours"), "21 h");
+  assert.equal(durationText(45, "days_hours"), "45 min");
+  assert.equal(durationText(1440, "days_hours"), "1 d 0 h", "a whole day keeps both parts");
 });
 
 test("duration: singular units", () => {
@@ -83,4 +86,11 @@ test("streak dots: time zone decides which day a watch belongs to", () => {
   assert.equal(streakDots({ ...args, timeZone: "UTC" }).stillTimeToday, true);
   const nicosia = streakDots({ ...args, timeZone: "Asia/Nicosia" }); // 01:30 on Nov 4 local
   assert.equal(nicosia.todayFilled, true);
+});
+
+test("timeOfDay follows the time zone and the 12/24 hour choice", () => {
+  assert.equal(timeOfDay("2026-11-10T08:00:00.000Z", "en", "UTC", false), "08:00");
+  assert.equal(timeOfDay("2026-11-10T08:00:00.000Z", "en", "Asia/Nicosia", false), "10:00");
+  assert.match(timeOfDay("2026-11-10T08:00:00.000Z", "en", "UTC", true)!, /^8:00\s?AM$/);
+  assert.equal(timeOfDay("not a date", "en"), undefined);
 });

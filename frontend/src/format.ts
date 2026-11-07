@@ -53,7 +53,10 @@ export function durationParts(minutes: number, format: DurationFormat = "days_ho
     if (hours >= 1) return [part(hours, "h", lang), part(mins, "min", lang)];
     return [part(mins, "min", lang)];
   }
-  return [part(days, "d", lang), part(hours, "h", lang)];
+  // days + hours, but nothing is padded with a zero: "21 h" rather than "0 d 21 h"
+  if (days >= 1) return [part(days, "d", lang), part(hours, "h", lang)];
+  if (hours >= 1) return [part(hours, "h", lang)];
+  return [part(mins, "min", lang)];
 }
 
 /** Compact text such as "206 d 23 h". */
@@ -195,4 +198,15 @@ export function isoDay(date: Date, timeZone?: string): string {
 /** Weekday name of a plain `YYYY-MM-DD` date, in the user's language. */
 export function weekdayName(iso: string, lang: string, style: "narrow" | "short" | "long"): string {
   return new Intl.DateTimeFormat(lang, { weekday: style, timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
+}
+
+/** Clock time of an instant, in the user's time zone and 12/24 h preference ("08:00" / "8:00 AM"). */
+export function timeOfDay(iso: string, lang: string, timeZone?: string, hour12?: boolean): string | undefined {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return undefined;
+  try {
+    return new Intl.DateTimeFormat(lang, { hour: "numeric", minute: "2-digit", timeZone, hour12 }).format(date);
+  } catch {
+    return undefined;
+  }
 }

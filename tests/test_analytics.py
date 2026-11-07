@@ -230,3 +230,13 @@ def test_upcoming_prefers_the_anime_flag_from_the_calendar():
     parsed = a.parse_calendar(REAL_CALENDAR)
     out = a.upcoming(parsed, date(2026, 11, 7), 7, anime_titles=set())
     assert [(e["show"], e["is_anime"]) for e in out] == [("VisionQuest", False), ("Frieren", True)]
+
+
+def test_change_needs_a_fair_baseline():
+    now = eps(*range(0, -14, -1))  # 14 viewings now
+    assert a.weekly_stats(now, [], TODAY)["change_percent"] is None
+    three = eps(-29, -30, -31)  # only 3 before: too few to compare against
+    assert a.weekly_stats(now + three, [], TODAY)["change_percent"] is None
+    four = eps(-29, -30, -31, -32)
+    assert a.weekly_stats(now + four, [], TODAY)["change_percent"] == 250
+    assert a.MIN_BASELINE_ITEMS == 4

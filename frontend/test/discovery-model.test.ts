@@ -97,6 +97,9 @@ test("model: new sections", () => {
   assert.deepEqual(m.catchup?.shows.map((x) => [x.title, x.remaining]), [["Westworld", 30], ["Lupin", 9]]);
   assert.equal(m.airing?.length, 2);
   assert.equal(m.airing?.[1].isAnime, true);
+  assert.deepEqual([m.airing?.[0].finale, m.airing?.[0].premiere, m.airing?.[1].premiere], [true, false, true]);
+  assert.match(m.airing?.[0].airAt ?? "", /T08:00:00/);
+  assert.equal(m.airing?.[1].airAt, undefined);
   assert.equal(m.hasPosters, false);
 });
 

@@ -62,6 +62,10 @@ export interface AiringItem {
   number?: number;
   title?: string;
   isAnime: boolean;
+  premiere: boolean;
+  finale: boolean;
+  /** ISO instant, only when Refract knows the exact time. */
+  airAt?: string;
 }
 
 export interface Model {
@@ -239,7 +243,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     airing = raw
       .map((r: any): AiringItem | undefined =>
         typeof r?.show === "string" && /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date))
-          ? { date: r.date, show: r.show, season: num(r.season), number: num(r.number), title: typeof r.title === "string" ? r.title : undefined, isAnime: !!r.is_anime }
+          ? { date: r.date, show: r.show, season: num(r.season), number: num(r.number), title: typeof r.title === "string" ? r.title : undefined, isAnime: !!r.is_anime, premiere: !!r.premiere, finale: !!r.finale, airAt: typeof r.air_at === "string" && r.air_at ? r.air_at : undefined }
           : undefined,
       )
       .filter((x): x is AiringItem => !!x);

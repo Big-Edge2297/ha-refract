@@ -47,6 +47,8 @@ const en: Dict = {
   "avg.vs_previous": "vs previous 4 weeks",
   "avg.estimated": "Estimated from your average runtime",
   "avg.items_unit": "a week",
+  "avg.items_line": "{n} episodes and movies a week",
+  "avg.items_line_one": "1 episode or movie a week",
   "days7.title": "Last 7 days",
   "days7.busiest": "Busiest day · {day}",
   "days7.episodes": "Episodes",

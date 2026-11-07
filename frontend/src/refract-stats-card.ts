@@ -4,7 +4,7 @@ import { defineOnce } from "./define";
 import { styleMap } from "lit/directives/style-map.js";
 import { CARD_TYPE, DOMAIN, EDITOR_TYPE } from "./const";
 import { discover, type Discovery } from "./discovery";
-import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, weekdayName } from "./format";
+import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, timeOfDay, weekdayName } from "./format";
 import { languageOf, t } from "./localize";
 import { buildModel, type CatchupShow, type Model, type ShowItem } from "./model";
 import { cardStyles } from "./styles";
@@ -262,6 +262,11 @@ export class RefractStatsCard extends LitElement {
     return this.hass.locale?.time_zone === "server" ? this.hass.config?.time_zone : undefined;
   }
 
+  private _hour12(): boolean | undefined {
+    const format = this.hass.locale?.time_format;
+    return format === "12" ? true : format === "24" ? false : undefined;
+  }
+
   private _streak(m: Model): TemplateResult {
     const lang = languageOf(this.hass);
     const streak = m.streak!;
@@ -319,6 +324,13 @@ export class RefractStatsCard extends LitElement {
       <div class="metric" title=${a.estimated && a.hours !== undefined ? t(this.hass, "avg.estimated") : ""}>
         ${a.hours !== undefined && a.estimated ? html`<span class="approx">~</span>` : nothing}${value}
       </div>
+      ${a.hours !== undefined && a.itemsPerWeek !== undefined
+        ? html`<div class="avg-items">
+            ${a.itemsPerWeek === 1
+              ? t(this.hass, "avg.items_line_one")
+              : t(this.hass, "avg.items_line", { n: fmtNumber(a.itemsPerWeek, lang, 1) })}
+          </div>`
+        : nothing}
       ${trend}
     </div>`;
   }
@@ -611,10 +623,17 @@ export class RefractStatsCard extends LitElement {
       ${rows.length
         ? rows.map((x) => {
             const ep = x.season !== undefined && x.number !== undefined ? `S${x.season} · E${x.number}` : "";
+            const time = x.airAt ? timeOfDay(x.airAt, lang, this._timeZone(), this._hour12()) : undefined;
             return html`<div class="a-row">
               <span class="a-day ${x.date === today ? "today" : ""}">${x.date === today ? t(this.hass, "airing.today") : weekdayName(x.date, lang, "short")}</span>
               <span class="swatch" style="background:${x.isAnime ? "var(--c-anime)" : "var(--c-shows)"}"></span>
               <span class="a-name"><b>${x.show}</b>${ep ? html` <span class="muted">${ep}</span>` : nothing}</span>
+              ${x.premiere
+                ? html`<span class="badge accent">${t(this.hass, "badge.premiere")}</span>`
+                : x.finale
+                  ? html`<span class="badge warn">${t(this.hass, "badge.finale")}</span>`
+                  : nothing}
+              ${time ? html`<span class="a-time">${time}</span>` : nothing}
             </div>`;
           })
         : html`<div class="empty">${t(this.hass, "airing.none")}</div>`}
