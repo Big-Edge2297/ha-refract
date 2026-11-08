@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.6
+
+- **New:** seven more fun stats (`flights`, `sleep`, `movies`, `seasons`, `marathons`, `moon`, `imdb`); `rotate` cycles through all ten
+- **Changed:** *Watch time* and *Library* default to the breakdown list instead of the compact bar. Set `watch_time_style` / `library_style` to `bar` to keep the bar
+- The screenshot shows the breakdown lists
+
 ## 0.4.5
 
 - **Changed:** with the Custom layout, the editor shows **Section order** directly under **Sections**

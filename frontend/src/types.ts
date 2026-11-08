@@ -39,7 +39,18 @@ export interface HomeAssistant {
 
 export type StreakStyle = "gauge" | "dots";
 export type DurationFormat = "days_hours" | "hours" | "auto";
-export type FunStatMode = "rotate" | "months" | "workweeks" | "lotr";
+export type FunStatMode =
+  | "rotate"
+  | "months"
+  | "workweeks"
+  | "lotr"
+  | "flights"
+  | "sleep"
+  | "movies"
+  | "seasons"
+  | "marathons"
+  | "moon"
+  | "imdb";
 /** `full`: every section. `compact`: watch time, still to finish and next up. `custom`: you pick the sections and their order. */
 export type Layout = "full" | "compact" | "custom";
 /** `bar`: compact bar with a legend. `list`: the breakdown the Refract app shows, one row per entry. */
@@ -161,8 +172,8 @@ export interface RefractCardConfig {
 
 export const DEFAULT_CONFIG = {
   layout: "full",
-  library_style: "bar",
-  watch_time_style: "bar",
+  library_style: "list",
+  watch_time_style: "list",
   duration_format: "days_hours",
   fun_stat: true,
   fun_stat_mode: "rotate",

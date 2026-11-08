@@ -2,6 +2,18 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.4.6
+
+### Added
+- **Seven more fun stats**: flights around the world, nights or years of sleep, average movies back to back, full TV seasons, marathons run, one-way trips to the Moon and runs through the IMDb Top 250. Pick one in the editor (*Fun stat*) with `fun_stat_mode`, or let `rotate` cycle through all ten. The comparisons are approximations, explained in the card documentation
+
+### Changed
+- **Watch time** and **Library** are now shown as the breakdown list by default (`watch_time_style: list`, `library_style: list`). The compact bar is still available in the editor and with `bar`
+- The card screenshot shows the breakdown lists
+
+### Upgrading
+- Cards that never set `watch_time_style` or `library_style` switch from the compact bar to the list. To keep the bar, set the style to `bar` in the editor or in YAML
+
 ## 0.4.5
 
 ### Changed

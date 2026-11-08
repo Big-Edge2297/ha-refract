@@ -23,6 +23,8 @@ const { resolveLayout } = await import("../src/types");
 type Card = InstanceType<typeof RefractStatsCard>;
 const ENTITY = `sensor.${PREFIX}next_up`;
 
+const BARS = { library_style: "bar", watch_time_style: "bar" };
+
 async function mount(config: Record<string, unknown>, hass = makeHass()): Promise<Card> {
   const el = document.createElement("refract-stats-card") as Card;
   el.setConfig({ type: "custom:refract-stats-card", entity: ENTITY, ...config } as any);
@@ -56,7 +58,7 @@ test("renders the hero with human durations", async () => {
 });
 
 test("library status bar and watch-time split", async () => {
-  const el = await mount({});
+  const el = await mount(BARS);
   const t = text(el);
   assert.match(t, /Library Watched · 803/);
   assert.match(t, /Up to Date · 23/);
@@ -78,7 +80,7 @@ function withStatuses(byStatus: Record<string, number>) {
 }
 
 test("library shows every status Refract reports, including on hold and dropped", async () => {
-  const el = await mount({}, withStatuses({ completed: 803, up_to_date: 23, in_progress: 3, planned: 64, on_hold: 2, dropped: 2 }));
+  const el = await mount(BARS, withStatuses({ completed: 803, up_to_date: 23, in_progress: 3, planned: 64, on_hold: 2, dropped: 2 }));
   const t = text(el);
   assert.match(t, /Watched · 803/);
   assert.match(t, /Plan to Watch · 64/);
@@ -92,7 +94,7 @@ test("library shows every status Refract reports, including on hold and dropped"
 });
 
 test("library statuses: aliases merge, empty ones are skipped and unknown ones get a readable name", async () => {
-  const el = await mount({}, withStatuses({ completed: 5, paused: 1, on_hold: 2, never: 0, "waiting-room": 3 }));
+  const el = await mount(BARS, withStatuses({ completed: 5, paused: 1, on_hold: 2, never: 0, "waiting-room": 3 }));
   const t = text(el);
   assert.match(t, /Watched · 5/);
   assert.match(t, /On Hold · 3/, "paused and on_hold are the same status");
@@ -102,7 +104,7 @@ test("library statuses: aliases merge, empty ones are skipped and unknown ones g
 
 test("library list style mirrors the Refract app's breakdown, with its wording and percentages", async () => {
   const el = await mount(
-    { library_style: "list" },
+    { library_style: "list", watch_time_style: "bar" },
     withStatuses({ completed: 802, up_to_date: 23, in_progress: 3, planned: 64, on_hold: 2, dropped: 2 }),
   );
   const root = el.shadowRoot!;
@@ -116,14 +118,21 @@ test("library list style mirrors the Refract app's breakdown, with its wording a
 });
 
 test("library list style also works without per-status data (older integration)", async () => {
-  const el = await mount({ library_style: "list" });
+  const el = await mount({ library_style: "list", watch_time_style: "bar" });
   const rows = [...el.shadowRoot!.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
   assert.equal(rows[0], "Watched 803 90%");
   assert.match(rows[rows.length - 1], /^Other 4 /);
 });
 
-test("the library stays a compact bar with a legend by default", async () => {
-  const el = await mount({});
+test("watch time and library are breakdown lists by default, and the bar is one setting away", async () => {
+  const t = await mount({});
+  assert.ok(t.shadowRoot!.querySelectorAll(".stat-row").length > 6, "list rows for both");
+  assert.equal(t.shadowRoot!.querySelector(".status-legend"), null);
+  assert.ok((await mount(BARS)).shadowRoot!.querySelector(".status-legend"));
+});
+
+test("the library bar has a legend", async () => {
+  const el = await mount(BARS);
   assert.ok(el.shadowRoot!.querySelector(".status-legend"));
   assert.equal(el.shadowRoot!.querySelector(".stat-row"), null);
 });
@@ -203,7 +212,7 @@ test("watch time breakdown list mirrors the library list: bar on top, one row pe
 });
 
 test("watch time bar: percentage after the title with a dot, no brackets", async () => {
-  const el = await mount({});
+  const el = await mount(BARS);
   assert.ok(el.shadowRoot!.querySelector(".watch-cols"));
   assert.equal([...el.shadowRoot!.querySelectorAll(".panel")].filter((p) => p.querySelector(".label")?.textContent === "Watch time")[0].querySelector(".stat-row"), null);
   assert.match(text(el), /TV shows · 78%/);
@@ -567,7 +576,7 @@ test("a card from before the custom layout that hides sections keeps working as 
 
 test("section toggles hide sections", async () => {
   const t = text(
-    await mount({ show_hero: false, show_catchup: false, show_next_up: false, show_airing: false, show_last_7_days: false, show_average: false, show_streak: false }),
+    await mount({ ...BARS, show_hero: false, show_catchup: false, show_next_up: false, show_airing: false, show_last_7_days: false, show_average: false, show_streak: false }),
   );
   assert.doesNotMatch(t, /Total watch time|Catch-up|Next up|Airing|Last 7 days|Average per week|Streak/);
   assert.match(t, /Watched · 803/);
@@ -778,7 +787,7 @@ test("custom colors become CSS variables", async () => {
 
 test("re-renders only when a Refract entity changes", async () => {
   const hass = makeHass();
-  const el = await mount({}, hass);
+  const el = await mount(BARS, hass);
   let renders = 0;
   const original = (el as any).render.bind(el);
   (el as any).render = () => (renders++, original());

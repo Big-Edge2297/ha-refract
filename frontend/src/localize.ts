@@ -86,6 +86,14 @@ const en: Dict = {
   "fun.days": "That's about {n} days of nonstop viewing",
   "fun.workweeks": "That's about {n} full-time work weeks",
   "fun.lotr": "Enough for the extended Lord of the Rings trilogy about {n} times",
+  "fun.flights": "Enough time to fly around the world about {n} times",
+  "fun.sleep_nights": "That's about {n} nights of sleep",
+  "fun.sleep_years": "That's about {n} years of sleep at 8 hours a night",
+  "fun.movies": "That's about {n} average movies back to back",
+  "fun.seasons": "That's about {n} full 22-episode TV seasons",
+  "fun.marathons": "Enough time to run about {n} marathons",
+  "fun.moon": "Enough for about {n} one-way trips to the Moon",
+  "fun.imdb": "Enough to watch the whole IMDb Top 250 about {n} times",
 };
 
 const dictionaries: Record<string, Dict> = { en };

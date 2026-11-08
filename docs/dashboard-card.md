@@ -9,8 +9,8 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | Section | What you see | Needs |
 |---|---|---|
 | **Watch time** | Total time as days and hours, a library/movies/episodes watched summary, and the fun stat in a highlighted pill ("about 8.8 months of nonstop viewing") | profile stats |
-| **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares. Choose a compact bar with the share after each title (TV shows · 78%), or a breakdown list with the time and share on one row per kind | profile stats |
-| **Library** | Every status you use, named and colored as in the Refract app: Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped (and any other status Refract adds). Choose a compact bar with a legend (Watched · 803), or the full breakdown list with counts and percentages | library |
+| **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares. Shown as a breakdown list by default, with the time and share on one row per kind. Choose a compact bar instead, with the share after each title (TV shows · 78%) | profile stats |
+| **Library** | Every status you use, named and colored as in the Refract app: Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped (and any other status Refract adds). Shown as the full breakdown list with counts and percentages by default. Choose a compact bar instead, with a legend (Watched · 803) | library |
 | **Still to finish** | The time left to watch the movies and shows you haven't finished (Plan to Watch, Watching and On Hold), as in the Refract app: the total, and one row each for movies, TV shows and anime (only when you have anime to finish) with the number of titles and the time left | library |
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
@@ -117,11 +117,11 @@ Cards from before 0.4.4 that have no `layout` but hide sections or set a `sectio
 | `entity` | | **Required.** Any entity of the Refract account |
 | `name` | from the device | Overrides the account name in the header |
 | `layout` | `full` | `full` (every section), `compact` (total watch time, still to finish and next up) or `custom` (use `show_*` and `section_order`) |
-| `watch_time_style` | `bar` | `bar` (a stacked bar with the share after each title) or `list` (a bar plus one row per kind with its time and percentage, like the library list; taller) |
-| `library_style` | `bar` | `bar` (a status bar with a legend) or `list` (the Refract app's status breakdown: a bar plus one row per status with its count and percentage; taller) |
+| `watch_time_style` | `list` | `list` (a bar plus one row per kind with its time and percentage, like the library list) or `bar` (a stacked bar with the share after each title; shorter) |
+| `library_style` | `list` | `list` (the Refract app's status breakdown: a bar plus one row per status with its count and percentage) or `bar` (a status bar with a legend; shorter) |
 | `duration_format` | `days_hours` | `days_hours` (206 d 23 h), `hours` (4,967 h) or `auto` (picks the unit by size) |
 | `fun_stat` | `true` | Show the fun stat pill under the watch time |
-| `fun_stat_mode` | `rotate` | `rotate` (changes daily), `months`, `workweeks` or `lotr` |
+| `fun_stat_mode` | `rotate` | `rotate` (changes daily through every comparison that applies), or pick one: `months`, `workweeks`, `lotr`, `flights`, `sleep`, `movies`, `seasons`, `marathons`, `moon` or `imdb` |
 | `queue_length` | `5` | Catch-up rows shown before "Show all" |
 | `airing_length` | `5` | "Airing this week" rows shown before "Show all" |
 | `section_order` | see above | Order of the sections under the header (list of section names). Only used by `layout: custom` |
@@ -211,7 +211,22 @@ Add one card per account and pick an entity from each.
 - **Last 7 days** shows the number of episodes watched above each bar (days with no episodes show no number); movies are the blue part of the bar.
 - **Episodes watched** in the summary is TV episodes plus anime episodes.
 - **Still to finish** adds up the titles in your library that are *Plan to Watch*, *Watching* or *On Hold*; completed, up to date and dropped titles don't count. For shows you've started, the episodes are the aired ones you haven't watched (the same numbers as the catch-up backlog). For shows you haven't started, Refract's library doesn't say how many episodes there are, so the integration asks TMDB for the number of aired episodes and the episode runtime, and for movies the runtime. **This needs a TMDB API key in the integration options** (the same one used for posters); results are cached on disk, and episode counts are refreshed every few days as episodes air. Without a key, or for a title TMDB doesn't know, the show is counted but left out of the episodes and the time, and the `unknown_episode_shows` attribute of the sensor says how many. Where there is no runtime, your average runtime per movie or episode is used. It may differ a little from the Refract app, and it changes as episodes air.
-- **The fun stat** needs at least a day of watch time. In `rotate` mode it changes once a day.
+- **The fun stat** needs at least a day of watch time. In `rotate` mode it changes once a day. The comparisons are approximations:
+
+  | Mode | Comparison | Based on |
+  |---|---|---|
+  | `months` | Days, months or years of nonstop viewing | your total time |
+  | `workweeks` | Full-time work weeks | 40 hours a week |
+  | `lotr` | The extended Lord of the Rings trilogy | 12 hours 6 minutes |
+  | `flights` | Flights around the world | about 44.5 hours at airliner speed |
+  | `sleep` | Nights or years of sleep | 8 hours a night |
+  | `movies` | Average movies back to back | 100 minutes each |
+  | `seasons` | Full TV seasons | 22 episodes of 42 minutes |
+  | `marathons` | Marathons run | 4 hours 30 minutes each |
+  | `moon` | One-way trips to the Moon | 3 days, as the Apollo missions |
+  | `imdb` | Watching the whole IMDb Top 250 | 250 films of about 130 minutes |
+
+  A comparison that would come out below 2 is skipped, in `rotate` mode and when you pick it.
 
 ## Styling
 

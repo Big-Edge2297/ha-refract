@@ -86,30 +86,47 @@ export function shares(values: number[]): number[] {
 
 // ---------------------------------------------------------------- fun stats
 
-const LOTR_EXTENDED_MINUTES = 228 + 235 + 263;
-
 type FunKind = Exclude<FunStatMode, "rotate">;
+
+/**
+ * Comparisons that divide the total by the length of something. Shown from two of them up.
+ * Approximations: a flight around the world at about 900 km/h, an average movie of 100 minutes,
+ * a 22-episode season of 42 minutes, a marathon in 4 h 30, an Apollo trip to the Moon of 3 days,
+ * and the IMDb Top 250 as 250 films of about 130 minutes.
+ */
+const RATIO_MINUTES: Partial<Record<FunKind, number>> = {
+  workweeks: 40 * 60,
+  lotr: 228 + 235 + 263,
+  flights: 2670,
+  movies: 100,
+  seasons: 22 * 42,
+  marathons: 270,
+  moon: 3 * 1440,
+  imdb: 250 * 130,
+};
+
+/** The order they rotate in. */
+const FUN_KINDS: FunKind[] = ["months", "workweeks", "lotr", "flights", "sleep", "movies", "seasons", "marathons", "moon", "imdb"];
 
 function funText(hass: HomeAssistant | undefined, kind: FunKind, minutes: number): string | undefined {
   const lang = languageOf(hass);
   const days = minutes / 1440;
-  switch (kind) {
-    case "months": {
-      if (days < 1) return undefined;
-      if (days < 30) return t(hass, "fun.days", { n: fmtNumber(days, lang) });
-      const months = days / 30.4375;
-      if (months < 24) return t(hass, "fun.months", { n: fmtNumber(months, lang, 1) });
-      return t(hass, "fun.years", { n: fmtNumber(months / 12, lang, 1) });
-    }
-    case "workweeks": {
-      const weeks = minutes / 60 / 40;
-      return weeks >= 2 ? t(hass, "fun.workweeks", { n: fmtNumber(weeks, lang) }) : undefined;
-    }
-    case "lotr": {
-      const times = minutes / LOTR_EXTENDED_MINUTES;
-      return times >= 2 ? t(hass, "fun.lotr", { n: fmtNumber(times, lang) }) : undefined;
-    }
+  if (kind === "months") {
+    if (days < 1) return undefined;
+    if (days < 30) return t(hass, "fun.days", { n: fmtNumber(days, lang) });
+    const months = days / 30.4375;
+    if (months < 24) return t(hass, "fun.months", { n: fmtNumber(months, lang, 1) });
+    return t(hass, "fun.years", { n: fmtNumber(months / 12, lang, 1) });
   }
+  if (kind === "sleep") {
+    const nights = minutes / (8 * 60);
+    if (nights < 365) return nights >= 2 ? t(hass, "fun.sleep_nights", { n: fmtNumber(nights, lang) }) : undefined;
+    return t(hass, "fun.sleep_years", { n: fmtNumber(nights / 365.25, lang, 1) });
+  }
+  const unit = RATIO_MINUTES[kind];
+  if (!unit) return undefined;
+  const times = minutes / unit;
+  return times >= 2 ? t(hass, `fun.${kind}`, { n: fmtNumber(times, lang) }) : undefined;
 }
 
 /** One friendly comparison for the hero. Rotates once a day in "rotate" mode. */
@@ -121,8 +138,7 @@ export function funStatText(
 ): string | undefined {
   if (!(minutes >= 1440)) return undefined;
   if (mode !== "rotate") return funText(hass, mode, minutes);
-  const kinds: FunKind[] = ["months", "workweeks", "lotr"];
-  const available = kinds.filter((k) => funText(hass, k, minutes));
+  const available = FUN_KINDS.filter((k) => funText(hass, k, minutes));
   if (!available.length) return undefined;
   const pick = available[Math.floor(now / DAY_MS) % available.length];
   return funText(hass, pick, minutes);

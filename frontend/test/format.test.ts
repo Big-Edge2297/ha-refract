@@ -42,6 +42,29 @@ test("fun stat: months, fixed mode", () => {
   assert.match(funStatText(undefined, 383908, "lotr")!, /about 529 times/);
 });
 
+test("fun stat: every comparison has its own wording", () => {
+  const m = 383908; // about 266 days
+  const expected: Record<string, RegExp> = {
+    flights: /fly around the world about 144 times/,
+    sleep: /about 2\.2 years of sleep at 8 hours a night/,
+    movies: /about 3,839 average movies/,
+    seasons: /about 415 full 22-episode TV seasons/,
+    marathons: /run about 1,422 marathons/,
+    moon: /about 89 one-way trips to the Moon/,
+    imdb: /whole IMDb Top 250 about 12 times/,
+  };
+  for (const [mode, re] of Object.entries(expected)) assert.match(funStatText(undefined, m, mode as any)!, re, mode);
+  assert.match(funStatText(undefined, 1500, "sleep")!, /about 3 nights of sleep/);
+  assert.equal(funStatText(undefined, 1500, "moon"), undefined, "too little for a trip to count twice");
+  assert.equal(funStatText(undefined, 1500, "imdb"), undefined);
+});
+
+test("fun stat: rotate cycles through every comparison that applies", () => {
+  const day = 86_400_000;
+  const seen = new Set(Array.from({ length: 10 }, (_, i) => funStatText(undefined, 383908, "rotate", i * day)));
+  assert.equal(seen.size, 10);
+});
+
 test("fun stat: hidden for tiny totals and rotates by day", () => {
   assert.equal(funStatText(undefined, 600, "rotate"), undefined);
   const day = 86_400_000;
