@@ -267,6 +267,7 @@ def build_backlog(
 FINISH_STATUSES = ("planned", "in_progress", "on_hold")
 _EPISODE_COUNT_KEYS = ("aired_episodes", "total_episodes", "episode_count", "episodes_count", "number_of_episodes")
 _RUNTIME_KEYS = ("runtime_minutes", "runtime", "episode_runtime_minutes", "episode_runtime")
+_WATCHED_KEYS = ("watched_episodes", "episodes_watched", "watched_count")
 
 
 def _positive(item: dict[str, Any], keys: tuple[str, ...]) -> float | None:
@@ -286,20 +287,86 @@ def _item_ids(item: dict[str, Any]) -> list[str]:
     return [str(ids[key]) for key in ("refract", "tmdb") if ids.get(key) is not None]
 
 
+def _tmdb_id_of(item: dict[str, Any]) -> int | None:
+    ids = item.get("ids") or (item.get("show") or {}).get("ids") or {}
+    value = ids.get("tmdb")
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def tmdb_tv_info(body: Any) -> dict[str, Any] | None:
+    """Aired episodes and a typical episode runtime from a TMDB `/tv/{id}` response.
+
+    Aired episodes are every regular season before the last aired one, plus the last aired
+    episode's number; specials (season 0) are left out. A show that hasn't aired anything has 0.
+    """
+    if not isinstance(body, dict):
+        return None
+    last = body.get("last_episode_to_air")
+    aired: int | None = None
+    if isinstance(last, dict) and isinstance(last.get("season_number"), int) and isinstance(last.get("episode_number"), int):
+        last_season = last["season_number"]
+        aired = last["episode_number"] if last_season > 0 else 0
+        for season in body.get("seasons") or []:
+            number, count = season.get("season_number"), season.get("episode_count")
+            if isinstance(number, int) and isinstance(count, int) and 0 < number < last_season:
+                aired += count
+    elif body.get("status") in ("Ended", "Canceled") and isinstance(body.get("number_of_episodes"), int):
+        aired = body["number_of_episodes"]
+    elif last is None and "last_episode_to_air" in body:
+        aired = 0
+    runtimes = [r for r in body.get("episode_run_time") or [] if isinstance(r, (int, float)) and r > 0]
+    runtime: float | None = sum(runtimes) / len(runtimes) if runtimes else None
+    for key in ("last_episode_to_air", "next_episode_to_air"):
+        value = body.get(key)
+        if runtime is None and isinstance(value, dict) and isinstance(value.get("runtime"), (int, float)) and value["runtime"] > 0:
+            runtime = value["runtime"]
+    if aired is None and runtime is None:
+        return None
+    return {"episodes": aired, "runtime": runtime}
+
+
+def tmdb_movie_info(body: Any) -> dict[str, Any] | None:
+    """The runtime from a TMDB `/movie/{id}` response."""
+    runtime = body.get("runtime") if isinstance(body, dict) else None
+    if isinstance(runtime, (int, float)) and not isinstance(runtime, bool) and runtime > 0:
+        return {"runtime": runtime}
+    return None
+
+
+def finish_lookups(library: list[dict[str, Any]]) -> tuple[list[int], list[int]]:
+    """TMDB ids (shows, movies) whose episode counts or runtimes the library itself doesn't give."""
+    shows: list[int] = []
+    movies: list[int] = []
+    for item in library:
+        if item.get("status") not in FINISH_STATUSES:
+            continue
+        tmdb = _tmdb_id_of(item)
+        if tmdb is None:
+            continue
+        if item.get("type") == "show" and tmdb not in shows:
+            shows.append(tmdb)
+        elif item.get("type") == "movie" and _positive(item, _RUNTIME_KEYS) is None and tmdb not in movies:
+            movies.append(tmdb)
+    return shows, movies
+
+
 def build_finish(
     library: list[dict[str, Any]],
     up_next: list[dict[str, Any]],
     episode_minutes: float | None,
     movie_minutes: float | None,
+    details: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """What is left to watch: movies and shows not finished yet, with an estimated time.
 
     Shows being watched take their remaining aired episodes from `up_next`. Shows not started
-    need an episode count from the library item itself; without one they are counted but left out
+    take an episode count from the library item, or else from `details` (TMDB lookups keyed
+    `tv:<id>` and `movie:<id>`, see `tmdb_tv_info`); without either they are counted but left out
     of the episodes and the time (`unknown_episodes`), instead of guessing. Runtimes come from the
-    item when Refract provides one, otherwise from the average runtime in the profile stats, and
-    then the figure is marked as an estimate.
+    item when Refract provides one, then from `details`, otherwise from the average runtime in the
+    profile stats, and then the figure is marked as an estimate.
     """
+    details = details or {}
     remaining: dict[str, int] = {}
     for entry in up_next:
         value = entry.get("remaining_episodes")
@@ -328,7 +395,7 @@ def build_finish(
         if kind == "movie":
             group = groups["movies"]
             group["count"] += 1
-            runtime = _positive(item, _RUNTIME_KEYS)
+            runtime = _positive(item, _RUNTIME_KEYS) or details.get(f"movie:{_tmdb_id_of(item)}", {}).get("runtime")
             if runtime is None:
                 runtime = movie_minutes
                 estimated = estimated or runtime is not None
@@ -347,15 +414,22 @@ def build_finish(
                 or bool((item.get("progress") or {}).get("last_watched_at"))
             )
             group["started" if started else "not_started"] += 1
+            info = details.get(f"tv:{_tmdb_id_of(item)}", {})
+            aired = info.get("episodes")
             if started:
                 episodes = waiting if waiting is not None else _positive(item, ("remaining_episodes",))
+                watched = _positive(item, _WATCHED_KEYS)
+                if episodes is None and aired is not None and watched is not None:
+                    episodes = max(0, aired - watched)
             else:
                 episodes = _positive(item, _EPISODE_COUNT_KEYS)
+                if episodes is None:
+                    episodes = aired
             if episodes is None:
                 group["unknown_episodes"] += 1
                 continue
             group["episodes"] += int(episodes)
-            runtime = _positive(item, _RUNTIME_KEYS)
+            runtime = _positive(item, _RUNTIME_KEYS) or info.get("runtime")
             if runtime is None:
                 runtime = episode_minutes
                 estimated = estimated or (runtime is not None and episodes > 0)

@@ -313,3 +313,84 @@ def test_finish_with_nothing_left_is_zero_not_unknown():
     assert out["minutes"] == 0 and out["movies"]["count"] == 0
     assert out["estimated"] is False and out["unknown_episode_shows"] == 0
     assert a.build_finish([], [], None, None)["minutes"] == 0
+
+
+# ------------------------------------------------- still to finish: TMDB fallback
+
+
+def test_tmdb_tv_info_counts_aired_episodes_and_skips_specials_and_unaired_seasons():
+    body = {
+        "seasons": [
+            {"season_number": 0, "episode_count": 5},
+            {"season_number": 1, "episode_count": 10},
+            {"season_number": 2, "episode_count": 8},
+            {"season_number": 3, "episode_count": 9},
+        ],
+        "last_episode_to_air": {"season_number": 2, "episode_number": 6, "runtime": 47},
+        "episode_run_time": [],
+    }
+    assert a.tmdb_tv_info(body) == {"episodes": 10 + 6, "runtime": 47}
+    assert a.tmdb_tv_info({**body, "episode_run_time": [40, 50]})["runtime"] == 45
+
+
+def test_tmdb_tv_info_handles_unaired_ended_and_unusable_shows():
+    unaired = {"last_episode_to_air": None, "seasons": [{"season_number": 1, "episode_count": 8}], "next_episode_to_air": {"runtime": 55}}
+    assert a.tmdb_tv_info(unaired) == {"episodes": 0, "runtime": 55}
+    ended = {"status": "Ended", "number_of_episodes": 24, "seasons": []}
+    assert a.tmdb_tv_info(ended) == {"episodes": 24, "runtime": None}
+    assert a.tmdb_tv_info({"name": "no usable fields"}) is None
+    assert a.tmdb_tv_info(None) is None
+
+
+def test_tmdb_movie_info():
+    assert a.tmdb_movie_info({"runtime": 128}) == {"runtime": 128}
+    assert a.tmdb_movie_info({"runtime": 0}) is None
+    assert a.tmdb_movie_info([]) is None
+
+
+def test_finish_lookups_only_asks_about_what_is_unfinished_and_missing():
+    library = [
+        lib("movie", "planned", "Needs runtime", 1),
+        lib("movie", "planned", "Has runtime", 2, runtime_minutes=90),
+        lib("movie", "completed", "Seen", 3),
+        lib("show", "planned", "Later", 10),
+        lib("show", "in_progress", "Going", 11),
+        lib("show", "dropped", "Dropped", 12),
+        {"type": "show", "status": "planned", "title": "No id", "ids": {}},
+    ]
+    assert a.finish_lookups(library) == ([10, 11], [1])
+
+
+def test_finish_takes_episode_counts_and_runtimes_from_tmdb_when_the_library_has_none():
+    library = [
+        lib("movie", "planned", "Film", 1),
+        lib("show", "planned", "Later", 10),
+        lib("show", "planned", "Later anime", 11, anime=True),
+        lib("show", "planned", "Unaired", 12),
+        lib("show", "in_progress", "Going", 13),
+        lib("show", "on_hold", "Paused", 14, progress={"last_watched_at": "2026-01-01T00:00:00Z", "watched_episodes": 7}),
+        lib("show", "planned", "Unknown to TMDB", 15),
+    ]
+    up_next = [{"show": {"ids": {"refract": "r-13", "tmdb": 13}}, "remaining_episodes": 3}]
+    details = {
+        "movie:1": {"runtime": 120},
+        "tv:10": {"episodes": 20, "runtime": 50},
+        "tv:11": {"episodes": 12, "runtime": 24},
+        "tv:12": {"episodes": 0, "runtime": 45},
+        "tv:13": {"episodes": 40, "runtime": 30},
+        "tv:14": {"episodes": 10},
+    }
+    out = a.build_finish(library, up_next, episode_minutes=40.0, movie_minutes=100.0, details=details)
+    assert out["movies"] == {"count": 1, "minutes": 120}
+    # Later 20x50, Unaired 0, Going 3 remaining x30 (up next wins over TMDB), Paused 10-7=3 x 40 (no runtime: average)
+    assert out["shows"]["episodes"] == 20 + 0 + 3 + 3
+    assert out["shows"]["minutes"] == 20 * 50 + 3 * 30 + 3 * 40
+    assert out["shows"]["unknown_episodes"] == 1  # the one TMDB doesn't know
+    assert out["anime"]["minutes"] == 12 * 24 and out["anime"]["episodes"] == 12
+    assert out["unknown_episode_shows"] == 1
+
+
+def test_finish_library_values_win_over_tmdb():
+    library = [lib("show", "planned", "Counted", 10, aired_episodes=5, runtime=30)]
+    out = a.build_finish(library, [], None, None, {"tv:10": {"episodes": 99, "runtime": 99}})
+    assert out["shows"]["episodes"] == 5 and out["shows"]["minutes"] == 150

@@ -6,6 +6,8 @@ integration options. Lookups are cached on disk so each show is asked for once.
 
 from __future__ import annotations
 
+import asyncio
+from datetime import date, timedelta
 from typing import Any
 
 import aiohttp
@@ -13,10 +15,16 @@ import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
+from .analytics import tmdb_movie_info, tmdb_tv_info
 from .const import DOMAIN, LOGGER, TMDB_API_BASE, TMDB_IMAGE_BASE, USER_AGENT
 
 _STORE_VERSION = 1
 _LOOKUPS_PER_REFRESH = 15
+# Episode counts and runtimes for "Still to finish". A show's count changes as episodes air, so it is
+# looked up again after a few days; a movie's runtime doesn't change.
+_DETAILS_PER_REFRESH = 80
+_DETAILS_CONCURRENCY = 6
+_SHOW_DETAILS_DAYS = 3
 
 
 def _auth(api_key: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -50,10 +58,13 @@ class TmdbClient:
         self._api_key = api_key
         self._store: Store[dict[str, str]] = Store(hass, _STORE_VERSION, f"{DOMAIN}_posters")
         self._cache: dict[str, str] = {}
+        self._details_store: Store[dict[str, dict[str, Any]]] = Store(hass, _STORE_VERSION, f"{DOMAIN}_tmdb_details")
+        self._details: dict[str, dict[str, Any]] = {}
         self._disabled = False
 
     async def async_load(self) -> None:
         self._cache = await self._store.async_load() or {}
+        self._details = await self._details_store.async_load() or {}
 
     def poster_url(self, tmdb_id: int | None) -> str | None:
         path = self._cache.get(str(tmdb_id)) if tmdb_id is not None else None
@@ -94,3 +105,61 @@ class TmdbClient:
                 break
         if changed:
             self._store.async_delay_save(lambda: self._cache, 10)
+
+    async def async_details(self, show_ids: list[int], movie_ids: list[int]) -> dict[str, dict[str, Any]]:
+        """Episodes aired and runtimes for `tv:<id>` / `movie:<id>`, cached on disk.
+
+        Whatever is missing or out of date is fetched now (a bounded number per refresh); anything
+        that can't be fetched keeps its last known value, or is left out.
+        """
+        wanted = [(f"tv:{i}", f"/tv/{i}") for i in show_ids] + [(f"movie:{i}", f"/movie/{i}") for i in movie_ids]
+        today = date.today()
+
+        def fresh(key: str) -> bool:
+            entry = self._details.get(key)
+            if entry is None:
+                return False
+            if key.startswith("movie:"):
+                return True
+            try:
+                return date.fromisoformat(entry.get("day", "")) + timedelta(days=_SHOW_DETAILS_DAYS) > today
+            except ValueError:
+                return False
+
+        todo = [w for w in wanted if not fresh(w[0])][:_DETAILS_PER_REFRESH]
+        if todo and not self._disabled:
+            headers, params = _auth(self._api_key)
+            gate = asyncio.Semaphore(_DETAILS_CONCURRENCY)
+
+            async def fetch(key: str, path: str) -> None:
+                if self._disabled:
+                    return
+                async with gate:
+                    try:
+                        async with self._session.get(
+                            f"{TMDB_API_BASE}{path}", headers=headers, params=params, timeout=aiohttp.ClientTimeout(total=15)
+                        ) as resp:
+                            if resp.status in (401, 403):
+                                LOGGER.warning("TMDB rejected the API key; posters and runtimes are turned off until it is fixed")
+                                self._disabled = True
+                                return
+                            if resp.status == 404:
+                                self._details[key] = {"day": today.isoformat()}
+                                return
+                            if resp.status != 200:
+                                return
+                            body = await resp.json(content_type=None)
+                    except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+                        LOGGER.debug("TMDB lookup %s failed: %s", path, err)
+                        return
+                info = tmdb_tv_info(body) if key.startswith("tv:") else tmdb_movie_info(body)
+                self._details[key] = {**(info or {}), "day": today.isoformat()}
+
+            await asyncio.gather(*(fetch(key, path) for key, path in todo))
+            self._details_store.async_delay_save(lambda: self._details, 10)
+
+        return {
+            key: {k: v for k, v in self._details[key].items() if k in ("episodes", "runtime") and v is not None}
+            for key, _ in wanted
+            if key in self._details
+        }

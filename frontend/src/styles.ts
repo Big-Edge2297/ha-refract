@@ -327,18 +327,6 @@ export const cardStyles = css`
   .finish-big {
     margin-top: 4px;
   }
-  .finish-hours {
-    margin-top: 10px;
-    font-size: 15px;
-    color: var(--secondary-text-color);
-  }
-  .finish-note {
-    margin-top: 8px;
-    font-size: 12px;
-    line-height: 1.4;
-    color: var(--secondary-text-color);
-    opacity: 0.85;
-  }
   .finish-rows {
     margin-top: 10px;
   }
@@ -354,11 +342,6 @@ export const cardStyles = css`
   }
   .finish-name {
     font-size: 15px;
-  }
-  .finish-sub {
-    margin-top: 2px;
-    font-size: 12px;
-    color: var(--secondary-text-color);
   }
   .finish-time {
     flex: none;

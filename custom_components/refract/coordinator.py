@@ -17,6 +17,7 @@ from .analytics import (
     average_movie_minutes,
     build_backlog,
     build_finish,
+    finish_lookups,
     busiest_day,
     daily_counts,
     iter_episode_watches,
@@ -192,6 +193,12 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 },
             }
 
+        # Episode counts and runtimes for "Still to finish" that Refract's library doesn't give
+        finish_details: dict[str, dict[str, Any]] = {}
+        if self.tmdb and library:
+            show_ids, movie_ids = finish_lookups(library)
+            finish_details = await self.tmdb.async_details(show_ids, movie_ids)
+
         anime_titles = {
             str(i.get("title")).lower() for i in library if i.get("is_anime") and i.get("title")
         }
@@ -207,7 +214,11 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "posters": posters,
             "backlog": build_backlog(up_next, posters, per_episode),
             "finish": build_finish(
-                library, up_next, per_episode or per_item, average_movie_minutes(flat) or per_item
+                library,
+                up_next,
+                per_episode or per_item,
+                average_movie_minutes(flat) or per_item,
+                finish_details,
             ),
             "analytics": analytics,
             "history_enabled": bool(self.config_entry.options.get(CONF_FETCH_HISTORY, True)),

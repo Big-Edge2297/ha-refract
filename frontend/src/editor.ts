@@ -68,12 +68,12 @@ const SCHEMA = [
     name: "",
     schema: [
       { name: "layout", selector: select([option("full", "Full"), option("compact", "Compact")]) },
-      { name: "library_style", selector: select([option("bar", "Compact bar"), option("list", "Breakdown list")]) },
-      { name: "watch_time_style", selector: select([option("bar", "Compact bar"), option("list", "Breakdown list")]) },
       {
         name: "duration_format",
         selector: select([option("days_hours", "Days and hours"), option("hours", "Hours only"), option("auto", "Automatic")]),
       },
+      { name: "watch_time_style", selector: select([option("bar", "Compact bar"), option("list", "Breakdown list")]) },
+      { name: "library_style", selector: select([option("bar", "Compact bar"), option("list", "Breakdown list")]) },
       { name: "queue_length", selector: { number: { min: 1, max: 20, mode: "box" } } },
       { name: "airing_length", selector: { number: { min: 1, max: 20, mode: "box" } } },
     ],

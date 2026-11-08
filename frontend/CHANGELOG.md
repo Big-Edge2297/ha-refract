@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3
+
+- **Changed:** *Still to finish* shows only the total and the movies / TV shows (and anime) counters: the hours line, the "Not counting N shows..." note and the episodes / started / not started line are removed
+- **Changed:** the card settings are ordered *Layout*, *Duration format*, *Watch time style*, *Library style*, then the catch-up and airing rows
+- Needs integration 0.4.3 for the corrected *Still to finish* figures (shows without an episode count now come from TMDB)
+
 ## 0.4.2
 
 - **Changed:** the *Still to finish* total looks exactly like *Total watch time*: same size and color, written out as 26 days 5 hours

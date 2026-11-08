@@ -2,6 +2,16 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.4.3
+
+### Fixed
+- **Still to finish** now matches the Refract app. Refract's library doesn't say how many episodes a show you haven't started has, so those shows were left out and the total came out far too low (about 82 hours instead of 630). The integration now looks up the aired episode count and the runtime on TMDB for these shows, and the real runtime for movies, and adds them up. Results are cached on disk, and episode counts are refreshed every few days as episodes air. **This needs the TMDB API key from the integration options**, the one that adds posters. Without a key, or for a title TMDB doesn't know, the old behavior stays: the show is counted but not timed
+- Started shows that Refract doesn't list under *Up next* use the TMDB episode count minus the episodes you've watched, when Refract gives a watched count
+
+### Changed
+- **Still to finish** shows only the total time and the movies and TV shows counters. The "630 hours of non-stop watching" line, the "Not counting N shows without an episode count" note and the episodes / started / not started line under TV shows are gone. The sensor still has all of them as attributes (including `unknown_episode_shows`)
+- Card settings reordered: *Layout* and *Duration format* on the first row, *Watch time style* and *Library style* on the second, *Catch-up rows* and *Airing rows* on the third
+
 ## 0.4.2
 
 ### Changed

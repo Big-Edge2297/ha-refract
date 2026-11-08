@@ -502,9 +502,9 @@ export class RefractStatsCard extends LitElement {
     const timeOf = (minutes?: number) => (minutes === undefined ? "" : durationText(minutes, fmt, lang));
 
     const rows = [
-      { key: "finish.movies", group: f.movies, color: "var(--c-movies)", shows: false },
-      { key: "finish.shows", group: f.shows, color: "var(--c-shows)", shows: true },
-      { key: "finish.anime", group: f.anime, color: "var(--c-anime)", shows: true },
+      { key: "finish.movies", group: f.movies, color: "var(--c-movies)" },
+      { key: "finish.shows", group: f.shows, color: "var(--c-shows)" },
+      { key: "finish.anime", group: f.anime, color: "var(--c-anime)" },
     ].filter((r) => r.group.count > 0);
 
     const total = f.minutes;
@@ -521,31 +521,13 @@ export class RefractStatsCard extends LitElement {
                           >
                         `,
                     )}
-                  </div>
-                  <div class="finish-hours">${many("finish.hours", Math.round(total / 60))}</div>`
+                  </div>`
               : nothing}
-            ${f.unknownShows > 0 ? html`<div class="finish-note">${many("finish.partial", f.unknownShows)}</div>` : nothing}
             <div class="finish-rows">
               ${rows.map((r) => {
                 const g = r.group;
-                const sub = r.shows
-                  ? [
-                      g.episodes ? many("finish.episodes", g.episodes) : "",
-                      [
-                        g.notStarted ? t(this.hass, "finish.not_started", { n: fmtNumber(g.notStarted, lang) }) : "",
-                        g.started ? t(this.hass, "finish.started", { n: fmtNumber(g.started, lang) }) : "",
-                      ]
-                        .filter(Boolean)
-                        .join(", "),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : "";
                 return html`<div class="finish-row">
-                  <div>
-                    <div class="finish-name">${many(r.key, g.count)}</div>
-                    ${sub ? html`<div class="finish-sub">${sub}</div>` : nothing}
-                  </div>
+                  <div class="finish-name">${many(r.key, g.count)}</div>
                   ${g.minutes !== undefined && g.minutes > 0
                     ? html`<span class="finish-time" style="color:${r.color}">${timeOf(g.minutes)}</span>`
                     : nothing}

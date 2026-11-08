@@ -131,14 +131,15 @@ const finishWith = (attributes: Record<string, unknown>, state = "100") =>
   makeHass({ states: { ...baseStates, [`sensor.${PREFIX}still_to_finish`]: { entity_id: "f", state, attributes } } });
 const none = { count: 0, minutes: 0, episodes: 0, not_started: 0, started: 0, unknown_episodes: 0 };
 
-test("still to finish shows the total, the hours and a row per kind, like the Refract app", async () => {
+test("still to finish shows just the total and a counter row per kind, with no extra wording", async () => {
   const el = await mount({});
   const panel = el.shadowRoot!.querySelector(".panel.finish")!;
   const t = panel.textContent!.replace(/\s+/g, " ").trim();
-  assert.match(t, /^Still to finish 26 days 5 hours 630 hours of non-stop watching 26 movies to finish/);
-  assert.doesNotMatch(t, /Estimate|shifts as episodes air/, "no estimate wording");
+  assert.equal(t, "Still to finish 26 days 5 hours 26 movies to finish 2 d 2 h 37 TV shows to finish 24 d 3 h");
+  assert.doesNotMatch(t, /non-stop|Estimate|Not counting|episodes|not started/, "no extra wording");
+  assert.equal(panel.querySelector(".finish-hours, .finish-note, .finish-sub"), null);
   const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
-  assert.deepEqual(rows, ["26 movies to finish 2 d 2 h", "37 TV shows to finish 701 episodes · 32 not started, 5 started 24 d 3 h"]);
+  assert.deepEqual(rows, ["26 movies to finish 2 d 2 h", "37 TV shows to finish 24 d 3 h"]);
   assert.match(panel.querySelectorAll(".finish-time")[0].getAttribute("style")!, /--c-movies/);
   assert.match(panel.querySelectorAll(".finish-time")[1].getAttribute("style")!, /--c-shows/);
 });
@@ -154,12 +155,10 @@ test("still to finish adds an anime row only when there is anime, and uses singu
   const el = await mount({}, hass);
   const panel = el.shadowRoot!.querySelector(".panel.finish")!;
   const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
-  assert.deepEqual(rows, ["1 movie to finish 1 h", "1 TV show to finish 1 episode · 1 not started 40 min", "2 anime to finish 24 episodes · 2 started 10 h"]);
-  assert.doesNotMatch(panel.textContent!, /Estimate/, "exact runtimes aren't called an estimate");
-  assert.match(panel.textContent!, /12 hours of non-stop watching/);
+  assert.deepEqual(rows, ["1 movie to finish 1 h", "1 TV show to finish 40 min", "2 anime to finish 10 h"]);
 });
 
-test("still to finish says so when episode counts are missing instead of hiding the gap", async () => {
+test("still to finish stays quiet about shows without an episode count", async () => {
   const hass = finishWith({
     movies: { count: 0, minutes: 0 },
     shows: { ...none, count: 3, started: 1, not_started: 2, episodes: 6, unknown_episodes: 2, minutes: 240 },
@@ -168,8 +167,8 @@ test("still to finish says so when episode counts are missing instead of hiding 
     unknown_episode_shows: 2,
   }, "240");
   const t = text(await mount({}, hass));
-  assert.match(t, /Not counting 2 shows without an episode count\./);
-  assert.match(t, /3 TV shows to finish 6 episodes · 2 not started, 1 started 4 h/);
+  assert.doesNotMatch(t, /Not counting|without an episode count/);
+  assert.match(t, /3 TV shows to finish 4 h/);
 });
 
 test("still to finish copes with no time data, nothing left, a missing sensor and its switch", async () => {
@@ -218,6 +217,19 @@ test("the editor offers the watch time style and the still to finish switch", as
   const walk = (schema: any[]) => schema.forEach((f) => (f.schema ? walk(f.schema) : names.push(f.name)));
   walk(editor.shadowRoot.querySelector("ha-form").schema);
   assert.ok(names.includes("watch_time_style") && names.includes("show_still_to_finish") && names.includes("library_style"));
+});
+
+test("the editor lists the settings in rows: layout and duration, watch time and library style, then the row counts", async () => {
+  const editor = document.createElement("refract-stats-card-editor") as any;
+  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY });
+  editor.hass = makeHass();
+  document.body.appendChild(editor);
+  await editor.updateComplete;
+  const grid = editor.shadowRoot.querySelector("ha-form").schema.find((f: any) => f.type === "grid");
+  assert.deepEqual(
+    grid.schema.map((f: any) => f.name),
+    ["layout", "duration_format", "watch_time_style", "library_style", "queue_length", "airing_length"],
+  );
 });
 
 test("sections appear in the designed order", async () => {

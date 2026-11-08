@@ -87,12 +87,12 @@ Every section has its own switch (`show_average`, `show_last_7_days`, `show_catc
 
 ### Posters (optional)
 
-Refract's API doesn't include images, so posters come from [TMDB](https://www.themoviedb.org):
+Refract's API doesn't include images or episode counts for shows you haven't started, so posters and the *Still to finish* figures come from [TMDB](https://www.themoviedb.org):
 
 1. Create a free account and get an API key at [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api). Either the v3 API key or the v4 read access token works.
 2. Paste it into the **TMDB API key** option.
 
-Each show is looked up once and the result is cached on disk. Posters are loaded from `image.tmdb.org` by your browser, and your key stays in Home Assistant. Without a key the card simply shows no posters.
+Each show is looked up once for its poster, and the episode counts and runtimes for *Still to finish* are looked up and cached too (episode counts are refreshed every few days). Everything is cached on disk. Posters are loaded from `image.tmdb.org` by your browser, and your key stays in Home Assistant. Without a key the card simply shows no posters.
 
 *This product uses the TMDB API but is not endorsed or certified by TMDB.*
 
@@ -106,7 +106,7 @@ Each show is looked up once and the result is cached on disk. Posters are loaded
 | `calendar.*_upcoming_episodes` | library |
 | `todo.*_watchlist` (items can be removed) | library |
 | `sensor.*_shows_waiting`, `sensor.*_next_up` (with `poster_url` when a TMDB key is set) | history |
-| `sensor.*_still_to_finish` (estimated time left for movies and shows not finished yet, with counts, episodes and started / not started per kind) | library |
+| `sensor.*_still_to_finish` (estimated time left for movies and shows not finished yet, with counts, episodes and started / not started per kind; needs the TMDB key for shows you haven't started) | library |
 | `sensor.*_catch_up` (aired episodes waiting across all shows, per-show counts and next episode, estimated minutes) | history |
 | `sensor.*_last_7_days` (episodes and movies per day, busiest day) | history + fetch watch history |
 | `sensor.*_average_per_week` (estimated hours per week, change against the 4 weeks before) | history + fetch watch history |
