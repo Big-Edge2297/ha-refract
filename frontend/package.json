@@ -1,6 +1,6 @@
 {
   "name": "refract-stats-card",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "Dashboard card bundled with the Refract Home Assistant integration",
   "type": "module",
   "private": true,

@@ -57,10 +57,10 @@ test("renders the hero with human durations", async () => {
 test("library status bar and watch-time split", async () => {
   const el = await mount({});
   const t = text(el);
-  assert.match(t, /Library Completed 803/);
-  assert.match(t, /Up to date 23/);
-  assert.match(t, /In progress 3/);
-  assert.match(t, /Watchlist 63/);
+  assert.match(t, /Library Watched 803/);
+  assert.match(t, /Up to Date 23/);
+  assert.match(t, /Watching 3/);
+  assert.match(t, /Plan to Watch 63/);
   assert.match(t, /Other 4/);
   assert.equal(el.shadowRoot!.querySelector("svg.donut"), null, "the donut is gone");
   assert.match(t, /206 d 23 h/);
@@ -79,9 +79,9 @@ function withStatuses(byStatus: Record<string, number>) {
 test("library shows every status Refract reports, including on hold and dropped", async () => {
   const el = await mount({}, withStatuses({ completed: 803, up_to_date: 23, in_progress: 3, planned: 64, on_hold: 2, dropped: 2 }));
   const t = text(el);
-  assert.match(t, /Completed 803/);
-  assert.match(t, /Watchlist 64/);
-  assert.match(t, /On hold 2/);
+  assert.match(t, /Watched 803/);
+  assert.match(t, /Plan to Watch 64/);
+  assert.match(t, /On Hold 2/);
   assert.match(t, /Dropped 2/);
   assert.doesNotMatch(t, /Other/);
   assert.equal(el.shadowRoot!.querySelectorAll(".status-bar > span").length, 6);
@@ -93,15 +93,43 @@ test("library shows every status Refract reports, including on hold and dropped"
 test("library statuses: aliases merge, empty ones are skipped and unknown ones get a readable name", async () => {
   const el = await mount({}, withStatuses({ completed: 5, paused: 1, on_hold: 2, never: 0, "waiting-room": 3 }));
   const t = text(el);
-  assert.match(t, /Completed 5/);
-  assert.match(t, /On hold 3/, "paused and on_hold are the same status");
+  assert.match(t, /Watched 5/);
+  assert.match(t, /On Hold 3/, "paused and on_hold are the same status");
   assert.match(t, /Waiting room 3/);
   assert.doesNotMatch(t, /Never/);
 });
 
+test("library list style mirrors the Refract app's breakdown, with its wording and percentages", async () => {
+  const el = await mount(
+    { library_style: "list" },
+    withStatuses({ completed: 802, up_to_date: 23, in_progress: 3, planned: 64, on_hold: 2, dropped: 2 }),
+  );
+  const root = el.shadowRoot!;
+  const rows = [...root.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
+  assert.deepEqual(rows, ["Watched 802 90%", "Up to Date 23 3%", "Watching 3 0%", "Plan to Watch 64 7%", "On Hold 2 0%", "Dropped 2 0%"]);
+  assert.equal(root.querySelectorAll(".status-bar > span").length, 6, "the bar stays on top");
+  assert.equal(root.querySelector(".status-legend"), null, "no legend in list style");
+  const dots = [...root.querySelectorAll(".stat-dot")].map((d) => d.getAttribute("style"));
+  assert.match(dots[0]!, /--c-completed/);
+  assert.match(dots[5]!, /--c-dropped/);
+});
+
+test("library list style also works without per-status data (older integration)", async () => {
+  const el = await mount({ library_style: "list" });
+  const rows = [...el.shadowRoot!.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
+  assert.equal(rows[0], "Watched 803 90%");
+  assert.match(rows[rows.length - 1], /^Other 4 /);
+});
+
+test("the library stays a compact bar with a legend by default", async () => {
+  const el = await mount({});
+  assert.ok(el.shadowRoot!.querySelector(".status-legend"));
+  assert.equal(el.shadowRoot!.querySelector(".stat-row"), null);
+});
+
 test("sections appear in the designed order", async () => {
   const t = text(await mount({ show_actions: false }));
-  const order = ["Total watch time", "Watch time TV shows", "Library Completed", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
+  const order = ["Total watch time", "Watch time TV shows", "Library Watched", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
   const at = order.map((label) => t.indexOf(label));
   assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
   assert.deepEqual([...at].sort((x, y) => x - y), at, "in order");
@@ -113,7 +141,7 @@ test("section_order rearranges the sections", async () => {
     section_order: ["airing", "next_up", "hero", "average", "library"],
   });
   const t = text(el);
-  const labels = ["Airing this week", "Next up", "Total watch time", "Average per week", "Library Completed", "Watch time TV shows", "Streak", "Last 7 days", "Catch-up backlog"];
+  const labels = ["Airing this week", "Next up", "Total watch time", "Average per week", "Library Watched", "Watch time TV shows", "Streak", "Last 7 days", "Catch-up backlog"];
   const at = labels.map((label) => t.indexOf(label));
   assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
   assert.deepEqual([...at].sort((x, y) => x - y), at, "listed sections first, the rest in the default order");
@@ -228,6 +256,23 @@ test("last 7 days: one bar per day, today marked, busiest day named, totals in t
   assert.match(text(el), /Episodes 8 Movies 3/);
   const tallest = Math.max(...[...root.querySelectorAll<HTMLElement>(".bar")].map((b) => parseInt(b.style.height)));
   assert.equal(tallest, 84, "the busiest day fills the chart");
+});
+
+test("last 7 days shows the episodes watched above each bar", async () => {
+  const el = await mount({});
+  const counts = [...el.shadowRoot!.querySelectorAll(".day")].map((d) => d.querySelector(".day-count")?.textContent?.trim() ?? "");
+  assert.deepEqual(counts, ["1", "", "2", "3", "", "2", ""], "episodes only; days without episodes show nothing");
+  const day = el.shadowRoot!.querySelectorAll(".day")[3];
+  assert.ok(day.querySelector(".slot")!.firstElementChild!.classList.contains("day-count"), "the number sits above the bar");
+});
+
+test("average per week: items line sits in the middle and the trend is the last row of the tile", async () => {
+  const el = await mount({});
+  const tile = el.shadowRoot!.querySelector(".panel.average")!;
+  const kids = [...tile.children].map((c) => c.className.split(" ")[0]);
+  assert.deepEqual(kids, ["label", "metric", "avg-mid", "trend"]);
+  assert.match(tile.querySelector(".avg-mid")!.textContent!, /2\.8 episodes and movies a week/);
+  assert.match(tile.querySelector(".trend")!.textContent!, /▲ 12% vs previous 4 weeks/);
 });
 
 test("last 7 days with nothing watched says so and names no busiest day", async () => {
@@ -352,7 +397,7 @@ test("compact layout keeps hero, streak and next up only", async () => {
   assert.match(t, /Total watch time/);
   assert.match(t, /Streak/);
   assert.match(t, /Next up/);
-  assert.doesNotMatch(t, /Catch-up|Airing|Last 7 days|Average per week|Library Completed|Watch time Shows/);
+  assert.doesNotMatch(t, /Catch-up|Airing|Last 7 days|Average per week|Library Watched|Watch time Shows/);
 });
 
 test("section toggles hide sections", async () => {
@@ -360,7 +405,7 @@ test("section toggles hide sections", async () => {
     await mount({ show_hero: false, show_catchup: false, show_next_up: false, show_airing: false, show_last_7_days: false, show_average: false, show_streak: false }),
   );
   assert.doesNotMatch(t, /Total watch time|Catch-up|Next up|Airing|Last 7 days|Average per week|Streak/);
-  assert.match(t, /Completed 803/);
+  assert.match(t, /Watched 803/);
 });
 
 test("show_queue still hides the catch-up backlog, and show_catchup wins when both are set", async () => {
@@ -442,7 +487,8 @@ test("clicking a backlog show puts it in Next up and marks its episode", async (
   await click(el, rowFor(el, "Lupin")!);
   assert.match(nextTile(el), /Lupin 2021 S3 E1 · Chapter 1/);
   assert.match(nextTile(el), /11 of 20 aired episodes/);
-  assert.match(nextTile(el), /Back to up next/);
+  assert.doesNotMatch(nextTile(el), /Back to up next/, "no extra link in the tile");
+  assert.equal(el.shadowRoot!.querySelector(".next .link"), null);
   assert.equal(rowFor(el, "Lupin")!.getAttribute("aria-pressed"), "true");
 
   await click(el, el.shadowRoot!.querySelector(".action"));
@@ -463,12 +509,15 @@ test("the picked show stays in Next up and moves on to its next episode after ma
   assert.match(nextTile(el), /Lupin 2021 S3 E2 · Chapter 2/);
 });
 
-test("back to up next, clicking the row again, or finishing the show returns to the default", async () => {
+test("tapping the original show's row, the picked row again, or finishing the show returns to the default", async () => {
   const el = await mount({ show_actions: true });
+  assert.equal(rowFor(el, "Westworld")!.getAttribute("role"), null, "not tappable while it is the one shown");
   await click(el, rowFor(el, "Lupin")!);
-  await click(el, el.shadowRoot!.querySelector(".next .link.reset"));
+  assert.equal(rowFor(el, "Westworld")!.getAttribute("role"), "button", "tappable once another show took over");
+  await click(el, rowFor(el, "Westworld")!);
   assert.match(nextTile(el), /Westworld/);
-  assert.doesNotMatch(nextTile(el), /Back to up next/);
+  assert.equal(rowFor(el, "Westworld")!.getAttribute("role"), null, "back to the default, so it is not tappable again");
+  assert.equal(rowFor(el, "Lupin")!.getAttribute("aria-pressed"), "false");
 
   await click(el, rowFor(el, "Lupin")!);
   await click(el, rowFor(el, "Lupin")!);
@@ -576,7 +625,7 @@ test("re-renders only when a Refract entity changes", async () => {
   el.hass = { ...hass, states: { ...hass.states, [`sensor.${PREFIX}completed`]: { entity_id: "c", state: "804", attributes: {} } } };
   await el.updateComplete;
   assert.equal(renders, 1);
-  assert.match(text(el), /Completed 804/);
+  assert.match(text(el), /Watched 804/);
 });
 
 test("stub config picks the Refract next up sensor", () => {

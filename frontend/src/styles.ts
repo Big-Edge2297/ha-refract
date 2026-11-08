@@ -9,12 +9,12 @@ export const cardStyles = css`
     --c-shows: var(--refract-color-shows, #eb6834);
     --c-anime: var(--refract-color-anime, #1baf7a);
     --c-accent: var(--refract-color-accent, #6250d6);
-    --c-completed: var(--refract-color-completed, #2f9e44);
-    --c-up-to-date: var(--refract-color-up-to-date, var(--c-accent));
-    --c-watchlist: var(--refract-color-watchlist, #eda100);
-    --c-in-progress: var(--refract-color-in-progress, #e87ba4);
-    --c-on-hold: var(--refract-color-on-hold, #8a96a8);
-    --c-dropped: var(--refract-color-dropped, #d9534f);
+    --c-completed: var(--refract-color-completed, #6c5ce7);
+    --c-up-to-date: var(--refract-color-up-to-date, #1dbf73);
+    --c-watchlist: var(--refract-color-watchlist, #3b9ae1);
+    --c-in-progress: var(--refract-color-in-progress, #f6c453);
+    --c-on-hold: var(--refract-color-on-hold, #e57256);
+    --c-dropped: var(--refract-color-dropped, #d9393a);
     --track: var(--divider-color, rgba(127, 127, 127, 0.3));
     --tile-bg: var(--refract-tile-background, var(--secondary-background-color, rgba(127, 127, 127, 0.12)));
     --hero-font: var(--refract-hero-font, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif);
@@ -179,12 +179,19 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
     margin-right: 2px;
   }
+  .avg-mid {
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
   .avg-items {
     font-size: 13px;
     color: var(--secondary-text-color);
   }
+  /* sits on the bottom row, level with the streak's "Longest: ..." line */
   .trend {
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1.4;
     font-weight: 500;
     color: var(--secondary-text-color);
   }
@@ -247,9 +254,38 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
   }
 
+  /* library breakdown list (library_style: list) */
+  .status-bar.spaced {
+    margin-bottom: 6px;
+  }
+  .stat-row {
+    display: grid;
+    grid-template-columns: 10px 1fr auto 3.2em;
+    align-items: center;
+    column-gap: 12px;
+    padding: 9px 0;
+    font-size: 15px;
+  }
+  .stat-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .stat-count {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .stat-pct {
+    text-align: right;
+    font-size: 13px;
+    color: var(--secondary-text-color);
+    font-variant-numeric: tabular-nums;
+  }
+
   /* streak */
   .streak-foot {
     font-size: 12px;
+    line-height: 1.4;
     color: var(--secondary-text-color);
   }
   .dots {
@@ -473,12 +509,22 @@ export const cardStyles = css`
     gap: 6px;
   }
   .slot {
-    height: 84px;
+    height: 104px;
     width: 100%;
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+  }
+  .day-count {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
   }
   .bar {
+    align-self: stretch;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -582,9 +628,6 @@ export const cardStyles = css`
   }
   .link:focus-visible {
     outline: 2px solid var(--c-accent);
-  }
-  .link.reset {
-    margin: 0 0 0 auto;
   }
 
   /* airing this week */

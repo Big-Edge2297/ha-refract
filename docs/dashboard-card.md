@@ -10,7 +10,7 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 |---|---|---|
 | **Watch time** | Total time as days and hours, a library/movies/episodes watched summary, and the fun stat in a highlighted pill ("about 8.8 months of nonstop viewing") | profile stats |
 | **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares | profile stats |
-| **Library** | A status bar with a count for every status you use: completed, up to date, in progress, watchlist, on hold, dropped and any other status Refract adds | library |
+| **Library** | Every status you use, named and colored as in the Refract app: Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped (and any other status Refract adds). Choose a compact bar with a legend, or the full breakdown list with counts and percentages | library |
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
 | **Last 7 days** | Episodes and movies per day as stacked bars, with the busiest day named | watch history |
@@ -104,6 +104,7 @@ layout: compact
 | `entity` | | **Required.** Any entity of the Refract account |
 | `name` | from the device | Overrides the account name in the header |
 | `layout` | `full` | `full`, or `compact` (watch time, streak and next up only) |
+| `library_style` | `bar` | `bar` (a status bar with a legend) or `list` (the Refract app's status breakdown: a bar plus one row per status with its count and percentage; taller) |
 | `duration_format` | `days_hours` | `days_hours` (206 d 23 h), `hours` (4,967 h) or `auto` (picks the unit by size) |
 | `fun_stat` | `true` | Show the fun stat pill under the watch time |
 | `fun_stat_mode` | `rotate` | `rotate` (changes daily), `months`, `workweeks` or `lotr` |
@@ -112,7 +113,7 @@ layout: compact
 | `section_order` | see below | Order of the sections under the header (list of section names) |
 | `show_hero` | `true` | Watch time summary and fun stat |
 | `show_watch_time` | `true` | Watch time split |
-| `show_library` | `true` | Library status bar |
+| `show_library` | `true` | Library (status bar or breakdown list, see `library_style`) |
 | `show_streak` | `true` | Streak |
 | `show_average` | `true` | Average per week |
 | `show_last_7_days` | `true` | Last 7 days chart and busiest day |
@@ -154,7 +155,7 @@ The button calls the integration's `refract.mark_episode_watched` action. It sta
 
 ### Marking an episode of another show
 
-Next up normally shows one show. To mark an episode of a different show you're watching, tap its row in the **Catch-up backlog**. The Next up tile switches to that show and its next episode, and the **Mark watched** button works on it. After you mark it, the tile stays on that show and moves on to its following episode, so you can mark several in a row. Tap **Back to up next** (or the row again) to return to the default show. The tile also returns by itself once the show has nothing left in the backlog.
+Next up normally shows one show. To mark an episode of a different show you're watching, tap its row in the **Catch-up backlog**. The Next up tile switches to that show and its next episode, and the **Mark watched** button works on it. After you mark it, the tile stays on that show and moves on to its following episode, so you can mark several in a row. To return to the show the tile started with, tap its row in the backlog (it becomes tappable while another show is shown), or tap the picked row again. The tile also returns by itself once the show has nothing left in the backlog.
 
 Rows can be tapped only while **Next up** is shown, and only when the integration knows the show's next episode. The show already in Next up can't be tapped, because it is already there. The choice is not saved: reloading the dashboard returns to the default show. This needs integration 0.3.8 or newer for every row; with an older integration only the first few shows in the backlog can be picked.
 
@@ -191,7 +192,8 @@ Add one card per account and pick an entity from each.
 - **Last 7 days** counts the days Refract has on record. Episodes watched with no date recorded can't appear in it. The busiest day is the day with the most episodes and movies in those seven days (the latest day wins a tie).
 - **Watch history is refreshed hourly**, and straight after you mark something watched through Home Assistant. Turn it off in the integration options if you don't want the extra requests; the two sections that need it then disappear.
 - **The catch-up backlog** counts aired episodes you haven't watched across every show you're watching, including the one shown as next up. The time is an estimate from your average episode length.
-- **The library bar** lists every status that has at least one title, taken from the `by_status` attribute of the library total sensor (statuses are ordered completed, up to date, in progress, watchlist, on hold, dropped, then any others alphabetically; "paused" counts as on hold). If that attribute is missing, for example with an older integration version, the card shows the four main statuses plus **Other**, the difference between your library total and their sum, so the bar always adds up.
+- **The library** lists every status that has at least one title, taken from the `by_status` attribute of the library total sensor. Statuses are named as in the Refract app (Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped) and ordered the same way; any other status Refract adds follows with a readable name, and "paused" counts as on hold. Percentages in the list are each status's share of the titles listed. If the `by_status` attribute is missing, for example with an older integration version, the card shows the four main statuses plus **Other**, the difference between your library total and their sum, so the bar always adds up. The app's *Rewatched* line isn't shown, because the integration doesn't have that number yet.
+- **Last 7 days** shows the number of episodes watched above each bar (days with no episodes show no number); movies are the blue part of the bar.
 - **Episodes watched** in the summary is TV episodes plus anime episodes.
 - **The fun stat** needs at least a day of watch time. In `rotate` mode it changes once a day.
 
@@ -203,7 +205,7 @@ The card follows your Home Assistant theme. These optional theme variables overr
 |---|---|
 | `--refract-color-movies`, `--refract-color-shows`, `--refract-color-anime` | Category colors |
 | `--refract-color-accent` | Progress, streak, next up |
-| `--refract-color-completed`, `--refract-color-up-to-date`, `--refract-color-watchlist`, `--refract-color-in-progress`, `--refract-color-on-hold`, `--refract-color-dropped` | Library status bar |
+| `--refract-color-completed`, `--refract-color-up-to-date`, `--refract-color-in-progress`, `--refract-color-watchlist`, `--refract-color-on-hold`, `--refract-color-dropped` | Library colors for Watched, Up to Date, Watching, Plan to Watch, On Hold and Dropped. The defaults match the Refract app |
 | `--refract-tile-background` | Summary tiles |
 | `--refract-hero-font` | The large watch time numbers |
 

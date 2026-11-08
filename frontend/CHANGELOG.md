@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.9
+
+- **New:** `library_style: list` shows the library like the Refract app's status breakdown (bar plus one row per status with count and percentage); `bar` stays the default
+- **New:** episodes watched are shown above each bar in *Last 7 days*
+- **Changed:** library statuses use the app's wording and colors (Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped)
+- **Changed:** in *Average per week* the percentage sits on the bottom row beside the streak's *Longest* line, and the episodes-and-movies line is centered
+- **Changed:** removed *Back to up next*; the original show's row in the backlog takes you back while another show is pinned
+
 ## 0.3.8
 
 - **New:** tap a show in the catch-up backlog to show it in Next up and mark its next episode watched. **Back to up next** returns to the default; the tile follows the show to its next episode after marking

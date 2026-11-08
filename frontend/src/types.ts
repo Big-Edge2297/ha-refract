@@ -41,6 +41,8 @@ export type StreakStyle = "gauge" | "dots";
 export type DurationFormat = "days_hours" | "hours" | "auto";
 export type FunStatMode = "rotate" | "months" | "workweeks" | "lotr";
 export type Layout = "full" | "compact";
+/** `bar`: compact status bar with a legend. `list`: the breakdown the Refract app shows, one row per status. */
+export type LibraryStyle = "bar" | "list";
 
 /** Sections that can be shown, hidden and reordered. The header always stays on top. */
 export const SECTION_IDS = [
@@ -80,6 +82,7 @@ export interface RefractCardConfig {
   /** Overrides the account name shown in the header. */
   name?: string;
   layout?: Layout;
+  library_style?: LibraryStyle;
   duration_format?: DurationFormat;
   fun_stat?: boolean;
   fun_stat_mode?: FunStatMode;
@@ -120,6 +123,7 @@ export interface RefractCardConfig {
 
 export const DEFAULT_CONFIG = {
   layout: "full",
+  library_style: "bar",
   duration_format: "days_hours",
   fun_stat: true,
   fun_stat_mode: "rotate",

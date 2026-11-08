@@ -2,6 +2,17 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.3.9
+
+### Added
+- **Library breakdown list**: new card option `library_style: list` shows the library like the Refract app's *Status breakdown*, with a bar plus one row per status with its count and percentage. The default `bar` keeps the compact bar with a legend. Both are selectable in the card settings
+- **Last 7 days** shows the number of episodes watched above each bar
+
+### Changed
+- Library statuses use the Refract app's names and colors: **Watched**, **Up to Date**, **Watching**, **Plan to Watch**, **On Hold**, **Dropped** (previously Completed, Up to date, In progress, Watchlist, On hold). Custom `--refract-color-*` values keep working
+- **Average per week**: the change against the previous 4 weeks moves to the bottom row of the tile, level with the streak's *Longest* line, and the episodes-and-movies line is centered between the hours and that row
+- **Catch-up backlog**: the *Back to up next* link is gone. While another show is in *Next up*, tap the original show's row in the backlog (or the picked row again) to go back
+
 ## 0.3.8
 
 ### Added

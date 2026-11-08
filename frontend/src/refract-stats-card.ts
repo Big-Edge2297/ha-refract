@@ -289,17 +289,36 @@ export class RefractStatsCard extends LitElement {
           .map(([k, v, color]): [string, number, string] => [t(this.hass, k), v as number, color]);
     if (!statuses.length) return nothing;
 
+    const list = this._cfg.library_style === "list";
+    const total = statuses.reduce((sum, [, v]) => sum + v, 0);
+    const bar = html`<div
+      class="status-bar ${list ? "spaced" : ""}"
+      role="img"
+      aria-label=${statuses.map(([label, v]) => `${label} ${v}`).join(", ")}
+    >
+      ${statuses.map(([, v, color]) => html`<span style="flex:${v} 1 0; background:${color}"></span>`)}
+    </div>`;
+
     return html`<div class="panel library">
-      <div class="label" style="margin-bottom:10px">${t(this.hass, "library.title")}</div>
-      <div class="status-bar" role="img" aria-label=${statuses.map(([label, v]) => `${label} ${v}`).join(", ")}>
-        ${statuses.map(([, v, color]) => html`<span style="flex:${v} 1 0; background:${color}"></span>`)}
-      </div>
-      <div class="status-legend">
-        ${statuses.map(
-          ([label, v, color]) =>
-            html`<span><span class="swatch sm" style="background:${color}"></span>${label} ${fmtNumber(v, lang)}</span>`,
-        )}
-      </div>
+      <div class="label" style="margin-bottom:${list ? 12 : 10}px">${t(this.hass, "library.title")}</div>
+      ${bar}
+      ${list
+        ? html`<div class="stat-list">
+            ${statuses.map(
+              ([label, v, color]) => html`<div class="stat-row">
+                <span class="stat-dot" style="background:${color}"></span>
+                <span class="stat-name">${label}</span>
+                <b class="stat-count">${fmtNumber(v, lang)}</b>
+                <span class="stat-pct">${total ? Math.round((v / total) * 100) : 0}%</span>
+              </div>`,
+            )}
+          </div>`
+        : html`<div class="status-legend">
+            ${statuses.map(
+              ([label, v, color]) =>
+                html`<span><span class="swatch sm" style="background:${color}"></span>${label} ${fmtNumber(v, lang)}</span>`,
+            )}
+          </div>`}
     </div>`;
   }
 
@@ -371,13 +390,15 @@ export class RefractStatsCard extends LitElement {
       <div class="metric" title=${a.estimated && a.hours !== undefined ? t(this.hass, "avg.estimated") : ""}>
         ${a.hours !== undefined && a.estimated ? html`<span class="approx">~</span>` : nothing}${value}
       </div>
-      ${a.hours !== undefined && a.itemsPerWeek !== undefined
-        ? html`<div class="avg-items">
-            ${a.itemsPerWeek === 1
-              ? t(this.hass, "avg.items_line_one")
-              : t(this.hass, "avg.items_line", { n: fmtNumber(a.itemsPerWeek, lang, 1) })}
-          </div>`
-        : nothing}
+      <div class="avg-mid">
+        ${a.hours !== undefined && a.itemsPerWeek !== undefined
+          ? html`<div class="avg-items">
+              ${a.itemsPerWeek === 1
+                ? t(this.hass, "avg.items_line_one")
+                : t(this.hass, "avg.items_line", { n: fmtNumber(a.itemsPerWeek, lang, 1) })}
+            </div>`
+          : nothing}
+      </div>
       ${trend}
     </div>`;
   }
@@ -404,6 +425,7 @@ export class RefractStatsCard extends LitElement {
           const height = total === 0 ? 3 : Math.max(8, Math.round((total / max) * SLOT));
           return html`<div class="day ${d.date === today ? "today" : ""}">
             <div class="slot">
+              ${d.episodes > 0 ? html`<span class="day-count">${fmtNumber(d.episodes, lang)}</span>` : nothing}
               <div class="bar ${total === 0 ? "empty" : ""}" style="height:${height}px">
                 ${d.movies ? html`<span class="seg movies" style="flex:${d.movies} 1 0"></span>` : nothing}
                 ${d.episodes ? html`<span class="seg shows" style="flex:${d.episodes} 1 0"></span>` : nothing}
@@ -482,10 +504,11 @@ export class RefractStatsCard extends LitElement {
     return picked;
   }
 
-  private _selectShow(x: CatchupShow): void {
+  private _selectShow(x: CatchupShow, defaultKey?: string): void {
     if (!x.next) return;
     const key = showKey(x);
-    this._selected = this._selected === key ? undefined : key;
+    // Tapping the show the tile started with, or the one already shown, goes back to the default.
+    this._selected = key === defaultKey || this._selected === key ? undefined : key;
     this._clearAction();
     this.requestUpdate();
     if (this._selected) {
@@ -494,12 +517,6 @@ export class RefractStatsCard extends LitElement {
         tile?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
       });
     }
-  }
-
-  private _clearSelection(): void {
-    this._selected = undefined;
-    this._clearAction();
-    this.requestUpdate();
   }
 
   private _clearAction(): void {
@@ -533,9 +550,6 @@ export class RefractStatsCard extends LitElement {
         <div class="next-head">
           <span class="label">${t(this.hass, "next.title")}</span>
           ${item.isAnime ? html`<span class="badge">${t(this.hass, "badge.anime")}</span>` : nothing} ${this._badge(item)}
-          ${picked
-            ? html`<button class="link reset" @click=${() => this._clearSelection()}>${t(this.hass, "next.reset")}</button>`
-            : nothing}
         </div>
         <div class="next-main">
           <div>
@@ -692,8 +706,9 @@ export class RefractStatsCard extends LitElement {
 
   private _catchupRow(x: CatchupShow, max: number, posters: boolean, lang: string, defaultKey?: string): TemplateResult {
     const key = showKey(x);
-    // The default show is already in the Next up tile, so only the others can be picked.
-    const pickable = this._cfg.show_next_up && !!x.next && key !== defaultKey;
+    // The default show is already in the Next up tile, so it only becomes tappable (to go back to it)
+    // while another show has taken over the tile.
+    const pickable = this._cfg.show_next_up && !!x.next && (key !== defaultKey || this._selected !== undefined);
     const selected = pickable && this._selected === key;
     const body = html`${posters ? this._poster(x.posterUrl, x.title, "sm") : nothing}
       <span class="c-name" title=${x.title}>${x.title}</span>
@@ -706,11 +721,11 @@ export class RefractStatsCard extends LitElement {
       tabindex="0"
       aria-pressed=${selected ? "true" : "false"}
       title=${t(this.hass, "catchup.pick", { title: x.title })}
-      @click=${() => this._selectShow(x)}
+      @click=${() => this._selectShow(x, defaultKey)}
       @keydown=${(ev: KeyboardEvent) => {
         if (ev.key === "Enter" || ev.key === " ") {
           ev.preventDefault();
-          this._selectShow(x);
+          this._selectShow(x, defaultKey);
         }
       }}
     >

@@ -9,6 +9,7 @@ const LABELS: Record<string, string> = {
   entity: "Refract entity",
   name: "Name (optional)",
   layout: "Layout",
+  library_style: "Library style",
   duration_format: "Duration format",
   queue_length: "Catch-up rows",
   airing_length: "Airing rows",
@@ -64,6 +65,7 @@ const SCHEMA = [
     name: "",
     schema: [
       { name: "layout", selector: select([option("full", "Full"), option("compact", "Compact")]) },
+      { name: "library_style", selector: select([option("bar", "Compact bar"), option("list", "Breakdown list")]) },
       {
         name: "duration_format",
         selector: select([option("days_hours", "Days and hours"), option("hours", "Hours only"), option("auto", "Automatic")]),
