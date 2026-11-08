@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- **Fixed:** the *Most watched* section never appeared because the integration's sensor was called `most_watched` instead of `top_picks`. The card is unchanged; update the integration and restart
+
 ## 0.5.0
 
 - **New:** the *Most watched* section (top actor, director, writer, decade, genre and country with photos, a flag and icons), built from TMDB. New options `show_top_picks` and `top_picks_items`

@@ -242,7 +242,7 @@ SENSORS: tuple[RefractSensorDescription, ...] = (
     ),
     RefractSensorDescription(
         key="top_picks",
-        name="Most watched",
+        name="Top picks",  # the entity id comes from the name: sensor.*_top_picks
         icon="mdi:podium-gold",
         scope=SCOPE_LIBRARY,
         native_unit_of_measurement="titles",
