@@ -2,6 +2,14 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.4.2
+
+### Changed
+- **Still to finish**: the total now looks exactly like *Total watch time*: same size and color, with the units written out as **26 days 5 hours** instead of 26d 5h
+- **Still to finish** moves below *Library* and above *Streak* in the default order. Cards that set their own `section_order` keep it
+- **Still to finish** no longer shows the "Estimate: shifts as episodes air and runtime data improves" note. The note about shows that are missing an episode count stays
+- README: the card screenshot now shows *Streak* and *Average per week* side by side, as they appear in a normal-width dashboard card, and follows the new section order
+
 ## 0.4.1
 
 ### Changed

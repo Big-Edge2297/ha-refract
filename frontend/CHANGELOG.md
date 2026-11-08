@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2
+
+- **Changed:** the *Still to finish* total looks exactly like *Total watch time*: same size and color, written out as 26 days 5 hours
+- **Changed:** *Still to finish* moves below *Library* and above *Streak* in the default section order (a configured `section_order` is unaffected)
+- **Removed:** the "Estimate: shifts as episodes air..." note under the *Still to finish* total
+
 ## 0.4.1
 
 - **Changed:** the *Still to finish* total uses the same font as *Total watch time*, written as 26d 5h

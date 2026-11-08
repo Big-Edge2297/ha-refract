@@ -135,7 +135,8 @@ test("still to finish shows the total, the hours and a row per kind, like the Re
   const el = await mount({});
   const panel = el.shadowRoot!.querySelector(".panel.finish")!;
   const t = panel.textContent!.replace(/\s+/g, " ").trim();
-  assert.match(t, /^Still to finish 26d 5h 630 hours of non-stop watching Estimate: shifts as episodes air and runtime data improves\./);
+  assert.match(t, /^Still to finish 26 days 5 hours 630 hours of non-stop watching 26 movies to finish/);
+  assert.doesNotMatch(t, /Estimate|shifts as episodes air/, "no estimate wording");
   const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
   assert.deepEqual(rows, ["26 movies to finish 2 d 2 h", "37 TV shows to finish 701 episodes · 32 not started, 5 started 24 d 3 h"]);
   assert.match(panel.querySelectorAll(".finish-time")[0].getAttribute("style")!, /--c-movies/);
@@ -221,10 +222,45 @@ test("the editor offers the watch time style and the still to finish switch", as
 
 test("sections appear in the designed order", async () => {
   const t = text(await mount({ show_actions: false }));
-  const order = ["Total watch time", "Watch time TV shows", "Still to finish", "Library Watched", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
+  const order = ["Total watch time", "Watch time TV shows", "Library Watched", "Still to finish", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
   const at = order.map((label) => t.indexOf(label));
   assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
   assert.deepEqual([...at].sort((x, y) => x - y), at, "in order");
+});
+
+test("still to finish total looks exactly like Total watch time: same markup, written-out units, no accent color", async () => {
+  const el = await mount({});
+  const hero = el.shadowRoot!.querySelector(".hero-main .big")!;
+  const finish = el.shadowRoot!.querySelector(".panel.finish .big")!;
+  const norm = (n: Element) => n.textContent!.replace(/\s+/g, " ").trim();
+  assert.equal(norm(hero), "266 days 14 hours");
+  assert.equal(norm(finish), "26 days 5 hours");
+  const shape = (n: Element) => [...n.querySelectorAll(".part")].map((p) => [...p.children].map((c) => c.className.trim()).join("|"));
+  assert.deepEqual(shape(finish), shape(hero), "same part, number and unit structure");
+  const css = String((RefractStatsCard as any).styles.cssText);
+  assert.doesNotMatch(css, /\.finish-big\s+\.num/, "the numbers aren't recolored");
+  assert.doesNotMatch(css, /\.finish-big\s+\.unit/, "the units aren't resized");
+});
+
+test("still to finish says days and hours in the other duration formats too", async () => {
+  const hours = await mount({ duration_format: "hours" });
+  assert.equal(hours.shadowRoot!.querySelector(".panel.finish .big")!.textContent!.replace(/\s+/g, " ").trim().replace(/\d+/, "N"), "N hours");
+});
+
+test("by default still to finish sits below the library and above the streak", async () => {
+  const { resolveSectionOrder } = await import("../src/types");
+  const order = resolveSectionOrder(undefined);
+  assert.ok(order.indexOf("library") < order.indexOf("still_to_finish"));
+  assert.ok(order.indexOf("still_to_finish") < order.indexOf("streak"));
+  assert.equal(order.indexOf("still_to_finish") - order.indexOf("library"), 1, "right below the library");
+  assert.equal(order.indexOf("streak") - order.indexOf("still_to_finish"), 1, "right above the streak");
+});
+
+test("streak and average sit side by side by default", async () => {
+  const el = await mount({});
+  const rows = [...el.shadowRoot!.querySelectorAll(".grid")];
+  assert.equal(rows.length, 1);
+  assert.match(rows[0].textContent!, /Streak.*Average per week/s);
 });
 
 test("section_order rearranges the sections", async () => {
@@ -760,7 +796,7 @@ test("editor reorders sections with the arrows and keeps the YAML clean", async 
   editor.addEventListener("config-changed", (e: CustomEvent) => emitted.push(e.detail.config));
   (rows()[1].querySelectorAll("ha-icon-button")[0] as HTMLElement).click(); // move "Watch time split" up
   await editor.updateComplete;
-  assert.deepEqual(emitted[0].section_order.slice(0, 3), ["watch_time", "hero", "still_to_finish"]);
+  assert.deepEqual(emitted[0].section_order.slice(0, 3), ["watch_time", "hero", "library"]);
   assert.equal(emitted[0].entity, ENTITY);
   assert.match(rows()[0].textContent!, /Watch time split/);
 

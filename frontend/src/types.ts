@@ -50,8 +50,8 @@ export type WatchTimeStyle = BreakdownStyle;
 export const SECTION_IDS = [
   "hero",
   "watch_time",
-  "still_to_finish",
   "library",
+  "still_to_finish",
   "streak",
   "average",
   "last_7_days",

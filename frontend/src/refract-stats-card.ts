@@ -515,12 +515,15 @@ export class RefractStatsCard extends LitElement {
               ? html`<div class="big finish-big">
                     ${durationParts(total, fmt, lang).map(
                       (p, i) =>
-                        html`<span class="part"><span class="num ${i > 0 ? "second" : ""}">${p.value}</span><span class="unit">${p.short}</span></span> `,
+                        html`<span class="part"
+                            ><span class="num ${i > 0 ? "second" : ""}">${p.value}</span>
+                            <span class="unit">${t(this.hass, p.unit)}</span></span
+                          >
+                        `,
                     )}
                   </div>
                   <div class="finish-hours">${many("finish.hours", Math.round(total / 60))}</div>`
               : nothing}
-            ${f.estimated ? html`<div class="finish-note">${t(this.hass, "finish.estimate")}</div>` : nothing}
             ${f.unknownShows > 0 ? html`<div class="finish-note">${many("finish.partial", f.unknownShows)}</div>` : nothing}
             <div class="finish-rows">
               ${rows.map((r) => {

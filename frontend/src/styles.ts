@@ -323,19 +323,9 @@ export const cardStyles = css`
   }
 
   /* still to finish */
-  /* the total reuses the hero's .big numbers, so it has the same font; days and hours are short and attached */
+  /* the total reuses the hero's .big numbers unchanged, so it looks exactly like Total watch time */
   .finish-big {
     margin-top: 4px;
-    gap: 0 14px;
-  }
-  .finish-big .part {
-    gap: 2px;
-  }
-  .finish-big .num {
-    color: var(--c-accent);
-  }
-  .finish-big .unit {
-    font-size: 18px;
   }
   .finish-hours {
     margin-top: 10px;

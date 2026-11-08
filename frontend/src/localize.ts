@@ -35,7 +35,6 @@ const en: Dict = {
   "finish.title": "Still to finish",
   "finish.hours": "{n} hours of non-stop watching",
   "finish.hours_one": "1 hour of non-stop watching",
-  "finish.estimate": "Estimate: shifts as episodes air and runtime data improves.",
   "finish.partial": "Not counting {n} shows without an episode count.",
   "finish.partial_one": "Not counting 1 show without an episode count.",
   "finish.none": "Nothing left to finish",
