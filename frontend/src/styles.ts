@@ -254,8 +254,9 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
   }
 
-  /* library breakdown list (library_style: list) */
-  .status-bar.spaced {
+  /* breakdown lists (library_style / watch_time_style: list) */
+  .status-bar.spaced,
+  .stack.spaced {
     margin-bottom: 6px;
   }
   .stat-row {
@@ -319,6 +320,55 @@ export const cardStyles = css`
   .dot.open.today {
     border-style: dashed;
     border-color: var(--secondary-text-color);
+  }
+
+  /* still to finish */
+  .finish-total {
+    margin-top: 4px;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--c-accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .finish-hours {
+    margin-top: 10px;
+    font-size: 15px;
+    color: var(--secondary-text-color);
+  }
+  .finish-note {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--secondary-text-color);
+    opacity: 0.85;
+  }
+  .finish-rows {
+    margin-top: 10px;
+  }
+  .finish-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+  }
+  .finish-row + .finish-row {
+    border-top: 1px solid var(--divider-color);
+  }
+  .finish-name {
+    font-size: 15px;
+  }
+  .finish-sub {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+  }
+  .finish-time {
+    flex: none;
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 
   /* watch time */

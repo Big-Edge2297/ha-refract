@@ -192,6 +192,17 @@ SENSORS: tuple[RefractSensorDescription, ...] = (
         attrs_fn=lambda d: {k: v for k, v in d["backlog"].items() if k != "total"},
     ),
     RefractSensorDescription(
+        key="still_to_finish",
+        name="Still to finish",
+        icon="mdi:timer-sand",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement="min",
+        state_class=SensorStateClass.MEASUREMENT,
+        scope=SCOPE_LIBRARY,
+        value_fn=lambda d: d["finish"]["minutes"],
+        attrs_fn=lambda d: {k: v for k, v in d["finish"].items() if k != "minutes"},
+    ),
+    RefractSensorDescription(
         key="last_7_days",
         name="Last 7 days",
         icon="mdi:chart-bar",

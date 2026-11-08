@@ -2,6 +2,16 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.4.0
+
+### Added
+- **Still to finish**: a new section like the Refract app's *Still to finish* stat. It shows the estimated time left to watch everything you haven't finished (Plan to Watch, Watching and On Hold) as a total and in hours, with a row for movies and one for TV shows (and anime when you have some) showing how many titles, how many episodes, and how many shows are started or not started. It has its own switch, `show_still_to_finish`, and takes part in *Section order*
+- **Still to finish sensor**: `sensor.*_still_to_finish` (minutes, with counts, episodes and started / not started per kind in its attributes)
+- **Watch time breakdown list**: new card option `watch_time_style: list` shows the watch time split like the library list, a bar plus one row per kind with its time and percentage. The default `bar` keeps the compact bar with the percentage after each title. Both are selectable in the card settings
+
+### Notes
+- Episodes for shows you haven't started, and exact runtimes, depend on what Refract's API returns for your library. Where it doesn't, the card says how many shows are missing from the total, and times are estimated from your average runtime. Turn on debug logging for `custom_components.refract` to log which fields a library item has (names only)
+
 ## 0.3.9
 
 ### Added

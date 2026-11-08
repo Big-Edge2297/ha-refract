@@ -24,6 +24,7 @@
   <label>Width <input id="width" type="range" min="300" max="900" value="520" /> <span id="wv">520</span>px</label>
   <label>Layout <select id="layout"><option>full</option><option>compact</option></select></label>
   <label>Library <select id="libstyle"><option>bar</option><option>list</option></select></label>
+  <label>Watch time <select id="watchstyle"><option>bar</option><option>list</option></select></label>
   <label><input id="posters" type="checkbox" checked /> Posters (placeholder art)</label>
   <label>Duration <select id="dur"><option>days_hours</option><option>hours</option><option>auto</option></select></label>
   <label><input id="actions" type="checkbox" /> Mark watched button</label>
@@ -90,6 +91,12 @@
     e("stats_streak_current_days", 6), e("stats_streak_longest_days", 24),
     e("stats_watch_time_anime_minutes", 7322), e("stats_watch_time_movies_minutes", 78542),
     e("stats_watch_time_shows_minutes", 298044), e("stats_watch_time_total_minutes", 383908),
+    e("still_to_finish", 37770, {
+      movies: { count: 26, minutes: 3000 },
+      shows: { count: 37, minutes: 34770, episodes: 701, not_started: 32, started: 5, unknown_episodes: 0 },
+      anime: { count: 0, minutes: 0, episodes: 0, not_started: 0, started: 0, unknown_episodes: 0 },
+      estimated: true, unknown_episode_shows: 0,
+    }),
   ]);
 
   const day = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
@@ -140,7 +147,7 @@
     $("wv").textContent = $("width").value;
     card.setConfig({
       type: "custom:refract-stats-card", entity: `sensor.${P}next_up`,
-      layout: $("layout").value, library_style: $("libstyle").value, duration_format: $("dur").value,
+      layout: $("layout").value, library_style: $("libstyle").value, watch_time_style: $("watchstyle").value, duration_format: $("dur").value,
       show_actions: $("actions").checked,
     });
     card.hass = { ...hass, states: { ...states, ...dynamic($("posters").checked) } };

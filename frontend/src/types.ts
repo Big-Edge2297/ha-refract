@@ -41,13 +41,16 @@ export type StreakStyle = "gauge" | "dots";
 export type DurationFormat = "days_hours" | "hours" | "auto";
 export type FunStatMode = "rotate" | "months" | "workweeks" | "lotr";
 export type Layout = "full" | "compact";
-/** `bar`: compact status bar with a legend. `list`: the breakdown the Refract app shows, one row per status. */
-export type LibraryStyle = "bar" | "list";
+/** `bar`: compact bar with a legend. `list`: the breakdown the Refract app shows, one row per entry. */
+export type BreakdownStyle = "bar" | "list";
+export type LibraryStyle = BreakdownStyle;
+export type WatchTimeStyle = BreakdownStyle;
 
 /** Sections that can be shown, hidden and reordered. The header always stays on top. */
 export const SECTION_IDS = [
   "hero",
   "watch_time",
+  "still_to_finish",
   "library",
   "streak",
   "average",
@@ -83,6 +86,7 @@ export interface RefractCardConfig {
   name?: string;
   layout?: Layout;
   library_style?: LibraryStyle;
+  watch_time_style?: WatchTimeStyle;
   duration_format?: DurationFormat;
   fun_stat?: boolean;
   fun_stat_mode?: FunStatMode;
@@ -95,6 +99,7 @@ export interface RefractCardConfig {
   show_hero?: boolean;
   show_watch_time?: boolean;
   show_library?: boolean;
+  show_still_to_finish?: boolean;
   show_streak?: boolean;
   show_average?: boolean;
   show_last_7_days?: boolean;
@@ -124,6 +129,7 @@ export interface RefractCardConfig {
 export const DEFAULT_CONFIG = {
   layout: "full",
   library_style: "bar",
+  watch_time_style: "bar",
   duration_format: "days_hours",
   fun_stat: true,
   fun_stat_mode: "rotate",
@@ -132,6 +138,7 @@ export const DEFAULT_CONFIG = {
   show_hero: true,
   show_watch_time: true,
   show_library: true,
+  show_still_to_finish: true,
   show_streak: true,
   show_average: true,
   show_last_7_days: true,

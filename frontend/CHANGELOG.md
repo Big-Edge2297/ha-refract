@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- **New:** *Still to finish* section (needs the integration's new `still_to_finish` sensor): estimated time left for the movies and shows you haven't finished, with rows for movies, TV shows and anime. Switch: `show_still_to_finish`; it is part of *Section order*
+- **New:** `watch_time_style: list` shows the watch time split as a breakdown list (bar plus one row per kind with time and percentage). Selectable in the card settings
+- Older integrations still work: the new section simply doesn't appear until the sensor exists
+
 ## 0.3.9
 
 - **New:** `library_style: list` shows the library like the Refract app's status breakdown (bar plus one row per status with count and percentage); `bar` stays the default

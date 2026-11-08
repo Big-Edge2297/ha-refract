@@ -69,6 +69,7 @@ export class RefractStatsCard extends LitElement {
     if (c.show_hero) size += 3;
     if (full && c.show_watch_time) size += 2;
     if (full && c.show_library) size += 2;
+    if (full && c.show_still_to_finish) size += 3;
     if (c.show_streak) size += 3;
     if (full && c.show_last_7_days) size += 3;
     if (c.show_next_up) size += 3;
@@ -136,6 +137,7 @@ export class RefractStatsCard extends LitElement {
     const sections: Record<SectionId, TemplateResult | typeof nothing> = {
       hero: c.show_hero ? this._hero(m) : nothing,
       watch_time: !compact && c.show_watch_time ? this._watchTime(m) : nothing,
+      still_to_finish: !compact && c.show_still_to_finish ? this._finish(m) : nothing,
       library: !compact && c.show_library ? this._library(m) : nothing,
       streak: c.show_streak && m.streak ? this._streak(m) : nothing,
       average: !compact && c.show_average ? this._average(m) : nothing,
@@ -456,20 +458,93 @@ export class RefractStatsCard extends LitElement {
     if (!cats.length) return nothing;
     const pct = shares(cats.map((x) => x.minutes));
 
+    const list = this._cfg.watch_time_style === "list";
     return html`<div class="panel">
-      <div class="label" style="margin-bottom:8px">${t(this.hass, "watch.title")}</div>
-      <div class="stack" role="img" aria-label=${cats.map((x, i) => `${t(this.hass, x.key)} ${pct[i]}%`).join(", ")}>
+      <div class="label" style="margin-bottom:${list ? 12 : 8}px">${t(this.hass, "watch.title")}</div>
+      <div
+        class="stack ${list ? "spaced" : ""}"
+        role="img"
+        aria-label=${cats.map((x, i) => `${t(this.hass, x.key)} ${pct[i]}%`).join(", ")}
+      >
         ${cats.map((x) => html`<span style="flex:${Math.max(x.minutes, 0)} 1 0; background:${x.color}"></span>`)}
       </div>
-      <div class="watch-cols">
-        ${cats.map(
-          (x, i) =>
-            html`<div class="watch-col">
-              <div class="row"><span class="swatch" style="background:${x.color}"></span>${t(this.hass, x.key)} (${pct[i]}%)</div>
-              <div class="value">${durationText(x.minutes, fmt, lang)}</div>
-            </div>`,
-        )}
-      </div>
+      ${list
+        ? html`<div class="stat-list">
+            ${cats.map(
+              (x, i) => html`<div class="stat-row">
+                <span class="stat-dot" style="background:${x.color}"></span>
+                <span class="stat-name">${t(this.hass, x.key)}</span>
+                <b class="stat-count">${durationText(x.minutes, fmt, lang)}</b>
+                <span class="stat-pct">${pct[i]}%</span>
+              </div>`,
+            )}
+          </div>`
+        : html`<div class="watch-cols">
+            ${cats.map(
+              (x, i) =>
+                html`<div class="watch-col">
+                  <div class="row"><span class="swatch" style="background:${x.color}"></span>${t(this.hass, x.key)} (${pct[i]}%)</div>
+                  <div class="value">${durationText(x.minutes, fmt, lang)}</div>
+                </div>`,
+            )}
+          </div>`}
+    </div>`;
+  }
+
+  // ---------------------------------------------------- still to finish
+
+  private _finish(m: Model): TemplateResult | typeof nothing {
+    const f = m.finish;
+    if (!f) return nothing;
+    const lang = languageOf(this.hass);
+    const fmt = this._cfg.duration_format;
+    const many = (key: string, n: number) => t(this.hass, n === 1 ? `${key}_one` : key, { n: fmtNumber(n, lang) });
+    const timeOf = (minutes?: number) => (minutes === undefined ? "" : durationText(minutes, fmt, lang));
+
+    const rows = [
+      { key: "finish.movies", group: f.movies, color: "var(--c-movies)", shows: false },
+      { key: "finish.shows", group: f.shows, color: "var(--c-shows)", shows: true },
+      { key: "finish.anime", group: f.anime, color: "var(--c-anime)", shows: true },
+    ].filter((r) => r.group.count > 0);
+
+    const total = f.minutes;
+    return html`<div class="panel finish">
+      <div class="label">${t(this.hass, "finish.title")}</div>
+      ${rows.length
+        ? html`${total !== undefined && total > 0
+              ? html`<div class="finish-total">${timeOf(total)}</div>
+                  <div class="finish-hours">${many("finish.hours", Math.round(total / 60))}</div>`
+              : nothing}
+            ${f.estimated ? html`<div class="finish-note">${t(this.hass, "finish.estimate")}</div>` : nothing}
+            ${f.unknownShows > 0 ? html`<div class="finish-note">${many("finish.partial", f.unknownShows)}</div>` : nothing}
+            <div class="finish-rows">
+              ${rows.map((r) => {
+                const g = r.group;
+                const sub = r.shows
+                  ? [
+                      g.episodes ? many("finish.episodes", g.episodes) : "",
+                      [
+                        g.notStarted ? t(this.hass, "finish.not_started", { n: fmtNumber(g.notStarted, lang) }) : "",
+                        g.started ? t(this.hass, "finish.started", { n: fmtNumber(g.started, lang) }) : "",
+                      ]
+                        .filter(Boolean)
+                        .join(", "),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : "";
+                return html`<div class="finish-row">
+                  <div>
+                    <div class="finish-name">${many(r.key, g.count)}</div>
+                    ${sub ? html`<div class="finish-sub">${sub}</div>` : nothing}
+                  </div>
+                  ${g.minutes !== undefined && g.minutes > 0
+                    ? html`<span class="finish-time" style="color:${r.color}">${timeOf(g.minutes)}</span>`
+                    : nothing}
+                </div>`;
+              })}
+            </div>`
+        : html`<div class="empty">${t(this.hass, "finish.none")}</div>`}
     </div>`;
   }
 

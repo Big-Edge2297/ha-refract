@@ -9,7 +9,8 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | Section | What you see | Needs |
 |---|---|---|
 | **Watch time** | Total time as days and hours, a library/movies/episodes watched summary, and the fun stat in a highlighted pill ("about 8.8 months of nonstop viewing") | profile stats |
-| **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares | profile stats |
+| **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares. Choose a compact bar with the share after each title, or a breakdown list with the time and share on one row per kind | profile stats |
+| **Still to finish** | The time left to watch the movies and shows you haven't finished (Plan to Watch, Watching and On Hold), as in the Refract app: a total, the same in hours, and one row each for movies, TV shows and anime with the number of titles, episodes left and how many shows are started or not | library |
 | **Library** | Every status you use, named and colored as in the Refract app: Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped (and any other status Refract adds). Choose a compact bar with a legend, or the full breakdown list with counts and percentages | library |
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
@@ -87,7 +88,7 @@ section_order:
   - hero
 ```
 
-The default order is `hero`, `watch_time`, `library`, `streak`, `average`, `last_7_days`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other. The compact layout uses the same order for the sections it shows.
+The default order is `hero`, `watch_time`, `still_to_finish`, `library`, `streak`, `average`, `last_7_days`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other. The compact layout uses the same order for the sections it shows.
 
 ### Compact layout
 
@@ -104,6 +105,7 @@ layout: compact
 | `entity` | | **Required.** Any entity of the Refract account |
 | `name` | from the device | Overrides the account name in the header |
 | `layout` | `full` | `full`, or `compact` (watch time, streak and next up only) |
+| `watch_time_style` | `bar` | `bar` (a stacked bar with the share after each title) or `list` (a bar plus one row per kind with its time and percentage, like the library list; taller) |
 | `library_style` | `bar` | `bar` (a status bar with a legend) or `list` (the Refract app's status breakdown: a bar plus one row per status with its count and percentage; taller) |
 | `duration_format` | `days_hours` | `days_hours` (206 d 23 h), `hours` (4,967 h) or `auto` (picks the unit by size) |
 | `fun_stat` | `true` | Show the fun stat pill under the watch time |
@@ -114,6 +116,7 @@ layout: compact
 | `show_hero` | `true` | Watch time summary and fun stat |
 | `show_watch_time` | `true` | Watch time split |
 | `show_library` | `true` | Library (status bar or breakdown list, see `library_style`) |
+| `show_still_to_finish` | `true` | Still to finish |
 | `show_streak` | `true` | Streak |
 | `show_average` | `true` | Average per week |
 | `show_last_7_days` | `true` | Last 7 days chart and busiest day |
@@ -195,6 +198,7 @@ Add one card per account and pick an entity from each.
 - **The library** lists every status that has at least one title, taken from the `by_status` attribute of the library total sensor. Statuses are named as in the Refract app (Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped) and ordered the same way; any other status Refract adds follows with a readable name, and "paused" counts as on hold. Percentages in the list are each status's share of the titles listed. If the `by_status` attribute is missing, for example with an older integration version, the card shows the four main statuses plus **Other**, the difference between your library total and their sum, so the bar always adds up. The app's *Rewatched* line isn't shown, because the integration doesn't have that number yet.
 - **Last 7 days** shows the number of episodes watched above each bar (days with no episodes show no number); movies are the blue part of the bar.
 - **Episodes watched** in the summary is TV episodes plus anime episodes.
+- **Still to finish** adds up the titles in your library that are *Plan to Watch*, *Watching* or *On Hold*; completed, up to date and dropped titles don't count. For shows you've started, the episodes are the aired ones you haven't watched (the same numbers as the catch-up backlog). For shows you haven't started, the integration needs an episode count from the library item. If Refract doesn't provide one, the show is counted but left out of the episodes and the time, and the card says how many shows that is. Time uses the runtime Refract gives for a title when there is one, otherwise your average runtime per movie or episode, and is then marked as an estimate. It won't match the Refract app exactly, and it changes as episodes air. Anime has its own row only when you have anime to finish.
 - **The fun stat** needs at least a day of watch time. In `rotate` mode it changes once a day.
 
 ## Styling

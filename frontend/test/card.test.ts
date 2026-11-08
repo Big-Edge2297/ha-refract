@@ -127,9 +127,101 @@ test("the library stays a compact bar with a legend by default", async () => {
   assert.equal(el.shadowRoot!.querySelector(".stat-row"), null);
 });
 
+const finishWith = (attributes: Record<string, unknown>, state = "100") =>
+  makeHass({ states: { ...baseStates, [`sensor.${PREFIX}still_to_finish`]: { entity_id: "f", state, attributes } } });
+const none = { count: 0, minutes: 0, episodes: 0, not_started: 0, started: 0, unknown_episodes: 0 };
+
+test("still to finish shows the total, the hours and a row per kind, like the Refract app", async () => {
+  const el = await mount({});
+  const panel = el.shadowRoot!.querySelector(".panel.finish")!;
+  const t = panel.textContent!.replace(/\s+/g, " ").trim();
+  assert.match(t, /^Still to finish 26 d 5 h 630 hours of non-stop watching Estimate: shifts as episodes air and runtime data improves\./);
+  const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
+  assert.deepEqual(rows, ["26 movies to finish 2 d 2 h", "37 TV shows to finish 701 episodes · 32 not started, 5 started 24 d 3 h"]);
+  assert.match(panel.querySelectorAll(".finish-time")[0].getAttribute("style")!, /--c-movies/);
+  assert.match(panel.querySelectorAll(".finish-time")[1].getAttribute("style")!, /--c-shows/);
+});
+
+test("still to finish adds an anime row only when there is anime, and uses singular wording", async () => {
+  const hass = finishWith({
+    movies: { count: 1, minutes: 100 },
+    shows: { ...none, count: 1, episodes: 1, not_started: 1, minutes: 40 },
+    anime: { ...none, count: 2, episodes: 24, started: 2, minutes: 600 },
+    estimated: false,
+    unknown_episode_shows: 0,
+  }, "740");
+  const el = await mount({}, hass);
+  const panel = el.shadowRoot!.querySelector(".panel.finish")!;
+  const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
+  assert.deepEqual(rows, ["1 movie to finish 1 h", "1 TV show to finish 1 episode · 1 not started 40 min", "2 anime to finish 24 episodes · 2 started 10 h"]);
+  assert.doesNotMatch(panel.textContent!, /Estimate/, "exact runtimes aren't called an estimate");
+  assert.match(panel.textContent!, /12 hours of non-stop watching/);
+});
+
+test("still to finish says so when episode counts are missing instead of hiding the gap", async () => {
+  const hass = finishWith({
+    movies: { count: 0, minutes: 0 },
+    shows: { ...none, count: 3, started: 1, not_started: 2, episodes: 6, unknown_episodes: 2, minutes: 240 },
+    anime: none,
+    estimated: true,
+    unknown_episode_shows: 2,
+  }, "240");
+  const t = text(await mount({}, hass));
+  assert.match(t, /Not counting 2 shows without an episode count\./);
+  assert.match(t, /3 TV shows to finish 6 episodes · 2 not started, 1 started 4 h/);
+});
+
+test("still to finish copes with no time data, nothing left, a missing sensor and its switch", async () => {
+  const noTime = await mount({}, finishWith({ movies: { count: 4 }, shows: { ...none, count: 0 }, anime: none, estimated: true }, "unknown"));
+  assert.equal(noTime.shadowRoot!.querySelector(".panel.finish"), null, "an unknown state hides the section");
+
+  const noMinutes = await mount({}, finishWith({ movies: { count: 4, minutes: null }, shows: none, anime: none, estimated: true, unknown_episode_shows: 0 }, "0"));
+  const panel = noMinutes.shadowRoot!.querySelector(".panel.finish")!;
+  assert.equal(panel.querySelector(".finish-total"), null);
+  assert.match(panel.textContent!, /4 movies to finish/);
+
+  const empty = await mount({}, finishWith({ movies: none, shows: none, anime: none, estimated: false, unknown_episode_shows: 0 }, "0"));
+  assert.match(empty.shadowRoot!.querySelector(".panel.finish")!.textContent!, /Nothing left to finish/);
+
+  const { [`sensor.${PREFIX}still_to_finish`]: _gone, ...rest } = baseStates;
+  assert.equal((await mount({}, makeHass({ states: rest }))).shadowRoot!.querySelector(".panel.finish"), null, "older integration");
+  assert.equal((await mount({ show_still_to_finish: false })).shadowRoot!.querySelector(".panel.finish"), null);
+  assert.equal((await mount({ layout: "compact" })).shadowRoot!.querySelector(".panel.finish"), null);
+});
+
+test("watch time breakdown list mirrors the library list: bar on top, one row per kind with time and share", async () => {
+  const el = await mount({ watch_time_style: "list" });
+  const root = el.shadowRoot!;
+  const panel = [...root.querySelectorAll(".panel")].find((p) => p.querySelector(".label")?.textContent === "Watch time")!;
+  const rows = [...panel.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
+  assert.deepEqual(rows, ["TV shows 206 d 23 h 78%", "Movies 54 d 13 h 20%", "Anime 5 d 2 h 2%"]);
+  assert.equal(panel.querySelectorAll(".stack > span").length, 3, "the bar stays on top");
+  assert.equal(panel.querySelector(".watch-cols"), null, "no columns in list style");
+  assert.match(panel.querySelectorAll(".stat-dot")[1].getAttribute("style")!, /--c-movies/);
+});
+
+test("watch time stays a compact bar with the percentage after each title by default", async () => {
+  const el = await mount({});
+  assert.ok(el.shadowRoot!.querySelector(".watch-cols"));
+  assert.equal([...el.shadowRoot!.querySelectorAll(".panel")].filter((p) => p.querySelector(".label")?.textContent === "Watch time")[0].querySelector(".stat-row"), null);
+  assert.match(text(el), /TV shows \(78%\)/);
+});
+
+test("the editor offers the watch time style and the still to finish switch", async () => {
+  const editor = document.createElement("refract-stats-card-editor") as any;
+  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY });
+  editor.hass = makeHass();
+  document.body.appendChild(editor);
+  await editor.updateComplete;
+  const names: string[] = [];
+  const walk = (schema: any[]) => schema.forEach((f) => (f.schema ? walk(f.schema) : names.push(f.name)));
+  walk(editor.shadowRoot.querySelector("ha-form").schema);
+  assert.ok(names.includes("watch_time_style") && names.includes("show_still_to_finish") && names.includes("library_style"));
+});
+
 test("sections appear in the designed order", async () => {
   const t = text(await mount({ show_actions: false }));
-  const order = ["Total watch time", "Watch time TV shows", "Library Watched", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
+  const order = ["Total watch time", "Watch time TV shows", "Still to finish", "Library Watched", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
   const at = order.map((label) => t.indexOf(label));
   assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
   assert.deepEqual([...at].sort((x, y) => x - y), at, "in order");
@@ -141,7 +233,7 @@ test("section_order rearranges the sections", async () => {
     section_order: ["airing", "next_up", "hero", "average", "library"],
   });
   const t = text(el);
-  const labels = ["Airing this week", "Next up", "Total watch time", "Average per week", "Library Watched", "Watch time TV shows", "Streak", "Last 7 days", "Catch-up backlog"];
+  const labels = ["Airing this week", "Next up", "Total watch time", "Average per week", "Library Watched", "Watch time TV shows", "Still to finish", "Streak", "Last 7 days", "Catch-up backlog"];
   const at = labels.map((label) => t.indexOf(label));
   assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
   assert.deepEqual([...at].sort((x, y) => x - y), at, "listed sections first, the rest in the default order");
@@ -660,7 +752,7 @@ test("editor reorders sections with the arrows and keeps the YAML clean", async 
   document.body.appendChild(editor);
   await editor.updateComplete;
   const rows = () => [...editor.shadowRoot.querySelectorAll(".order-row")] as HTMLElement[];
-  assert.equal(rows().length, 9);
+  assert.equal(rows().length, 10);
   assert.match(rows()[0].textContent!, /Watch time summary/);
   assert.equal(editor.shadowRoot.querySelector(".order-reset"), null, "no reset button on the default order");
 
@@ -668,7 +760,7 @@ test("editor reorders sections with the arrows and keeps the YAML clean", async 
   editor.addEventListener("config-changed", (e: CustomEvent) => emitted.push(e.detail.config));
   (rows()[1].querySelectorAll("ha-icon-button")[0] as HTMLElement).click(); // move "Watch time split" up
   await editor.updateComplete;
-  assert.deepEqual(emitted[0].section_order.slice(0, 3), ["watch_time", "hero", "library"]);
+  assert.deepEqual(emitted[0].section_order.slice(0, 3), ["watch_time", "hero", "still_to_finish"]);
   assert.equal(emitted[0].entity, ENTITY);
   assert.match(rows()[0].textContent!, /Watch time split/);
 

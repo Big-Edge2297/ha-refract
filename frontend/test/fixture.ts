@@ -94,6 +94,13 @@ export const states: Record<string, HassEntity> = Object.fromEntries([
   entity("last_7_days", "11", { days: last7Days, episodes: 8, movies: 3, busiest_day: { date: dayOffset(-3), count: 4 } }),
   entity("average_per_week", "2.5", { items_per_week: 2.8, change_percent: 12, window_days: 28, estimated: true }),
   entity("airing_this_week", "2", { episodes: airingEpisodes }),
+  entity("still_to_finish", "37770", {
+    movies: { count: 26, minutes: 3000 },
+    shows: { count: 37, minutes: 34770, episodes: 701, not_started: 32, started: 5, unknown_episodes: 0 },
+    anime: { count: 0, minutes: 0, episodes: 0, not_started: 0, started: 0, unknown_episodes: 0 },
+    estimated: true,
+    unknown_episode_shows: 0,
+  }),
   entity("watchlist", "63", {}, "todo"),
 ]);
 

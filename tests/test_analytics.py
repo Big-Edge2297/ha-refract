@@ -256,3 +256,60 @@ def test_change_needs_a_fair_baseline():
     four = eps(-29, -30, -31, -32)
     assert a.weekly_stats(now + four, [], TODAY)["change_percent"] == 250
     assert a.MIN_BASELINE_ITEMS == 4
+
+
+# ------------------------------------------------------------ still to finish
+
+
+def lib(kind, status, title, tmdb, anime=False, **extra):
+    return {"type": kind, "status": status, "title": title, "is_anime": anime, "ids": {"refract": f"r-{tmdb}", "tmdb": tmdb}, **extra}
+
+
+def test_finish_counts_movies_and_shows_and_splits_started_from_not_started():
+    library = [
+        lib("movie", "planned", "M1", 1),
+        lib("movie", "planned", "M2", 2),
+        lib("movie", "completed", "Seen", 3),
+        lib("show", "in_progress", "Going", 10),
+        lib("show", "planned", "Later", 11, aired_episodes=10),
+        lib("show", "planned", "Counted", 12, progress={"total_episodes": 20}),
+        lib("show", "dropped", "Dropped", 13, aired_episodes=99),
+        lib("show", "up_to_date", "Caught up", 14),
+        lib("show", "on_hold", "Paused", 15, progress={"last_watched_at": "2026-01-01T00:00:00Z"}),
+        lib("show", "planned", "Cartoon", 16, anime=True, aired_episodes=12),
+    ]
+    up_next = [{"show": {"title": "Going", "ids": {"refract": "r-10", "tmdb": 10}}, "remaining_episodes": 6}]
+    out = a.build_finish(library, up_next, episode_minutes=40.0, movie_minutes=100.0)
+    assert out["movies"] == {"count": 2, "minutes": 200}
+    # Going: 6 remaining (started). Later 10 + Counted 20 (not started). Paused: started, no count known.
+    assert out["shows"] == {"count": 4, "minutes": (6 + 10 + 20) * 40, "episodes": 36, "not_started": 2, "started": 2, "unknown_episodes": 1}
+    assert out["anime"] == {"count": 1, "minutes": 12 * 40, "episodes": 12, "not_started": 1, "started": 0, "unknown_episodes": 0}
+    assert out["minutes"] == 200 + 36 * 40 + 12 * 40
+    assert out["estimated"] is True
+    assert out["unknown_episode_shows"] == 1
+
+
+def test_finish_uses_real_runtimes_when_refract_provides_them():
+    library = [
+        lib("movie", "planned", "Long", 1, runtime_minutes=180),
+        lib("show", "planned", "Hour-long", 2, aired_episodes=10, runtime=60),
+    ]
+    out = a.build_finish(library, [], episode_minutes=None, movie_minutes=None)
+    assert out["movies"]["minutes"] == 180 and out["shows"]["minutes"] == 600
+    assert out["minutes"] == 780 and out["estimated"] is False
+
+
+def test_finish_without_any_runtime_data_keeps_the_counts_but_no_time():
+    library = [lib("movie", "planned", "M", 1), lib("show", "in_progress", "S", 2)]
+    up_next = [{"show": {"ids": {"tmdb": 2}}, "remaining_episodes": 4}]
+    out = a.build_finish(library, up_next, None, None)
+    assert out["movies"] == {"count": 1, "minutes": None}
+    assert out["shows"]["count"] == 1 and out["shows"]["episodes"] == 4 and out["shows"]["minutes"] is None
+    assert out["minutes"] is None
+
+
+def test_finish_with_nothing_left_is_zero_not_unknown():
+    out = a.build_finish([lib("movie", "completed", "Done", 1)], [], 40.0, 100.0)
+    assert out["minutes"] == 0 and out["movies"]["count"] == 0
+    assert out["estimated"] is False and out["unknown_episode_shows"] == 0
+    assert a.build_finish([], [], None, None)["minutes"] == 0

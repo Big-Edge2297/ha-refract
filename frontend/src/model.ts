@@ -59,6 +59,24 @@ export interface CatchupShow {
   /** The next episode of this show, when the integration provides it. Lets the card mark it watched. */
   next?: ShowItem;
 }
+export interface FinishGroup {
+  count: number;
+  minutes?: number;
+  /** Episodes left to watch; absent for movies. */
+  episodes?: number;
+  notStarted?: number;
+  started?: number;
+  /** Shows Refract gave no episode count for: counted, but not part of the episodes or the time. */
+  unknown?: number;
+}
+export interface Finish {
+  minutes?: number;
+  movies: FinishGroup;
+  shows: FinishGroup;
+  anime: FinishGroup;
+  estimated: boolean;
+  unknownShows: number;
+}
 export interface Catchup {
   total: number;
   minutes?: number;
@@ -110,6 +128,8 @@ export interface Model {
   last7?: Last7;
   average?: Average;
   catchup?: Catchup;
+  /** Movies and shows still to finish; undefined when the sensor doesn't exist. */
+  finish?: Finish;
   /** undefined when the sensor doesn't exist; empty when nothing airs. */
   airing?: AiringItem[];
   hasPosters: boolean;
@@ -305,6 +325,29 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     catchup = { total, minutes: num(catchState.attributes.estimated_minutes), showCount: num(catchState.attributes.show_count) ?? shows.length, shows };
   }
 
+  // still to finish
+  let finish: Finish | undefined;
+  const finishState = ent("still_to_finish");
+  if (isUsable(finishState)) {
+    const a = finishState.attributes;
+    const group = (raw: any): FinishGroup => ({
+      count: Math.max(0, num(raw?.count) ?? 0),
+      minutes: num(raw?.minutes),
+      episodes: num(raw?.episodes),
+      notStarted: num(raw?.not_started),
+      started: num(raw?.started),
+      unknown: num(raw?.unknown_episodes),
+    });
+    finish = {
+      minutes: parseNum(finishState),
+      movies: group(a.movies),
+      shows: group(a.shows),
+      anime: group(a.anime),
+      estimated: a.estimated !== false,
+      unknownShows: num(a.unknown_episode_shows) ?? 0,
+    };
+  }
+
   // airing this week
   let airing: AiringItem[] | undefined;
   const airState = ent("airing_this_week");
@@ -335,6 +378,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     last7,
     average,
     catchup,
+    finish,
     airing,
     hasPosters,
   };

@@ -260,6 +260,136 @@ def build_backlog(
     }
 
 
+# -------------------------------------------------------- still to finish
+
+# Statuses that still have something left to watch. "Up to date" and "completed" don't,
+# "dropped" is given up on. Paused shows stay in: they are not finished.
+FINISH_STATUSES = ("planned", "in_progress", "on_hold")
+_EPISODE_COUNT_KEYS = ("aired_episodes", "total_episodes", "episode_count", "episodes_count", "number_of_episodes")
+_RUNTIME_KEYS = ("runtime_minutes", "runtime", "episode_runtime_minutes", "episode_runtime")
+
+
+def _positive(item: dict[str, Any], keys: tuple[str, ...]) -> float | None:
+    """First positive number under any of `keys`, on the item or in its `progress` block."""
+    for source in (item, item.get("progress")):
+        if not isinstance(source, dict):
+            continue
+        for key in keys:
+            value = source.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+                return value
+    return None
+
+
+def _item_ids(item: dict[str, Any]) -> list[str]:
+    ids = item.get("ids") or (item.get("show") or {}).get("ids") or {}
+    return [str(ids[key]) for key in ("refract", "tmdb") if ids.get(key) is not None]
+
+
+def build_finish(
+    library: list[dict[str, Any]],
+    up_next: list[dict[str, Any]],
+    episode_minutes: float | None,
+    movie_minutes: float | None,
+) -> dict[str, Any]:
+    """What is left to watch: movies and shows not finished yet, with an estimated time.
+
+    Shows being watched take their remaining aired episodes from `up_next`. Shows not started
+    need an episode count from the library item itself; without one they are counted but left out
+    of the episodes and the time (`unknown_episodes`), instead of guessing. Runtimes come from the
+    item when Refract provides one, otherwise from the average runtime in the profile stats, and
+    then the figure is marked as an estimate.
+    """
+    remaining: dict[str, int] = {}
+    for entry in up_next:
+        value = entry.get("remaining_episodes")
+        if isinstance(value, int):
+            for key in _item_ids({"show": entry.get("show")}):
+                remaining[key] = value
+
+    def blank() -> dict[str, Any]:
+        return {
+            "count": 0,
+            "episodes": 0,
+            "not_started": 0,
+            "started": 0,
+            "unknown_episodes": 0,
+            "minutes": 0.0,
+            "minutes_known": True,
+        }
+
+    groups = {"movies": blank(), "shows": blank(), "anime": blank()}
+    estimated = False
+
+    for item in library:
+        if item.get("status") not in FINISH_STATUSES:
+            continue
+        kind = item.get("type")
+        if kind == "movie":
+            group = groups["movies"]
+            group["count"] += 1
+            runtime = _positive(item, _RUNTIME_KEYS)
+            if runtime is None:
+                runtime = movie_minutes
+                estimated = estimated or runtime is not None
+            if runtime is None:
+                group["minutes_known"] = False
+            else:
+                group["minutes"] += runtime
+        elif kind == "show":
+            group = groups["anime" if item.get("is_anime") else "shows"]
+            group["count"] += 1
+            ids = _item_ids(item)
+            waiting = next((remaining[i] for i in ids if i in remaining), None)
+            started = (
+                item.get("status") == "in_progress"
+                or waiting is not None
+                or bool((item.get("progress") or {}).get("last_watched_at"))
+            )
+            group["started" if started else "not_started"] += 1
+            if started:
+                episodes = waiting if waiting is not None else _positive(item, ("remaining_episodes",))
+            else:
+                episodes = _positive(item, _EPISODE_COUNT_KEYS)
+            if episodes is None:
+                group["unknown_episodes"] += 1
+                continue
+            group["episodes"] += int(episodes)
+            runtime = _positive(item, _RUNTIME_KEYS)
+            if runtime is None:
+                runtime = episode_minutes
+                estimated = estimated or (runtime is not None and episodes > 0)
+            if runtime is None:
+                group["minutes_known"] = False
+            else:
+                group["minutes"] += episodes * runtime
+
+    result: dict[str, Any] = {}
+    total: float | None = 0
+    for name, group in groups.items():
+        minutes = round(group["minutes"]) if group["minutes_known"] else None
+        if group["count"] and minutes is None:
+            total = None  # a group with titles but no way to time them: no honest total
+        elif total is not None:
+            total += minutes or 0
+        entry = {"count": group["count"], "minutes": minutes}
+        if name != "movies":
+            entry.update(
+                episodes=group["episodes"],
+                not_started=group["not_started"],
+                started=group["started"],
+                unknown_episodes=group["unknown_episodes"],
+            )
+        result[name] = entry
+
+    return {
+        "minutes": total,
+        **result,
+        "estimated": estimated,
+        "unknown_episode_shows": sum(g["unknown_episodes"] for g in groups.values()),
+    }
+
+
 # -------------------------------------------------------------- calendar
 
 
