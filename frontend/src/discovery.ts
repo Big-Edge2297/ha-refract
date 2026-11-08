@@ -11,12 +11,25 @@ export interface Discovery {
   entities: Partial<Record<RefractKey, string>>;
 }
 
+/**
+ * Entity ids an older integration version registered. Home Assistant keeps an entity's id when the
+ * integration later renames it, so these still exist: 0.5.0 called the "Top picks" sensor `most_watched`.
+ */
+const LEGACY_IDS: Record<string, RefractKey> = { most_watched: "top_picks" };
+const LEGACY_LONGEST_FIRST = Object.keys(LEGACY_IDS).sort((a, b) => b.length - a.length);
+
 /** Match an entity object id (the part after the domain) to a Refract key. */
 export function matchKey(objectId: string): { key: RefractKey; prefix: string } | undefined {
   for (const key of KEYS_LONGEST_FIRST) {
     if (objectId === key) return { key, prefix: "" };
     if (objectId.endsWith(`_${key}`)) {
       return { key, prefix: objectId.slice(0, objectId.length - key.length) };
+    }
+  }
+  for (const legacy of LEGACY_LONGEST_FIRST) {
+    if (objectId === legacy) return { key: LEGACY_IDS[legacy], prefix: "" };
+    if (objectId.endsWith(`_${legacy}`)) {
+      return { key: LEGACY_IDS[legacy], prefix: objectId.slice(0, objectId.length - legacy.length) };
     }
   }
   return undefined;
@@ -60,6 +73,10 @@ export function discover(hass: HomeAssistant, config: Pick<RefractCardConfig, "e
       result.prefix ??= hit.prefix;
       for (const key of SENSOR_KEYS) {
         const id = `sensor.${hit.prefix}${key}`;
+        if (!result.entities[key] && hass.states[id]) result.entities[key] = id;
+      }
+      for (const [legacy, key] of Object.entries(LEGACY_IDS)) {
+        const id = `sensor.${hit.prefix}${legacy}`;
         if (!result.entities[key] && hass.states[id]) result.entities[key] = id;
       }
     }

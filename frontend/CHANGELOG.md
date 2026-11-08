@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- **Fixed:** the card finds the *Most watched* sensor under its old id `sensor.*_most_watched` too (Home Assistant keeps the id registered by 0.5.0). Update the card, hard-refresh, no renaming needed
+
 ## 0.5.1
 
 - **Fixed:** the *Most watched* section never appeared because the integration's sensor was called `most_watched` instead of `top_picks`. The card is unchanged; update the integration and restart

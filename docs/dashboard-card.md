@@ -262,7 +262,7 @@ The card follows your Home Assistant theme. These optional theme variables overr
 
 **A section is missing**: its sensors don't exist for your API key, or are unavailable. Check Developer Tools → States for the sensor. *Last 7 days* and *Average per week* also need **Fetch watch history** turned on in the integration options.
 
-**No Most watched section**: it needs a TMDB API key under **Settings → Devices & services → Refract → Configure**, the library permission on your Refract key, and `show_top_picks` not set to `false` in the Custom layout. Right after adding the key it shows *Still building* for a while.
+**No Most watched section** (the sensor is `sensor.*_top_picks`, or `sensor.*_most_watched` if you first installed 0.5.0; the card finds both): it needs a TMDB API key under **Settings → Devices & services → Refract → Configure**, the library permission on your Refract key, and `show_top_picks` not set to `false` in the Custom layout. Right after adding the key it shows *Still building* for a while.
 
 **No posters**: add a TMDB API key under **Settings → Devices & services → Refract → Configure**, wait for the next update (up to the update interval), and check that `show_posters` isn't `false`. Posters are loaded from `image.tmdb.org` by your browser, so an ad blocker or a restrictive network can hide them; the card then shows the first letter of the title.
 

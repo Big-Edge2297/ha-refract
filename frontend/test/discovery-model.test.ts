@@ -167,3 +167,16 @@ test("parseStatuses: known statuses first, aliases merged, junk ignored", () => 
   assert.equal(parseStatuses([1, 2]), undefined);
   assert.equal(parseStatuses({ none: 0 }), undefined);
 });
+
+test("a sensor registered as most_watched by 0.5.0 is still found as top_picks", () => {
+  const hass = makeHass();
+  const { [`sensor.${PREFIX}top_picks`]: current, ...rest } = hass.states;
+  const old = { ...current, entity_id: `sensor.${PREFIX}most_watched` };
+  const legacy = { ...hass, states: { ...rest, [old.entity_id]: old } };
+  // by name prefix, from another sensor of the account
+  assert.equal(discover(legacy, { entity: `sensor.${PREFIX}next_up` }).entities.top_picks, old.entity_id);
+  // and the card still builds the section from it
+  assert.ok(buildModel(legacy, discover(legacy, { entity: `sensor.${PREFIX}next_up` }), { type: "x" }).topPicks);
+  assert.deepEqual(matchKey("refract_codex_most_watched"), { key: "top_picks", prefix: "refract_codex_" });
+  assert.equal(matchKey("most_watched")!.key, "top_picks");
+});

@@ -2,10 +2,15 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.5.2
+
+### Fixed
+- **Most watched still did not show up after 0.5.1** if you had run 0.5.0 before: Home Assistant keeps the entity id it registered, so the sensor stayed `sensor.*_most_watched` and the card didn't look for that name. The card now finds the sensor under either name, so nothing needs renaming. New installs get `sensor.*_top_picks`
+
 ## 0.5.1
 
 ### Fixed
-- **Most watched did not show up**: the new sensor was named *Most watched*, so its entity id was `sensor.*_most_watched` and the card never found it. It is now named *Top picks* (`sensor.*_top_picks`). If you had already restarted with 0.5.0, the old `most_watched` entity can be deleted under **Settings → Devices & services → Entities** (it shows as no longer provided)
+- **Most watched did not show up**: the new sensor was named *Most watched*, so its entity id was `sensor.*_most_watched` and the card never found it. It is now named *Top picks* (`sensor.*_top_picks`).
 
 ### Added
 - A test that checks every sensor name matches a sensor key the card looks for
