@@ -40,7 +40,8 @@ export interface HomeAssistant {
 export type StreakStyle = "gauge" | "dots";
 export type DurationFormat = "days_hours" | "hours" | "auto";
 export type FunStatMode = "rotate" | "months" | "workweeks" | "lotr";
-export type Layout = "full" | "compact";
+/** `full`: every section. `compact`: watch time, still to finish and next up. `custom`: you pick the sections and their order. */
+export type Layout = "full" | "compact" | "custom";
 /** `bar`: compact bar with a legend. `list`: the breakdown the Refract app shows, one row per entry. */
 export type BreakdownStyle = "bar" | "list";
 export type LibraryStyle = BreakdownStyle;
@@ -74,6 +75,38 @@ export function resolveSectionOrder(order: unknown): SectionId[] {
   }
   for (const id of SECTION_IDS) if (!out.includes(id)) out.push(id);
   return out;
+}
+
+/** Sections the `compact` layout shows. */
+export const COMPACT_SECTIONS: readonly SectionId[] = ["hero", "still_to_finish", "next_up"];
+
+/** Whether the config switches a section off or reorders them, i.e. was set up for what is now the `custom` layout. */
+export function hasSectionCustomization(config: object | undefined): boolean {
+  const c = (config ?? {}) as Record<string, unknown>;
+  if (c.section_order !== undefined && c.section_order !== null) return true;
+  if (c.show_queue === false) return true;
+  return SECTION_IDS.some((id) => c[`show_${id}`] === false);
+}
+
+/**
+ * The layout a config really uses. Cards from before the `custom` layout existed have no `layout`
+ * but hide or reorder sections: those keep working as `custom`.
+ */
+export function resolveLayout(config: object | undefined): Layout {
+  const layout = (config as { layout?: unknown } | undefined)?.layout;
+  if (layout === "full" || layout === "compact" || layout === "custom") return layout;
+  return hasSectionCustomization(config) ? "custom" : "full";
+}
+
+/** Sections to render, in order, for a layout. Only `custom` follows the switches and `section_order`. */
+export function layoutSections(layout: Layout, config: RefractCardConfig & Record<string, any>): SectionId[] {
+  if (layout === "full") return [...SECTION_IDS];
+  if (layout === "compact") return SECTION_IDS.filter((id) => COMPACT_SECTIONS.includes(id));
+  const on = (id: SectionId): boolean => {
+    const flag = config[`show_${id}`];
+    return flag === undefined ? DEFAULT_CONFIG[`show_${id}` as keyof typeof DEFAULT_CONFIG] !== false : flag !== false;
+  };
+  return resolveSectionOrder(config.section_order).filter(on);
 }
 
 export interface RefractCardConfig {

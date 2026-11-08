@@ -18,6 +18,7 @@ const { RefractStatsCard } = await import("../src/refract-stats-card");
 await import("../src/editor");
 const { makeHass, PREFIX, last7Days, catchUpShows, westworld, states: baseStates } = await import("./fixture");
 const { weekdayName } = await import("../src/format");
+const { resolveLayout } = await import("../src/types");
 
 type Card = InstanceType<typeof RefractStatsCard>;
 const ENTITY = `sensor.${PREFIX}next_up`;
@@ -57,18 +58,18 @@ test("renders the hero with human durations", async () => {
 test("library status bar and watch-time split", async () => {
   const el = await mount({});
   const t = text(el);
-  assert.match(t, /Library Watched 803/);
-  assert.match(t, /Up to Date 23/);
-  assert.match(t, /Watching 3/);
-  assert.match(t, /Plan to Watch 63/);
-  assert.match(t, /Other 4/);
+  assert.match(t, /Library Watched · 803/);
+  assert.match(t, /Up to Date · 23/);
+  assert.match(t, /Watching · 3/);
+  assert.match(t, /Plan to Watch · 63/);
+  assert.match(t, /Other · 4/);
   assert.equal(el.shadowRoot!.querySelector("svg.donut"), null, "the donut is gone");
   assert.match(t, /206 d 23 h/);
   assert.match(t, /54 d 13 h/);
   assert.match(t, /5 d 2 h/);
-  assert.match(t, /TV shows \(78%\)/);
-  assert.match(t, /Movies \(20%\)/);
-  assert.match(t, /Anime \(2%\)/);
+  assert.match(t, /TV shows · 78%/);
+  assert.match(t, /Movies · 20%/);
+  assert.match(t, /Anime · 2%/);
 });
 
 function withStatuses(byStatus: Record<string, number>) {
@@ -79,10 +80,10 @@ function withStatuses(byStatus: Record<string, number>) {
 test("library shows every status Refract reports, including on hold and dropped", async () => {
   const el = await mount({}, withStatuses({ completed: 803, up_to_date: 23, in_progress: 3, planned: 64, on_hold: 2, dropped: 2 }));
   const t = text(el);
-  assert.match(t, /Watched 803/);
-  assert.match(t, /Plan to Watch 64/);
-  assert.match(t, /On Hold 2/);
-  assert.match(t, /Dropped 2/);
+  assert.match(t, /Watched · 803/);
+  assert.match(t, /Plan to Watch · 64/);
+  assert.match(t, /On Hold · 2/);
+  assert.match(t, /Dropped · 2/);
   assert.doesNotMatch(t, /Other/);
   assert.equal(el.shadowRoot!.querySelectorAll(".status-bar > span").length, 6);
   const legend = [...el.shadowRoot!.querySelectorAll(".status-legend .swatch")].map((x) => x.getAttribute("style"));
@@ -93,9 +94,9 @@ test("library shows every status Refract reports, including on hold and dropped"
 test("library statuses: aliases merge, empty ones are skipped and unknown ones get a readable name", async () => {
   const el = await mount({}, withStatuses({ completed: 5, paused: 1, on_hold: 2, never: 0, "waiting-room": 3 }));
   const t = text(el);
-  assert.match(t, /Watched 5/);
-  assert.match(t, /On Hold 3/, "paused and on_hold are the same status");
-  assert.match(t, /Waiting room 3/);
+  assert.match(t, /Watched · 5/);
+  assert.match(t, /On Hold · 3/, "paused and on_hold are the same status");
+  assert.match(t, /Waiting room · 3/);
   assert.doesNotMatch(t, /Never/);
 });
 
@@ -186,7 +187,8 @@ test("still to finish copes with no time data, nothing left, a missing sensor an
   const { [`sensor.${PREFIX}still_to_finish`]: _gone, ...rest } = baseStates;
   assert.equal((await mount({}, makeHass({ states: rest }))).shadowRoot!.querySelector(".panel.finish"), null, "older integration");
   assert.equal((await mount({ show_still_to_finish: false })).shadowRoot!.querySelector(".panel.finish"), null);
-  assert.equal((await mount({ layout: "compact" })).shadowRoot!.querySelector(".panel.finish"), null);
+  assert.ok((await mount({ layout: "compact" })).shadowRoot!.querySelector(".panel.finish"), "compact shows it");
+  assert.equal((await mount({ layout: "full", show_still_to_finish: false })).shadowRoot!.querySelector(".panel.finish") !== null, true, "full ignores the switches");
 });
 
 test("watch time breakdown list mirrors the library list: bar on top, one row per kind with time and share", async () => {
@@ -200,16 +202,16 @@ test("watch time breakdown list mirrors the library list: bar on top, one row pe
   assert.match(panel.querySelectorAll(".stat-dot")[1].getAttribute("style")!, /--c-movies/);
 });
 
-test("watch time stays a compact bar with the percentage after each title by default", async () => {
+test("watch time bar: percentage after the title with a dot, no brackets", async () => {
   const el = await mount({});
   assert.ok(el.shadowRoot!.querySelector(".watch-cols"));
   assert.equal([...el.shadowRoot!.querySelectorAll(".panel")].filter((p) => p.querySelector(".label")?.textContent === "Watch time")[0].querySelector(".stat-row"), null);
-  assert.match(text(el), /TV shows \(78%\)/);
+  assert.match(text(el), /TV shows · 78%/);
 });
 
 test("the editor offers the watch time style and the still to finish switch", async () => {
   const editor = document.createElement("refract-stats-card-editor") as any;
-  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY });
+  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY, layout: "custom" });
   editor.hass = makeHass();
   document.body.appendChild(editor);
   await editor.updateComplete;
@@ -311,11 +313,16 @@ test("section_order ignores unknown and duplicate entries and still honours show
   assert.match(t, /Total watch time/);
 });
 
-test("compact layout follows section_order too", async () => {
-  const t = text(await mount({ layout: "compact", section_order: ["next_up", "streak", "hero"] }));
-  const at = ["Next up", "Streak", "Total watch time"].map((l) => t.indexOf(l));
-  assert.ok(at.every((i) => i >= 0), `compact sections render: ${at}`);
-  assert.deepEqual([...at].sort((x, y) => x - y), at);
+test("compact ignores section_order and the switches; custom follows both", async () => {
+  const compact = text(await mount({ layout: "compact", section_order: ["next_up", "hero"], show_hero: false }));
+  const at = ["Total watch time", "Still to finish", "Next up"].map((l) => compact.indexOf(l));
+  assert.deepEqual([...at].sort((x, y) => x - y), at, "default order");
+  assert.ok(at.every((i) => i >= 0));
+  const custom = text(await mount({ layout: "custom", section_order: ["next_up", "streak", "hero"], show_still_to_finish: false }));
+  const c = ["Next up", "Streak", "Total watch time"].map((l) => custom.indexOf(l));
+  assert.ok(c.every((i) => i >= 0), `custom sections render: ${c}`);
+  assert.deepEqual([...c].sort((x, y) => x - y), c);
+  assert.doesNotMatch(custom, /Still to finish/);
 });
 
 test("the fun stat is a highlighted pill under the big number", async () => {
@@ -532,12 +539,30 @@ test("posters can be turned off", async () => {
   assert.equal(el.shadowRoot!.querySelector(".poster"), null);
 });
 
-test("compact layout keeps hero, streak and next up only", async () => {
+test("compact layout shows total watch time, still to finish and next up only", async () => {
   const t = text(await mount({ layout: "compact" }));
   assert.match(t, /Total watch time/);
-  assert.match(t, /Streak/);
+  assert.match(t, /Still to finish/);
   assert.match(t, /Next up/);
-  assert.doesNotMatch(t, /Catch-up|Airing|Last 7 days|Average per week|Library Watched|Watch time Shows/);
+  assert.doesNotMatch(t, /Streak|Catch-up|Airing|Last 7 days|Average per week|Library Watched|Watch time TV shows/);
+});
+
+test("full layout shows every section and ignores the switches and the order", async () => {
+  const t = text(await mount({ layout: "full", show_hero: false, show_airing: false, section_order: ["airing", "hero"] }));
+  const order = ["Total watch time", "Watch time TV shows", "Library Watched", "Still to finish", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
+  const at = order.map((l) => t.indexOf(l));
+  assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
+  assert.deepEqual([...at].sort((x, y) => x - y), at);
+});
+
+test("a card from before the custom layout that hides sections keeps working as custom", async () => {
+  assert.equal(resolveLayout({ show_airing: false }), "custom");
+  assert.equal(resolveLayout({ section_order: ["airing"] }), "custom");
+  assert.equal(resolveLayout({ show_queue: false }), "custom");
+  assert.equal(resolveLayout({}), "full");
+  assert.equal(resolveLayout({ show_posters: false, show_actions: true }), "full");
+  assert.equal(resolveLayout({ layout: "full", show_airing: false }), "full");
+  assert.doesNotMatch(text(await mount({ show_airing: false })), /Airing this week/);
 });
 
 test("section toggles hide sections", async () => {
@@ -545,7 +570,7 @@ test("section toggles hide sections", async () => {
     await mount({ show_hero: false, show_catchup: false, show_next_up: false, show_airing: false, show_last_7_days: false, show_average: false, show_streak: false }),
   );
   assert.doesNotMatch(t, /Total watch time|Catch-up|Next up|Airing|Last 7 days|Average per week|Streak/);
-  assert.match(t, /Watched 803/);
+  assert.match(t, /Watched · 803/);
 });
 
 test("show_queue still hides the catch-up backlog, and show_catchup wins when both are set", async () => {
@@ -765,7 +790,7 @@ test("re-renders only when a Refract entity changes", async () => {
   el.hass = { ...hass, states: { ...hass.states, [`sensor.${PREFIX}completed`]: { entity_id: "c", state: "804", attributes: {} } } };
   await el.updateComplete;
   assert.equal(renders, 1);
-  assert.match(text(el), /Watched 804/);
+  assert.match(text(el), /Watched · 804/);
 });
 
 test("stub config picks the Refract next up sensor", () => {
@@ -795,7 +820,7 @@ test("editor emits a clean config without defaults", async () => {
 
 test("editor reorders sections with the arrows and keeps the YAML clean", async () => {
   const editor = document.createElement("refract-stats-card-editor") as any;
-  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY });
+  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY, layout: "custom" });
   editor.hass = makeHass();
   document.body.appendChild(editor);
   await editor.updateComplete;
@@ -814,14 +839,62 @@ test("editor reorders sections with the arrows and keeps the YAML clean", async 
 
   // other edits keep the order
   const form = editor.shadowRoot.querySelector("ha-form");
-  form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, layout: "compact" } } }));
+  form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, queue_length: 7 } } }));
   assert.deepEqual(emitted[1].section_order.slice(0, 2), ["watch_time", "hero"]);
 
   // moving it back to the default removes the option
   (rows()[0].querySelectorAll("ha-icon-button")[1] as HTMLElement).click();
   await editor.updateComplete;
   assert.equal(emitted[2].section_order, undefined);
-  assert.equal(emitted[2].layout, "compact");
+  assert.equal(emitted[2].layout, "custom");
+});
+
+const editorFor = async (config: Record<string, unknown>) => {
+  const editor = document.createElement("refract-stats-card-editor") as any;
+  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY, ...config });
+  editor.hass = makeHass();
+  document.body.appendChild(editor);
+  await editor.updateComplete;
+  const names: string[] = [];
+  const walk = (schema: any[]) => schema.forEach((f) => (f.schema ? walk(f.schema) : names.push(f.name)));
+  walk(editor.shadowRoot.querySelector("ha-form").schema);
+  return { editor, names, panel: editor.shadowRoot.querySelector("ha-expansion-panel") };
+};
+
+test("the sections and their order only show up in the editor for the custom layout", async () => {
+  for (const layout of [undefined, "full", "compact"]) {
+    const { names, panel } = await editorFor(layout ? { layout } : {});
+    assert.ok(!names.includes("show_hero") && !names.includes("show_airing"), `no section switches for ${layout}`);
+    assert.equal(panel, null, `no section order for ${layout}`);
+    assert.ok(names.includes("show_posters") && names.includes("fun_stat") && names.includes("layout"), "other settings stay");
+  }
+  const { names, panel } = await editorFor({ layout: "custom" });
+  assert.ok(names.includes("show_hero") && names.includes("show_airing"));
+  assert.match(panel.getAttribute("header"), /Section order/);
+});
+
+test("the layout list offers Full, Compact and Custom, and switching shows the section settings", async () => {
+  const { editor } = await editorFor({});
+  const grid = editor.shadowRoot.querySelector("ha-form").schema.find((f: any) => f.type === "grid");
+  assert.deepEqual(grid.schema[0].selector.select.options.map((o: any) => o.value), ["full", "compact", "custom"]);
+  const form = editor.shadowRoot.querySelector("ha-form");
+  let emitted: any;
+  editor.addEventListener("config-changed", (e: CustomEvent) => (emitted = e.detail.config));
+  form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, layout: "custom" } } }));
+  assert.equal(emitted.layout, "custom");
+  await editor.updateComplete;
+  assert.ok(editor.shadowRoot.querySelector("ha-expansion-panel"), "section order appears");
+});
+
+test("an old card with hidden sections opens as custom, and choosing Full sticks", async () => {
+  const { editor } = await editorFor({ show_airing: false });
+  const form = editor.shadowRoot.querySelector("ha-form");
+  assert.equal(form.data.layout, "custom");
+  let emitted: any;
+  editor.addEventListener("config-changed", (e: CustomEvent) => (emitted = e.detail.config));
+  form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, layout: "full" } } }));
+  assert.equal(emitted.layout, "full", "written down so it isn't read as custom again");
+  assert.equal(resolveLayout(emitted), "full");
 });
 
 test("editor shows the legacy show_queue value on the catch-up switch", async () => {

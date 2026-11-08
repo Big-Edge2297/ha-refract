@@ -73,7 +73,7 @@ type: custom:refract-stats-card
 entity: sensor.refract_<username>_next_up
 ```
 
-Every section has its own switch (`show_average`, `show_last_7_days`, `show_catchup`, `show_airing`, `show_posters` and more), and there is a compact layout. See **[docs/dashboard-card.md](docs/dashboard-card.md)** for all options, the **Mark watched** button and troubleshooting.
+The card has three layouts: `full` (everything), `compact` (total watch time, still to finish and next up) and `custom`, where every section has its own switch (`show_average`, `show_last_7_days`, `show_catchup`, `show_airing` and more) and you set the order. See **[docs/dashboard-card.md](docs/dashboard-card.md)** for all options, the **Mark watched** button and troubleshooting.
 
 ## Options
 

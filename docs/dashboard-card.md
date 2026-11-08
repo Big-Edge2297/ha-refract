@@ -9,8 +9,8 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | Section | What you see | Needs |
 |---|---|---|
 | **Watch time** | Total time as days and hours, a library/movies/episodes watched summary, and the fun stat in a highlighted pill ("about 8.8 months of nonstop viewing") | profile stats |
-| **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares. Choose a compact bar with the share after each title, or a breakdown list with the time and share on one row per kind | profile stats |
-| **Library** | Every status you use, named and colored as in the Refract app: Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped (and any other status Refract adds). Choose a compact bar with a legend, or the full breakdown list with counts and percentages | library |
+| **Watch time split** | Shows, movies and anime as a stacked bar with readable durations and shares. Choose a compact bar with the share after each title (TV shows · 78%), or a breakdown list with the time and share on one row per kind | profile stats |
+| **Library** | Every status you use, named and colored as in the Refract app: Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped (and any other status Refract adds). Choose a compact bar with a legend (Watched · 803), or the full breakdown list with counts and percentages | library |
 | **Still to finish** | The time left to watch the movies and shows you haven't finished (Plan to Watch, Watching and On Hold), as in the Refract app: the total, and one row each for movies, TV shows and anime (only when you have anime to finish) with the number of titles and the time left | library |
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
@@ -63,34 +63,17 @@ entity: sensor.refract_<username>_next_up
 
 Replace `<username>` with your own: the entity ID is whatever your Refract entities are called in Home Assistant (check **Settings → Devices & services → Entities**). Any Refract entity works as the `entity`, and the card finds the other sensors of the same account. The visual editor avoids typing it at all.
 
-### Choosing sections
+### Layouts
 
-Every section has an on/off switch. For example, a slimmer card without the weekly charts and the airing list:
+The `layout` option decides which sections the card shows:
 
-```yaml
-type: custom:refract-stats-card
-entity: sensor.refract_<username>_next_up
-show_average: false
-show_last_7_days: false
-show_airing: false
-```
+| Layout | What it shows |
+|---|---|
+| `full` (default) | Every section, in the default order |
+| `compact` | Total watch time, still to finish and next up |
+| `custom` | Only the sections you switch on, in the order you choose |
 
-### Section order
-
-Change the order of the sections in the editor under **Section order** (arrows move a section up or down), or in YAML with `section_order`. The header always stays on top. Sections you leave out of the list follow in their default position, and the `show_*` switches still decide what is shown.
-
-```yaml
-type: custom:refract-stats-card
-entity: sensor.refract_sample_user_next_up
-section_order:
-  - next_up
-  - airing
-  - hero
-```
-
-The default order is `hero`, `watch_time`, `library`, `still_to_finish`, `streak`, `average`, `last_7_days`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other. The compact layout uses the same order for the sections it shows.
-
-### Compact layout
+`full` and `compact` ignore the `show_*` switches and `section_order`. In the visual editor, the **Sections** switches and **Section order** appear only when **Custom** is selected.
 
 ```yaml
 type: custom:refract-stats-card
@@ -98,13 +81,42 @@ entity: sensor.refract_<username>_next_up
 layout: compact
 ```
 
+### Custom layout
+
+Set `layout: custom`, then switch sections on or off and put them in the order you like. For example, a slimmer card without the weekly charts and the airing list:
+
+```yaml
+type: custom:refract-stats-card
+entity: sensor.refract_<username>_next_up
+layout: custom
+show_average: false
+show_last_7_days: false
+show_airing: false
+```
+
+Change the order of the sections in the editor under **Section order** (arrows move a section up or down), or in YAML with `section_order`. The header always stays on top. Sections you leave out of the list follow in their default position, and the `show_*` switches still decide what is shown.
+
+```yaml
+type: custom:refract-stats-card
+entity: sensor.refract_<username>_next_up
+layout: custom
+section_order:
+  - next_up
+  - airing
+  - hero
+```
+
+The default order is `hero`, `watch_time`, `library`, `still_to_finish`, `streak`, `average`, `last_7_days`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other.
+
+Cards from before 0.4.4 that have no `layout` but hide sections or set a `section_order` are treated as `custom`, so they keep looking the same. A card that sets `layout: full` explicitly now always shows everything.
+
 ## Configuration
 
 | Option | Default | Description |
 |---|---|---|
 | `entity` | | **Required.** Any entity of the Refract account |
 | `name` | from the device | Overrides the account name in the header |
-| `layout` | `full` | `full`, or `compact` (watch time, streak and next up only) |
+| `layout` | `full` | `full` (every section), `compact` (total watch time, still to finish and next up) or `custom` (use `show_*` and `section_order`) |
 | `watch_time_style` | `bar` | `bar` (a stacked bar with the share after each title) or `list` (a bar plus one row per kind with its time and percentage, like the library list; taller) |
 | `library_style` | `bar` | `bar` (a status bar with a legend) or `list` (the Refract app's status breakdown: a bar plus one row per status with its count and percentage; taller) |
 | `duration_format` | `days_hours` | `days_hours` (206 d 23 h), `hours` (4,967 h) or `auto` (picks the unit by size) |
@@ -112,7 +124,7 @@ layout: compact
 | `fun_stat_mode` | `rotate` | `rotate` (changes daily), `months`, `workweeks` or `lotr` |
 | `queue_length` | `5` | Catch-up rows shown before "Show all" |
 | `airing_length` | `5` | "Airing this week" rows shown before "Show all" |
-| `section_order` | see below | Order of the sections under the header (list of section names) |
+| `section_order` | see above | Order of the sections under the header (list of section names). Only used by `layout: custom` |
 | `show_hero` | `true` | Watch time summary and fun stat |
 | `show_watch_time` | `true` | Watch time split |
 | `show_library` | `true` | Library (status bar or breakdown list, see `library_style`) |
@@ -133,7 +145,7 @@ layout: compact
 | `color_accent` | `#6250d6` | Progress bars, streak and next up highlight |
 | `entities` | | Manual overrides for discovery, see below |
 
-The compact layout shows only the watch time summary, streak and next up, and ignores the other `show_*` options.
+The `show_*` section switches (`show_hero` to `show_airing`) only apply to `layout: custom`. `show_posters`, `show_actions` and `confirm_actions` work in every layout.
 
 ### Options from earlier versions
 

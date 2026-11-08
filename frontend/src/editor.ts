@@ -3,7 +3,7 @@ import { property, state } from "lit/decorators.js";
 import { defineOnce } from "./define";
 import { DOMAIN, EDITOR_TYPE } from "./const";
 import { editorStyles } from "./styles";
-import { DEFAULT_CONFIG, SECTION_IDS, resolveSectionOrder, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
+import { DEFAULT_CONFIG, SECTION_IDS, hasSectionCustomization, resolveLayout, resolveSectionOrder, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
 
 const LABELS: Record<string, string> = {
   entity: "Refract entity",
@@ -60,14 +60,14 @@ const HELPERS: Record<string, string> = {
 const option = (value: string, label: string) => ({ value, label });
 const select = (options: Array<{ value: string; label: string }>) => ({ select: { mode: "dropdown", options } });
 
-const SCHEMA = [
+const buildSchema = (custom: boolean) => [
   { name: "entity", required: true, selector: { entity: { integration: DOMAIN, domain: "sensor" } } },
   { name: "name", selector: { text: {} } },
   {
     type: "grid",
     name: "",
     schema: [
-      { name: "layout", selector: select([option("full", "Full"), option("compact", "Compact")]) },
+      { name: "layout", selector: select([option("full", "Full"), option("compact", "Compact"), option("custom", "Custom")]) },
       {
         name: "duration_format",
         selector: select([option("days_hours", "Days and hours"), option("hours", "Hours only"), option("auto", "Automatic")]),
@@ -78,31 +78,35 @@ const SCHEMA = [
       { name: "airing_length", selector: { number: { min: 1, max: 20, mode: "box" } } },
     ],
   },
-  {
-    type: "expandable",
-    name: "",
-    title: "Sections",
-    icon: "mdi:view-dashboard-outline",
-    schema: [
+  ...(custom
+    ? [
       {
-        type: "grid",
+        type: "expandable",
         name: "",
+        title: "Sections",
+        icon: "mdi:view-dashboard-outline",
         schema: [
-          { name: "show_hero", selector: { boolean: {} } },
-          { name: "show_watch_time", selector: { boolean: {} } },
-          { name: "show_library", selector: { boolean: {} } },
-          { name: "show_still_to_finish", selector: { boolean: {} } },
-          { name: "show_streak", selector: { boolean: {} } },
-          { name: "show_average", selector: { boolean: {} } },
-          { name: "show_last_7_days", selector: { boolean: {} } },
-          { name: "show_next_up", selector: { boolean: {} } },
-          { name: "show_catchup", selector: { boolean: {} } },
-          { name: "show_airing", selector: { boolean: {} } },
-          { name: "show_posters", selector: { boolean: {} } },
+          {
+            type: "grid",
+            name: "",
+            schema: [
+              { name: "show_hero", selector: { boolean: {} } },
+              { name: "show_watch_time", selector: { boolean: {} } },
+              { name: "show_library", selector: { boolean: {} } },
+              { name: "show_still_to_finish", selector: { boolean: {} } },
+              { name: "show_streak", selector: { boolean: {} } },
+              { name: "show_average", selector: { boolean: {} } },
+              { name: "show_last_7_days", selector: { boolean: {} } },
+              { name: "show_next_up", selector: { boolean: {} } },
+              { name: "show_catchup", selector: { boolean: {} } },
+              { name: "show_airing", selector: { boolean: {} } },
+            ],
+          },
         ],
       },
-    ],
-  },
+    ]
+    : []),
+  { name: "show_posters", selector: { boolean: {} } },
   {
     type: "expandable",
     name: "",
@@ -164,19 +168,20 @@ export class RefractStatsCardEditor extends LitElement {
 
   protected render(): TemplateResult | typeof nothing {
     if (!this.hass || !this._config) return nothing;
-    const data: Record<string, unknown> = { ...DEFAULT_CONFIG, ...this._config };
+    const layout = resolveLayout(this._config);
+    const data: Record<string, unknown> = { ...DEFAULT_CONFIG, ...this._config, layout };
     if (this._config.show_queue !== undefined && this._config.show_catchup === undefined) data.show_catchup = this._config.show_queue;
     const actionMissing = !!this._config.show_actions && !this.hass.services?.[DOMAIN]?.mark_episode_watched;
     return html`<div class="wrap">
       <ha-form
         .hass=${this.hass}
         .data=${data}
-        .schema=${SCHEMA}
+        .schema=${buildSchema(layout === "custom")}
         .computeLabel=${(s: { name: string }) => LABELS[s.name] ?? s.name}
         .computeHelper=${(s: { name: string }) => HELPERS[s.name]}
         @value-changed=${this._valueChanged}
       ></ha-form>
-      ${this._orderPanel()}
+      ${layout === "custom" ? this._orderPanel() : nothing}
       ${actionMissing
         ? html`<ha-alert alert-type="warning">
             The button stays hidden until the <code>refract.mark_episode_watched</code> action is available. Check
@@ -257,6 +262,8 @@ export class RefractStatsCardEditor extends LitElement {
     for (const key of ["device_id", "config_entry_id", "entities", "section_order"]) {
       if (cfg[key] !== undefined && out[key] === undefined) out[key] = cfg[key];
     }
+    // A card with no layout and hidden sections reads as custom, so choosing Full has to be written down.
+    if (out.layout === undefined && value.layout === "full" && hasSectionCustomization(out)) out.layout = "full";
     this._config = out as unknown as RefractCardConfig;
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: out }, bubbles: true, composed: true }));
   }

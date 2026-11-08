@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.4
+
+- **New:** `layout: custom`. *Layout* is now Full, Compact or Custom
+- **Changed:** Full shows every section; Compact shows *Total watch time*, *Still to finish* and *Next up*. The `show_*` switches and `section_order` only apply to Custom, and the editor shows the **Sections** switches and **Section order** only for Custom
+- **Changed:** *Library* bar legend reads **Watched · 803**; *Watch time* bar reads **TV shows · 78%** (no brackets)
+- Cards with no `layout` that hide sections or set a `section_order` are treated as Custom, so existing dashboards look the same
+
 ## 0.4.3
 
 - **Changed:** *Still to finish* shows only the total and the movies / TV shows (and anime) counters: the hours line, the "Not counting N shows..." note and the episodes / started / not started line are removed

@@ -2,6 +2,23 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.4.4
+
+### Added
+- **Custom layout**: *Layout* now offers **Full**, **Compact** and **Custom** (`layout: custom`)
+
+### Changed
+- **Full** always shows every section in the default order, and **Compact** shows only *Total watch time*, *Still to finish* and *Next up* (the streak is no longer part of it). Neither uses the section switches or *Section order* any more
+- In the card editor, the **Sections** switches and **Section order** only appear when **Custom** is selected, where you choose the sections and their order. *Posters* is now always shown with the other settings
+- **Library** (bar style): the count now follows the status after a dot, for example **Watched · 803**
+- **Watch time** (bar style): the brackets are gone and the share follows the title after a dot, for example **TV shows · 78%**
+- README and the card documentation now describe the three layouts, and the card screenshot is updated
+
+### Upgrading
+- Cards without a `layout` that hide sections (`show_*: false`) or set a `section_order` are treated as `custom` automatically, so they look the same as before. The editor shows them as **Custom**
+- A card that sets `layout: full` in YAML now shows everything even if it also hides sections. Use `layout: custom` to keep hiding them
+- A card with `layout: compact` no longer shows the streak, and ignores `section_order` and the `show_*` switches
+
 ## 0.4.3
 
 ### Fixed

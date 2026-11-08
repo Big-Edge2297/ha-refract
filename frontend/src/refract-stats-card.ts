@@ -8,7 +8,7 @@ import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, st
 import { languageOf, t } from "./localize";
 import { buildModel, showKey, type CatchupShow, type Model, type ShowItem } from "./model";
 import { cardStyles } from "./styles";
-import { DEFAULT_CONFIG, resolveSectionOrder, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
+import { DEFAULT_CONFIG, layoutSections, resolveLayout, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
 
 type ResolvedConfig = RefractCardConfig & Required<Pick<RefractCardConfig, keyof typeof DEFAULT_CONFIG>>;
 type ActionState = "idle" | "confirm" | "busy" | "done" | "error";
@@ -64,18 +64,20 @@ export class RefractStatsCard extends LitElement {
   public getCardSize(): number {
     if (!this._cfg) return 12;
     const c = this._cfg;
-    const full = c.layout === "full";
-    let size = 1;
-    if (c.show_hero) size += 3;
-    if (full && c.show_watch_time) size += 2;
-    if (full && c.show_library) size += 2;
-    if (full && c.show_still_to_finish) size += 3;
-    if (c.show_streak) size += 3;
-    if (full && c.show_last_7_days) size += 3;
-    if (c.show_next_up) size += 3;
-    if (full && c.show_catchup) size += 2 + Math.min(c.queue_length, 5);
-    if (full && c.show_airing) size += 2 + Math.min(c.airing_length, 5);
-    return size;
+    const shown = layoutSections(resolveLayout(this._config), c);
+    const sizes: Record<SectionId, number> = {
+      hero: 3,
+      watch_time: 2,
+      library: 2,
+      still_to_finish: 3,
+      streak: 3,
+      average: 0,
+      last_7_days: 3,
+      next_up: 3,
+      catchup: 2 + Math.min(c.queue_length, 5),
+      airing: 2 + Math.min(c.airing_length, 5),
+    };
+    return 1 + shown.reduce((sum, id) => sum + sizes[id], 0);
   }
 
   public getGridOptions() {
@@ -132,19 +134,18 @@ export class RefractStatsCard extends LitElement {
       return this._message(t(this.hass, "empty.not_found", { entity: c.entity ?? c.device_id ?? "" }));
     }
 
-    const compact = c.layout === "compact";
     const posters = c.show_posters && m.hasPosters;
-    const sections: Record<SectionId, TemplateResult | typeof nothing> = {
-      hero: c.show_hero ? this._hero(m) : nothing,
-      watch_time: !compact && c.show_watch_time ? this._watchTime(m) : nothing,
-      still_to_finish: !compact && c.show_still_to_finish ? this._finish(m) : nothing,
-      library: !compact && c.show_library ? this._library(m) : nothing,
-      streak: c.show_streak && m.streak ? this._streak(m) : nothing,
-      average: !compact && c.show_average ? this._average(m) : nothing,
-      last_7_days: !compact && c.show_last_7_days ? this._last7(m) : nothing,
-      next_up: c.show_next_up ? this._next(m, posters) : nothing,
-      catchup: !compact && c.show_catchup ? this._catchup(m, posters) : nothing,
-      airing: !compact && c.show_airing ? this._airing(m) : nothing,
+    const all: Record<SectionId, () => TemplateResult | typeof nothing> = {
+      hero: () => this._hero(m),
+      watch_time: () => this._watchTime(m),
+      still_to_finish: () => this._finish(m),
+      library: () => this._library(m),
+      streak: () => (m.streak ? this._streak(m) : nothing),
+      average: () => this._average(m),
+      last_7_days: () => this._last7(m),
+      next_up: () => this._next(m, posters),
+      catchup: () => this._catchup(m, posters),
+      airing: () => this._airing(m),
     };
 
     // Streak and average share a row when they end up next to each other.
@@ -154,8 +155,8 @@ export class RefractStatsCard extends LitElement {
       if (row.length) body.push(html`<div class="grid">${row}</div>`);
       row = [];
     };
-    for (const id of resolveSectionOrder(c.section_order)) {
-      const part = sections[id];
+    for (const id of layoutSections(resolveLayout(this._config), c)) {
+      const part = all[id]();
       if (part === nothing) continue;
       if (id === "streak" || id === "average") {
         row.push(part);
@@ -318,7 +319,7 @@ export class RefractStatsCard extends LitElement {
         : html`<div class="status-legend">
             ${statuses.map(
               ([label, v, color]) =>
-                html`<span><span class="swatch sm" style="background:${color}"></span>${label} ${fmtNumber(v, lang)}</span>`,
+                html`<span><span class="swatch sm" style="background:${color}"></span>${label} · ${fmtNumber(v, lang)}</span>`,
             )}
           </div>`}
     </div>`;
@@ -483,7 +484,7 @@ export class RefractStatsCard extends LitElement {
             ${cats.map(
               (x, i) =>
                 html`<div class="watch-col">
-                  <div class="row"><span class="swatch" style="background:${x.color}"></span>${t(this.hass, x.key)} (${pct[i]}%)</div>
+                  <div class="row"><span class="swatch" style="background:${x.color}"></span>${t(this.hass, x.key)} · ${pct[i]}%</div>
                   <div class="value">${durationText(x.minutes, fmt, lang)}</div>
                 </div>`,
             )}
