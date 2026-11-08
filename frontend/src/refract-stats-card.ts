@@ -512,7 +512,12 @@ export class RefractStatsCard extends LitElement {
       <div class="label">${t(this.hass, "finish.title")}</div>
       ${rows.length
         ? html`${total !== undefined && total > 0
-              ? html`<div class="finish-total">${timeOf(total)}</div>
+              ? html`<div class="big finish-big">
+                    ${durationParts(total, fmt, lang).map(
+                      (p, i) =>
+                        html`<span class="part"><span class="num ${i > 0 ? "second" : ""}">${p.value}</span><span class="unit">${p.short}</span></span> `,
+                    )}
+                  </div>
                   <div class="finish-hours">${many("finish.hours", Math.round(total / 60))}</div>`
               : nothing}
             ${f.estimated ? html`<div class="finish-note">${t(this.hass, "finish.estimate")}</div>` : nothing}

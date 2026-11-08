@@ -323,13 +323,19 @@ export const cardStyles = css`
   }
 
   /* still to finish */
-  .finish-total {
+  /* the total reuses the hero's .big numbers, so it has the same font; days and hours are short and attached */
+  .finish-big {
     margin-top: 4px;
-    font-size: 36px;
-    font-weight: 700;
-    line-height: 1.1;
+    gap: 0 14px;
+  }
+  .finish-big .part {
+    gap: 2px;
+  }
+  .finish-big .num {
     color: var(--c-accent);
-    font-variant-numeric: tabular-nums;
+  }
+  .finish-big .unit {
+    font-size: 18px;
   }
   .finish-hours {
     margin-top: 10px;

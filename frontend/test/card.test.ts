@@ -135,7 +135,7 @@ test("still to finish shows the total, the hours and a row per kind, like the Re
   const el = await mount({});
   const panel = el.shadowRoot!.querySelector(".panel.finish")!;
   const t = panel.textContent!.replace(/\s+/g, " ").trim();
-  assert.match(t, /^Still to finish 26 d 5 h 630 hours of non-stop watching Estimate: shifts as episodes air and runtime data improves\./);
+  assert.match(t, /^Still to finish 26d 5h 630 hours of non-stop watching Estimate: shifts as episodes air and runtime data improves\./);
   const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
   assert.deepEqual(rows, ["26 movies to finish 2 d 2 h", "37 TV shows to finish 701 episodes · 32 not started, 5 started 24 d 3 h"]);
   assert.match(panel.querySelectorAll(".finish-time")[0].getAttribute("style")!, /--c-movies/);

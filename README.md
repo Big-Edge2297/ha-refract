@@ -4,7 +4,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/Big-Edge2297/ha-refract)](https://github.com/Big-Edge2297/ha-refract/releases/latest)
 [![Validate](https://github.com/Big-Edge2297/ha-refract/actions/workflows/validate.yml/badge.svg)](https://github.com/Big-Edge2297/ha-refract/actions/workflows/validate.yml)
 
-Unofficial [Home Assistant](https://www.home-assistant.io) integration for [Refract](https://getrefract.app), the cross-media tracker for movies, TV and anime. It uses Refract's official [personal API keys](https://getrefract.app/developers).
+Unofficial [Home Assistant](https://www.home-assistant.io/) integration for [Refract](https://getrefract.app/), the cross-media tracker for movies, TV and anime. It uses Refract's official [personal API keys](https://getrefract.app/developers) and [TMDB's API key](https://www.themoviedb.org/settings/api) for posters.
 
 ![Refract Stats Card](docs/dashboard-card.png)
 

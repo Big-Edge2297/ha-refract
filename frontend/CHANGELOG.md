@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- **Changed:** the *Still to finish* total uses the same font as *Total watch time*, written as 26d 5h
+
 ## 0.4.0
 
 - **New:** *Still to finish* section (needs the integration's new `still_to_finish` sensor): estimated time left for the movies and shows you haven't finished, with rows for movies, TV shows and anime. Switch: `show_still_to_finish`; it is part of *Section order*

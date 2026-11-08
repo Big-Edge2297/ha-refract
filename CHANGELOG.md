@@ -2,6 +2,12 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.4.1
+
+### Changed
+- **Still to finish**: the total now uses the same serif font as *Total watch time*, with the days and hours written as **26d 5h**
+- README: the intro mentions the optional TMDB API key for posters and links to TMDB's API settings page
+
 ## 0.4.0
 
 ### Added
