@@ -2,6 +2,21 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.5.0
+
+### Added
+- **Most watched**: a new card section with your top **actor**, **director**, **writer**, **decade**, **genre** and **country**. People have their TMDB profile photo, countries a flag, and every tile shows the titles and hours behind it. It is worked out from TMDB (Refract doesn't provide it), weighting each title by the time you spent on it, and needs the TMDB API key that is already used for posters
+- New sensor `sensor.*_top_picks` with the top 3 of each ranking in its attributes, usable in your own cards and automations
+- Card options `show_top_picks` (Custom layout, with a switch in the editor) and `top_picks_items` to pick and order the tiles
+- The card documentation explains how the numbers are counted, and the README has the TMDB notice
+
+### Changed
+- The default section order puts *Most watched* after *Last 7 days*. Cards with a custom `section_order` get it at the end
+
+### Notes
+- The first lookups run over the next few updates (100 titles each, the most watched first). The section says *Still building* until it is done. Details are cached on disk
+- The numbers are our own calculation from TMDB, so they can differ from what the Refract app shows. TMDB has less writer data for TV than for movies
+
 ## 0.4.6
 
 ### Added

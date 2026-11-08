@@ -464,6 +464,235 @@ def build_finish(
     }
 
 
+# ------------------------------------------------------------ most watched
+#
+# The "most watched" actor, director, writer, decade, genre and country are worked out here from
+# TMDB (Refract doesn't provide them). Every title counts for the minutes watched of it, so a long
+# series you finished weighs more than a movie you saw once.
+
+# Statuses that mean the title has been watched, at least in part.
+WATCHED_STATUSES = ("completed", "up_to_date", "in_progress", "on_hold", "dropped")
+_WRITER_JOBS = frozenset({"Writer", "Screenplay", "Story", "Teleplay", "Creator"})
+_CAST_LIMIT = 10
+_PEOPLE_LIMIT = 6
+TOP_LIMIT = 3
+
+
+def watch_counts(payload: Any, kind: str) -> dict[int, int]:
+    """Entries per TMDB id in a history payload: episodes watched per show, or plays per movie.
+
+    `kind` is `show` for /history/episodes (each entry has a `show`) and `movie` for /history/movies.
+    """
+    counts: dict[int, int] = {}
+
+    def visit(node: Any) -> None:
+        if isinstance(node, list):
+            for entry in node:
+                visit(entry)
+        elif isinstance(node, dict):
+            obj = node.get(kind)
+            ids = obj.get("ids") if isinstance(obj, dict) else None
+            tmdb = ids.get("tmdb") if isinstance(ids, dict) else None
+            if isinstance(tmdb, int) and not isinstance(tmdb, bool):
+                counts[tmdb] = counts.get(tmdb, 0) + 1
+                return
+            for value in node.values():
+                if isinstance(value, (list, dict)):
+                    visit(value)
+
+    visit(payload)
+    return counts
+
+
+def pick_candidates(
+    library: list[dict[str, Any]], episode_counts: dict[int, int], movie_counts: dict[int, int]
+) -> list[dict[str, Any]]:
+    """Titles that have been watched, heaviest first, with how much of each.
+
+    The history is the best source: episodes watched per show and plays per movie. Without it a
+    watched movie counts once, and a show counts the episodes Refract says were watched, or all of
+    them when it is completed or up to date. Anything else has no usable amount and is left out.
+    Titles on the watchlist only count when the history shows they were watched.
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for item in library:
+        tmdb = _tmdb_id_of(item)
+        kind = item.get("type")
+        if tmdb is None or kind not in ("movie", "show") or item.get("status") not in WATCHED_STATUSES:
+            continue
+        status = item.get("status")
+        if kind == "movie":
+            count: int | None = movie_counts.get(tmdb) or (1 if status in ("completed", "up_to_date") else None)
+            assume_all = False
+        else:
+            count = episode_counts.get(tmdb) or None
+            if count is None:
+                watched = _positive(item, _WATCHED_KEYS)
+                count = int(watched) if watched else None
+            assume_all = count is None and status in ("completed", "up_to_date")
+        if count or assume_all:
+            out[f"{kind}:{tmdb}"] = {"key": f"{kind}:{tmdb}", "kind": kind, "id": tmdb, "count": count, "assume_all": assume_all}
+    # History can know titles the library doesn't (removed, or not synced yet).
+    for tmdb, count in movie_counts.items():
+        out.setdefault(f"movie:{tmdb}", {"key": f"movie:{tmdb}", "kind": "movie", "id": tmdb, "count": count, "assume_all": False})
+    for tmdb, count in episode_counts.items():
+        out.setdefault(f"show:{tmdb}", {"key": f"show:{tmdb}", "kind": "show", "id": tmdb, "count": count, "assume_all": False})
+    return sorted(out.values(), key=lambda c: (-(c["count"] or 0), c["key"]))
+
+
+def _person(entry: Any) -> list[Any] | None:
+    """`[tmdb id, name, profile path]` of a TMDB cast or crew entry."""
+    if not isinstance(entry, dict):
+        return None
+    ident, name = entry.get("id"), entry.get("name")
+    if not isinstance(ident, int) or isinstance(ident, bool) or not isinstance(name, str) or not name:
+        return None
+    path = entry.get("profile_path")
+    return [ident, name, path if isinstance(path, str) and path else None]
+
+
+def _unique(people: Iterable[list[Any] | None], limit: int) -> list[list[Any]]:
+    seen: set[int] = set()
+    out: list[list[Any]] = []
+    for person in people:
+        if person and person[0] not in seen:
+            seen.add(person[0])
+            out.append(person)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def tmdb_profile(body: Any, kind: str) -> dict[str, Any] | None:
+    """What the "most watched" numbers need from a TMDB `/movie/{id}` or `/tv/{id}` response.
+
+    The response has to come with `append_to_response=credits` (movies) or `aggregate_credits`
+    (shows). People are kept as `[id, name, profile path]`: the top billed cast, the directors, and
+    the writers (including the creators of a show).
+    """
+    if not isinstance(body, dict):
+        return None
+    movie = kind == "movie"
+    stamp = body.get("release_date") if movie else body.get("first_air_date")
+    year = int(stamp[:4]) if isinstance(stamp, str) and stamp[:4].isdigit() else None
+
+    credits = body.get("credits" if movie else "aggregate_credits")
+    credits = credits if isinstance(credits, dict) else {}
+    cast_raw = [c for c in credits.get("cast") or [] if isinstance(c, dict)]
+    cast_raw.sort(key=lambda c: c["order"] if isinstance(c.get("order"), int) else 10_000)
+    crew = [c for c in credits.get("crew") or [] if isinstance(c, dict)]
+
+    def jobs(member: dict[str, Any]) -> set[str]:
+        if movie:
+            return {member["job"]} if isinstance(member.get("job"), str) else set()
+        return {j["job"] for j in member.get("jobs") or [] if isinstance(j, dict) and isinstance(j.get("job"), str)}
+
+    directors = _unique((_person(c) for c in crew if "Director" in jobs(c)), _PEOPLE_LIMIT)
+    writers = _unique(
+        [_person(c) for c in crew if jobs(c) & _WRITER_JOBS]
+        + ([_person(c) for c in body.get("created_by") or []] if not movie else []),
+        _PEOPLE_LIMIT,
+    )
+
+    runtime: float | None = None
+    if movie:
+        value = body.get("runtime")
+        runtime = float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0 else None
+    else:
+        times = [r for r in body.get("episode_run_time") or [] if isinstance(r, (int, float)) and r > 0]
+        last = body.get("last_episode_to_air")
+        last_runtime = last.get("runtime") if isinstance(last, dict) else None
+        if times:
+            runtime = sum(times) / len(times)
+        elif isinstance(last_runtime, (int, float)) and last_runtime > 0:
+            runtime = float(last_runtime)
+    episodes = body.get("number_of_episodes")
+
+    countries: list[list[str]] = []
+    for c in body.get("production_countries") or []:
+        if isinstance(c, dict) and isinstance(c.get("iso_3166_1"), str):
+            countries.append([c["iso_3166_1"], c.get("name") if isinstance(c.get("name"), str) else c["iso_3166_1"]])
+    if not countries:
+        countries = [[c, c] for c in body.get("origin_country") or [] if isinstance(c, str)]
+
+    return {
+        "year": year,
+        "runtime": runtime,
+        "episodes": episodes if isinstance(episodes, int) and not isinstance(episodes, bool) else None,
+        "genres": [g["name"] for g in body.get("genres") or [] if isinstance(g, dict) and isinstance(g.get("name"), str)],
+        "countries": countries,
+        "cast": _unique((_person(c) for c in cast_raw), _CAST_LIMIT),
+        "directors": directors,
+        "writers": writers,
+    }
+
+
+def build_top_picks(
+    candidates: list[dict[str, Any]],
+    profiles: dict[str, dict[str, Any]],
+    episode_minutes: float | None = None,
+    movie_minutes: float | None = None,
+    image_base: str = "",
+) -> dict[str, Any]:
+    """Actor, director, writer, decade, genre and country with the most watch time.
+
+    Every title gives its watched minutes to each of its credited people, genres and countries
+    (the top billed cast of a title are equal). `profiles` is keyed `movie:<id>` / `show:<id>`;
+    titles with no profile yet are counted as `pending`, and titles TMDB doesn't know are skipped. Each ranking keeps its best `TOP_LIMIT`.
+    """
+    boards: dict[str, dict[Any, dict[str, Any]]] = {
+        name: {} for name in ("actor", "director", "writer", "decade", "genre", "country")
+    }
+    used = 0
+    pending = 0
+
+    def credit(board: str, ident: Any, label: str, minutes: float, **extra: Any) -> None:
+        row = boards[board].setdefault(ident, {"name": label, "minutes": 0.0, "titles": 0, **extra})
+        row["minutes"] += minutes
+        row["titles"] += 1
+
+    for cand in candidates:
+        profile = profiles.get(cand["key"])
+        if profile is None:
+            pending += 1
+            continue
+        if profile.get("missing"):
+            continue  # TMDB doesn't know this title
+        if cand["kind"] == "movie":
+            runtime = profile.get("runtime") or movie_minutes
+            minutes = (cand["count"] or 1) * runtime if runtime else None
+        else:
+            runtime = profile.get("runtime") or episode_minutes
+            episodes = cand["count"] or (profile.get("episodes") if cand["assume_all"] else None)
+            minutes = episodes * runtime if episodes and runtime else None
+        if not minutes:
+            continue
+        used += 1
+        for person_id, name, path in profile.get("cast") or []:
+            credit("actor", person_id, name, minutes, photo=f"{image_base}{path}" if path else None, id=person_id)
+        for board, field in (("director", "directors"), ("writer", "writers")):
+            for person_id, name, path in profile.get(field) or []:
+                credit(board, person_id, name, minutes, photo=f"{image_base}{path}" if path else None, id=person_id)
+        if profile.get("year"):
+            decade = profile["year"] // 10 * 10
+            credit("decade", decade, f"{decade}s", minutes, decade=decade)
+        for genre in profile.get("genres") or []:
+            credit("genre", genre, genre, minutes)
+        for code, name in profile.get("countries") or []:
+            credit("country", code, name, minutes, code=code)
+
+    def top(rows: dict[Any, dict[str, Any]]) -> list[dict[str, Any]]:
+        ranked = sorted(rows.values(), key=lambda r: (-r["minutes"], -r["titles"], r["name"]))[:TOP_LIMIT]
+        return [{**{k: v for k, v in r.items() if k != "minutes"}, "hours": round(r["minutes"] / 60, 1)} for r in ranked]
+
+    return {
+        "titles": used,
+        "total": len(candidates),
+        "pending": pending,
+        **{name: top(rows) for name, rows in boards.items()},
+    }
+
+
 # -------------------------------------------------------------- calendar
 
 

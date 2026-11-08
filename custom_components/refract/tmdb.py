@@ -15,7 +15,7 @@ import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .analytics import tmdb_movie_info, tmdb_tv_info
+from .analytics import tmdb_movie_info, tmdb_profile, tmdb_tv_info
 from .const import DOMAIN, LOGGER, TMDB_API_BASE, TMDB_IMAGE_BASE, USER_AGENT
 
 _STORE_VERSION = 1
@@ -25,6 +25,10 @@ _LOOKUPS_PER_REFRESH = 15
 _DETAILS_PER_REFRESH = 80
 _DETAILS_CONCURRENCY = 6
 _SHOW_DETAILS_DAYS = 3
+# Credits, genres and countries for "Most watched". A title is fetched once and kept: its credits
+# hardly change, so it is only looked at again after a long time. The heaviest titles come first.
+_PROFILES_PER_REFRESH = 100
+_PROFILE_DAYS = 180
 
 
 def _auth(api_key: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -60,11 +64,14 @@ class TmdbClient:
         self._cache: dict[str, str] = {}
         self._details_store: Store[dict[str, dict[str, Any]]] = Store(hass, _STORE_VERSION, f"{DOMAIN}_tmdb_details")
         self._details: dict[str, dict[str, Any]] = {}
+        self._profile_store: Store[dict[str, dict[str, Any]]] = Store(hass, _STORE_VERSION, f"{DOMAIN}_tmdb_profiles")
+        self._profiles: dict[str, dict[str, Any]] = {}
         self._disabled = False
 
     async def async_load(self) -> None:
         self._cache = await self._store.async_load() or {}
         self._details = await self._details_store.async_load() or {}
+        self._profiles = await self._profile_store.async_load() or {}
 
     def poster_url(self, tmdb_id: int | None) -> str | None:
         path = self._cache.get(str(tmdb_id)) if tmdb_id is not None else None
@@ -162,4 +169,67 @@ class TmdbClient:
             key: {k: v for k, v in self._details[key].items() if k in ("episodes", "runtime") and v is not None}
             for key, _ in wanted
             if key in self._details
+        }
+
+    async def async_profiles(self, wanted: list[tuple[str, int]]) -> dict[str, dict[str, Any]]:
+        """Credits, genres, countries and years for `(kind, tmdb id)` pairs, cached on disk.
+
+        `kind` is `movie` or `show`; results are keyed `movie:<id>` / `show:<id>`. Whatever is
+        missing or very old is fetched now, a bounded number per refresh and in the order given
+        (so put the most watched titles first); anything that can't be fetched keeps its last
+        value, or is left out until a later refresh.
+        """
+        today = date.today()
+
+        def fresh(key: str) -> bool:
+            entry = self._profiles.get(key)
+            if entry is None:
+                return False
+            try:
+                return date.fromisoformat(entry.get("day", "")) + timedelta(days=_PROFILE_DAYS) > today
+            except ValueError:
+                return False
+
+        todo = [(f"{kind}:{i}", kind, i) for kind, i in wanted if not fresh(f"{kind}:{i}")][:_PROFILES_PER_REFRESH]
+        if todo and not self._disabled:
+            headers, params = _auth(self._api_key)
+            gate = asyncio.Semaphore(_DETAILS_CONCURRENCY)
+
+            async def fetch(key: str, kind: str, tmdb_id: int) -> None:
+                if self._disabled:
+                    return
+                path = f"/movie/{tmdb_id}" if kind == "movie" else f"/tv/{tmdb_id}"
+                extra = {"append_to_response": "credits" if kind == "movie" else "aggregate_credits"}
+                async with gate:
+                    try:
+                        async with self._session.get(
+                            f"{TMDB_API_BASE}{path}",
+                            headers=headers,
+                            params={**params, **extra},
+                            timeout=aiohttp.ClientTimeout(total=20),
+                        ) as resp:
+                            if resp.status in (401, 403):
+                                LOGGER.warning("TMDB rejected the API key; posters, runtimes and most watched are turned off until it is fixed")
+                                self._disabled = True
+                                return
+                            if resp.status == 404:
+                                self._profiles[key] = {"missing": True, "day": today.isoformat()}
+                                return
+                            if resp.status != 200:
+                                return
+                            body = await resp.json(content_type=None)
+                    except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+                        LOGGER.debug("TMDB lookup %s failed: %s", path, err)
+                        return
+                profile = tmdb_profile(body, kind)
+                if profile is not None:
+                    self._profiles[key] = {**profile, "day": today.isoformat()}
+
+            await asyncio.gather(*(fetch(*t) for t in todo))
+            self._profile_store.async_delay_save(lambda: self._profiles, 10)
+
+        return {
+            f"{kind}:{i}": self._profiles[f"{kind}:{i}"]
+            for kind, i in wanted
+            if f"{kind}:{i}" in self._profiles
         }

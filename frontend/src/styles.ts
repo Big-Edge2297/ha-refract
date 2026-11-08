@@ -125,6 +125,73 @@ export const cardStyles = css`
     font-weight: 500;
     font-variant-numeric: tabular-nums;
   }
+  /* most watched */
+  .picks-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+  }
+  .pick {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .pick-avatar {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--c-accent) 16%, transparent);
+    color: var(--c-accent);
+    --mdc-icon-size: 24px;
+  }
+  .pick-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pick-avatar .flag {
+    font-size: 26px;
+    line-height: 1;
+  }
+  .pick-avatar .initials {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .pick-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+  }
+  .pick-label {
+    font-size: 12px;
+    color: var(--secondary-text-color);
+  }
+  .pick-name {
+    font-size: 15px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pick-sub {
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .picks-foot {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+  }
+  .picks-foot a {
+    color: inherit;
+  }
   .fun {
     display: inline-flex;
     align-items: center;

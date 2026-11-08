@@ -23,6 +23,8 @@ const LABELS: Record<string, string> = {
   show_streak: "Streak",
   show_average: "Average per week",
   show_last_7_days: "Last 7 days",
+  show_top_picks: "Most watched",
+  top_picks_items: "Most watched shows",
   show_next_up: "Next up",
   show_catchup: "Catch-up backlog",
   show_airing: "Airing this week",
@@ -43,6 +45,7 @@ const SECTION_NAMES: Record<SectionId, string> = {
   streak: LABELS.show_streak,
   average: LABELS.show_average,
   last_7_days: LABELS.show_last_7_days,
+  top_picks: LABELS.show_top_picks,
   next_up: LABELS.show_next_up,
   catchup: LABELS.show_catchup,
   airing: LABELS.show_airing,
@@ -53,6 +56,8 @@ const HELPERS: Record<string, string> = {
   show_actions: "Needs an API key that can mark episodes watched.",
   show_posters: "Needs a TMDB API key in the Refract integration options.",
   show_last_7_days: "Needs watch history turned on in the integration options.",
+  show_top_picks: "Needs a TMDB API key in the Refract integration options.",
+  top_picks_items: "The leader of each ranking you pick, in the order you pick them.",
   show_average: "Needs watch history turned on in the integration options.",
   color_movies: "Hex color such as #2a78d6. Leave empty for the default.",
 };
@@ -97,6 +102,7 @@ const buildSchema = (custom: boolean) => [
               { name: "show_streak", selector: { boolean: {} } },
               { name: "show_average", selector: { boolean: {} } },
               { name: "show_last_7_days", selector: { boolean: {} } },
+              { name: "show_top_picks", selector: { boolean: {} } },
               { name: "show_next_up", selector: { boolean: {} } },
               { name: "show_catchup", selector: { boolean: {} } },
               { name: "show_airing", selector: { boolean: {} } },
@@ -107,6 +113,23 @@ const buildSchema = (custom: boolean) => [
     ]
     : []),
   { name: "show_posters", selector: { boolean: {} } },
+  {
+    name: "top_picks_items",
+    selector: {
+      select: {
+        multiple: true,
+        mode: "list",
+        options: [
+          option("actor", "Actor"),
+          option("director", "Director"),
+          option("writer", "Writer"),
+          option("decade", "Decade"),
+          option("genre", "Genre"),
+          option("country", "Country"),
+        ],
+      },
+    },
+  },
   {
     type: "expandable",
     name: "",
@@ -262,7 +285,7 @@ export class RefractStatsCardEditor extends LitElement {
     const out: Record<string, unknown> = { type: this._config.type };
     for (const [key, v] of Object.entries(value)) {
       if (v === "" || v === undefined || v === null) continue;
-      if (key in defaults && v === defaults[key]) continue;
+      if (key in defaults && (v === defaults[key] || (Array.isArray(v) && JSON.stringify(v) === JSON.stringify(defaults[key])))) continue;
       out[key] = v;
     }
     // retired options are dropped once the card is edited

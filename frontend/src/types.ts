@@ -58,6 +58,10 @@ export type BreakdownStyle = "bar" | "list";
 export type LibraryStyle = BreakdownStyle;
 export type WatchTimeStyle = BreakdownStyle;
 
+/** What the "Most watched" section can show, one tile each. */
+export const PICK_KINDS = ["actor", "director", "writer", "decade", "genre", "country"] as const;
+export type PickKind = (typeof PICK_KINDS)[number];
+
 /** Sections that can be shown, hidden and reordered. The header always stays on top. */
 export const SECTION_IDS = [
   "hero",
@@ -67,6 +71,7 @@ export const SECTION_IDS = [
   "streak",
   "average",
   "last_7_days",
+  "top_picks",
   "next_up",
   "catchup",
   "airing",
@@ -147,9 +152,12 @@ export interface RefractCardConfig {
   show_streak?: boolean;
   show_average?: boolean;
   show_last_7_days?: boolean;
+  show_top_picks?: boolean;
   show_next_up?: boolean;
   show_catchup?: boolean;
   show_airing?: boolean;
+  /** Tiles of the "Most watched" section, in order. */
+  top_picks_items?: PickKind[];
   /** Poster images (needs a TMDB key in the integration options). */
   show_posters?: boolean;
   show_actions?: boolean;
@@ -186,9 +194,11 @@ export const DEFAULT_CONFIG = {
   show_streak: true,
   show_average: true,
   show_last_7_days: true,
+  show_top_picks: true,
   show_next_up: true,
   show_catchup: true,
   show_airing: true,
+  top_picks_items: [...PICK_KINDS] as PickKind[],
   show_posters: true,
   show_actions: false,
   confirm_actions: true,

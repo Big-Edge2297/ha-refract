@@ -94,6 +94,19 @@ export const states: Record<string, HassEntity> = Object.fromEntries([
   entity("last_7_days", "11", { days: last7Days, episodes: 8, movies: 3, busiest_day: { date: dayOffset(-3), count: 4 } }),
   entity("average_per_week", "2.5", { items_per_week: 2.8, change_percent: 12, window_days: 28, estimated: true }),
   entity("airing_this_week", "2", { episodes: airingEpisodes }),
+  entity("top_picks", "812", {
+    total: 896,
+    pending: 0,
+    actor: [
+      { name: "Bryan Cranston", hours: 120.5, titles: 4, id: 17419, photo: "https://image.tmdb.org/t/p/w185/bryan.jpg" },
+      { name: "Aaron Paul", hours: 110, titles: 3, id: 84497, photo: "https://image.tmdb.org/t/p/w185/aaron.jpg" },
+    ],
+    director: [{ name: "Vince Gilligan", hours: 98.4, titles: 2, id: 66633, photo: "https://image.tmdb.org/t/p/w185/vince.jpg" }],
+    writer: [{ name: "Jonathan Nolan", hours: 61, titles: 1, id: 7, photo: null }],
+    decade: [{ name: "2010s", hours: 1450, titles: 312, decade: 2010 }],
+    genre: [{ name: "Drama", hours: 2800, titles: 401 }],
+    country: [{ name: "United States of America", hours: 3900, titles: 640, code: "US" }],
+  }),
   entity("still_to_finish", "37770", {
     movies: { count: 26, minutes: 3000 },
     shows: { count: 37, minutes: 34770, episodes: 701, not_started: 32, started: 5, unknown_episodes: 0 },

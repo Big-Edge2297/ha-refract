@@ -1,7 +1,7 @@
 import type { RefractKey } from "./const";
 import { accountName, splitAccountName, type Discovery } from "./discovery";
 import { isUsable, parseNum } from "./format";
-import type { HomeAssistant, RefractCardConfig } from "./types";
+import { PICK_KINDS, type HomeAssistant, type PickKind, type RefractCardConfig } from "./types";
 
 export interface ShowItem {
   title: string;
@@ -96,6 +96,27 @@ export interface AiringItem {
   airAt?: string;
 }
 
+/** One entry of a "most watched" ranking. */
+export interface TopPick {
+  name: string;
+  hours: number;
+  titles: number;
+  /** Profile photo of a person. */
+  photoUrl?: string;
+  /** ISO 3166 country code. */
+  code?: string;
+  decade?: number;
+}
+export interface TopPicks {
+  /** Titles the figures are based on, of `total` watched titles. */
+  titles: number;
+  total: number;
+  /** Titles still waiting for their details from TMDB. */
+  pending: number;
+  /** Best first. */
+  picks: Partial<Record<PickKind, TopPick[]>>;
+}
+
 export interface StatusCount {
   /** Normalised status key: completed, up_to_date, in_progress, planned, on_hold, dropped, or anything else Refract adds. */
   key: string;
@@ -126,6 +147,7 @@ export interface Model {
   streak?: { current: number; longest: number };
   next: NextUp;
   last7?: Last7;
+  topPicks?: TopPicks;
   average?: Average;
   catchup?: Catchup;
   /** Movies and shows still to finish; undefined when the sensor doesn't exist. */
@@ -258,6 +280,32 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     }
   }
 
+  // most watched actor, director, writer, decade, genre and country
+  let topPicks: TopPicks | undefined;
+  const picksState = ent("top_picks");
+  if (isUsable(picksState)) {
+    const a = picksState.attributes;
+    const picks: TopPicks["picks"] = {};
+    for (const kind of PICK_KINDS) {
+      const rows: TopPick[] = (Array.isArray(a[kind]) ? a[kind] : [])
+        .map((r: any): TopPick | undefined =>
+          typeof r?.name === "string" && num(r?.hours) !== undefined
+            ? {
+                name: r.name,
+                hours: r.hours,
+                titles: num(r.titles) ?? 0,
+                photoUrl: typeof r.photo === "string" && r.photo ? r.photo : undefined,
+                code: typeof r.code === "string" && r.code ? r.code : undefined,
+                decade: num(r.decade),
+              }
+            : undefined,
+        )
+        .filter((x: TopPick | undefined): x is TopPick => !!x);
+      if (rows.length) picks[kind] = rows;
+    }
+    topPicks = { titles: parseNum(picksState) ?? 0, total: num(a.total) ?? 0, pending: num(a.pending) ?? 0, picks };
+  }
+
   // average per week
   let average: Average | undefined;
   const avgState = ent("average_per_week");
@@ -376,6 +424,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     streak: current !== undefined ? { current, longest: Math.max(longest ?? current, current) } : undefined,
     next,
     last7,
+    topPicks,
     average,
     catchup,
     finish,

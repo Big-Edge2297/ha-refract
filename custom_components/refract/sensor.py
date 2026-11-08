@@ -123,6 +123,11 @@ def _average_attrs(data: dict[str, Any]) -> dict[str, Any]:
     return dict(info["average"]) if info else {}
 
 
+def _top_picks_attrs(data: dict[str, Any]) -> dict[str, Any]:
+    info = data.get("top_picks")
+    return {k: v for k, v in info.items() if k != "titles"} if info else {}
+
+
 @dataclass(frozen=True, kw_only=True)
 class RefractSensorDescription(SensorEntityDescription):
     """Describes a Refract sensor."""
@@ -131,6 +136,7 @@ class RefractSensorDescription(SensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], Any]
     attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
     needs_history: bool = False
+    needs_tmdb: bool = False
 
 
 def _library_sensor(key: str, name: str, icon: str, fn, attrs=None) -> RefractSensorDescription:
@@ -235,6 +241,17 @@ SENSORS: tuple[RefractSensorDescription, ...] = (
         attrs_fn=lambda d: {"episodes": d["airing"]},
     ),
     RefractSensorDescription(
+        key="top_picks",
+        name="Most watched",
+        icon="mdi:podium-gold",
+        scope=SCOPE_LIBRARY,
+        native_unit_of_measurement="titles",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: (d.get("top_picks") or {}).get("titles"),
+        attrs_fn=_top_picks_attrs,
+        needs_tmdb=True,
+    ),
+    RefractSensorDescription(
         key="username",
         name="Username",
         icon="mdi:account",
@@ -258,7 +275,9 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         RefractSensor(coordinator, desc)
         for desc in SENSORS
-        if scopes.get(desc.scope) and (history_on or not desc.needs_history)
+        if scopes.get(desc.scope)
+        and (history_on or not desc.needs_history)
+        and (coordinator.tmdb is not None or not desc.needs_tmdb)
     ]
     # Stats: one sensor per numeric field, so new fields appear automatically.
     if scopes.get(SCOPE_HISTORY):
@@ -273,7 +292,9 @@ class RefractSensor(RefractEntity, SensorEntity):
     """Sensor driven by a description."""
 
     entity_description: RefractSensorDescription
-    _unrecorded_attributes = frozenset({"items", "days", "shows", "episodes"})
+    _unrecorded_attributes = frozenset(
+        {"items", "days", "shows", "episodes", "actor", "director", "writer", "decade", "genre", "country"}
+    )
 
     def __init__(self, coordinator: RefractCoordinator, description: RefractSensorDescription) -> None:
         super().__init__(coordinator, description.key)

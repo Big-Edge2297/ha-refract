@@ -15,11 +15,23 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
 | **Last 7 days** | Episodes and movies per day as stacked bars, with the busiest day named | watch history |
+| **Most watched** | Your top actor, director, writer, decade, genre and country, each with a profile photo (people), a flag (country) or an icon, and the number of titles and hours behind it. Worked out from TMDB, see [Most watched](#most-watched) | library + TMDB key |
 | **Next up** | The show (with poster), episode number and name, progress through aired episodes, premiere or finale badges and an optional **Mark watched** button. Tap a show in the catch-up backlog to show it here instead | history |
 | **Catch-up backlog** | How many aired episodes are waiting across all your shows, an estimate of the time, and the biggest backlogs as bars | history |
 | **Airing this week** | Episodes airing in the next 7 days for the shows you follow, with premiere and finale pills and the air time when Refract knows it | library |
 
 Sections hide themselves when their sensors don't exist, so a read-only API key still gives a clean card.
+
+## Most watched
+
+The Refract API doesn't say which actors, directors, genres or countries you watch most, so the integration works it out with [TMDB](https://www.themoviedb.org). It needs the same free TMDB API key as the posters. Without a key the section doesn't appear.
+
+- **How it counts.** Every watched title counts for the time you spent on it: a movie for its runtime times the times you played it, a show for the episodes you watched times the episode runtime. Each actor, director, writer, genre and country of a title gets that time, and the one with the most time wins. The decade comes from the release year (the first air date for shows). Titles on your watchlist that you haven't watched don't count.
+- **Actors** are the top billed cast of each title (10 people), so a guest appearance doesn't count. **Writers** include the creators of a show, and TMDB has less writing data for TV than for movies.
+- **It fills in over time.** The first time, the integration asks TMDB for the credits of every title you watched, the most watched ones first, a batch on each update. The section says *Still building* and *Based on 812 of 896 titles* until it is done, and the leaders are already right for the titles that count most. Details are cached on disk and looked at again only after about six months, so later updates cost nothing.
+- **It can differ from the Refract app.** This is our own calculation from TMDB's data, so the numbers and some names may not match what the app shows. Titles TMDB doesn't know are left out.
+- **Photos** are loaded by your browser from `image.tmdb.org`, like the posters. A person without a photo shows their initials.
+- Pick which tiles to show, and in which order, with `top_picks_items`, for example `[actor, director, writer, decade]`. The `show_top_picks` switch (Custom layout) hides the whole section.
 
 ## Posters
 
@@ -106,7 +118,7 @@ section_order:
   - hero
 ```
 
-The default order is `hero`, `watch_time`, `library`, `still_to_finish`, `streak`, `average`, `last_7_days`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other.
+The default order is `hero`, `watch_time`, `library`, `still_to_finish`, `streak`, `average`, `last_7_days`, `top_picks`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other.
 
 Cards from before 0.4.4 that have no `layout` but hide sections or set a `section_order` are treated as `custom`, so they keep looking the same. A card that sets `layout: full` explicitly now always shows everything.
 
@@ -132,9 +144,11 @@ Cards from before 0.4.4 that have no `layout` but hide sections or set a `sectio
 | `show_streak` | `true` | Streak |
 | `show_average` | `true` | Average per week |
 | `show_last_7_days` | `true` | Last 7 days chart and busiest day |
+| `show_top_picks` | `true` | Most watched (needs a TMDB key in the integration options) |
 | `show_next_up` | `true` | Next up tile |
 | `show_catchup` | `true` | Catch-up backlog |
 | `show_airing` | `true` | Airing this week |
+| `top_picks_items` | all six | Tiles of Most watched, in order: `actor`, `director`, `writer`, `decade`, `genre`, `country` |
 | `show_posters` | `true` | Posters (needs a TMDB key in the integration options) |
 | `show_actions` | `false` | Show the "Mark watched" button on the next up tile |
 | `confirm_actions` | `true` | Ask for a second tap before marking watched |
@@ -193,7 +207,7 @@ entities:
   stats_streak_current_days: sensor.my_streak
 ```
 
-The keys are `library_total`, `completed`, `in_progress`, `watchlist`, `up_to_date`, `movies`, `tv_shows`, `anime`, `last_watched`, `shows_waiting`, `next_up`, `catch_up`, `last_7_days`, `average_per_week`, `airing_this_week`, `stats_watch_time_total_minutes`, `stats_watch_time_shows_minutes`, `stats_watch_time_movies_minutes`, `stats_watch_time_anime_minutes`, `stats_shows_episodes_watched`, `stats_anime_episodes_watched`, `stats_movies_watched`, `stats_streak_current_days` and `stats_streak_longest_days`.
+The keys are `library_total`, `completed`, `in_progress`, `watchlist`, `up_to_date`, `movies`, `tv_shows`, `anime`, `last_watched`, `shows_waiting`, `next_up`, `catch_up`, `last_7_days`, `average_per_week`, `airing_this_week`, `top_picks`, `stats_watch_time_total_minutes`, `stats_watch_time_shows_minutes`, `stats_watch_time_movies_minutes`, `stats_watch_time_anime_minutes`, `stats_shows_episodes_watched`, `stats_anime_episodes_watched`, `stats_movies_watched`, `stats_streak_current_days` and `stats_streak_longest_days`.
 
 ### Several accounts
 
@@ -247,6 +261,8 @@ The card follows your Home Assistant theme. These optional theme variables overr
 **"Couldn't find any Refract entities"**: the chosen entity isn't from the Refract integration, or its sensors are unavailable. Pick an entity from the Refract device, or use the `entities` option.
 
 **A section is missing**: its sensors don't exist for your API key, or are unavailable. Check Developer Tools → States for the sensor. *Last 7 days* and *Average per week* also need **Fetch watch history** turned on in the integration options.
+
+**No Most watched section**: it needs a TMDB API key under **Settings → Devices & services → Refract → Configure**, the library permission on your Refract key, and `show_top_picks` not set to `false` in the Custom layout. Right after adding the key it shows *Still building* for a while.
 
 **No posters**: add a TMDB API key under **Settings → Devices & services → Refract → Configure**, wait for the next update (up to the update interval), and check that `show_posters` isn't `false`. Posters are loaded from `image.tmdb.org` by your browser, so an ad blocker or a restrictive network can hide them; the card then shows the first letter of the title.
 

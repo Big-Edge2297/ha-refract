@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- **New:** the *Most watched* section (top actor, director, writer, decade, genre and country with photos, a flag and icons), built from TMDB. New options `show_top_picks` and `top_picks_items`
+- Default order: after *Last 7 days*; a custom `section_order` gets it at the end
+- Needs the TMDB key of the integration; the section hides itself without the `top_picks` sensor
+
 ## 0.4.6
 
 - **New:** seven more fun stats (`flights`, `sleep`, `movies`, `seasons`, `marathons`, `moon`, `imdb`); `rotate` cycles through all ten

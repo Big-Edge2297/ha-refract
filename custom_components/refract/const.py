@@ -27,4 +27,4 @@ SCOPE_HISTORY = "history"
 HISTORY_REFRESH_MINUTES = 60
 
 TMDB_API_BASE = "https://api.themoviedb.org/3"
-TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w185"
+TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w185"  # posters and profile photos

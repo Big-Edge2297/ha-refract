@@ -17,14 +17,17 @@ from .analytics import (
     average_movie_minutes,
     build_backlog,
     build_finish,
+    build_top_picks,
     finish_lookups,
     busiest_day,
     daily_counts,
     iter_episode_watches,
     iter_play_dates,
     parse_calendar,
+    pick_candidates,
     poster_candidates,
     upcoming,
+    watch_counts,
     weekly_stats,
 )
 from .api import (
@@ -44,6 +47,7 @@ from .const import (
     SCOPE_HISTORY,
     SCOPE_LIBRARY,
     SCOPE_PROFILE,
+    TMDB_IMAGE_BASE,
 )
 from .tmdb import TmdbClient
 from .util import flatten_numbers
@@ -113,7 +117,13 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "and 'Average per week' will be empty. Please report this with a redacted sample: %s",
                 (episodes or movies)[0],
             )
-        self._history = {"episodes": episode_watches, "movies": movie_plays, "at": now}
+        self._history = {
+            "episodes": episode_watches,
+            "movies": movie_plays,
+            "episode_counts": watch_counts(episodes, "show"),
+            "movie_counts": watch_counts(movies, "movie"),
+            "at": now,
+        }
         self._history_stale = False
         return self._history
 
@@ -199,6 +209,23 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             show_ids, movie_ids = finish_lookups(library)
             finish_details = await self.tmdb.async_details(show_ids, movie_ids)
 
+        # Most watched actor, director, writer, decade, genre and country (needs the TMDB key)
+        top_picks = None
+        if self.tmdb and library:
+            candidates = pick_candidates(
+                library,
+                (history or {}).get("episode_counts", {}),
+                (history or {}).get("movie_counts", {}),
+            )
+            profiles = await self.tmdb.async_profiles([(c["kind"], c["id"]) for c in candidates])
+            top_picks = build_top_picks(
+                candidates,
+                profiles,
+                per_episode or per_item,
+                average_movie_minutes(flat) or per_item,
+                TMDB_IMAGE_BASE,
+            )
+
         anime_titles = {
             str(i.get("title")).lower() for i in library if i.get("is_anime") and i.get("title")
         }
@@ -221,6 +248,7 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 finish_details,
             ),
             "analytics": analytics,
+            "top_picks": top_picks,
             "history_enabled": bool(self.config_entry.options.get(CONF_FETCH_HISTORY, True)),
         }
 

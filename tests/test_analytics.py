@@ -394,3 +394,138 @@ def test_finish_library_values_win_over_tmdb():
     library = [lib("show", "planned", "Counted", 10, aired_episodes=5, runtime=30)]
     out = a.build_finish(library, [], None, None, {"tv:10": {"episodes": 99, "runtime": 99}})
     assert out["shows"]["episodes"] == 5 and out["shows"]["minutes"] == 150
+
+
+# ------------------------------------------------------------ most watched
+
+
+MOVIE_BODY = {
+    "release_date": "1994-09-23",
+    "runtime": 142,
+    "genres": [{"id": 18, "name": "Drama"}, {"id": 80, "name": "Crime"}],
+    "production_countries": [{"iso_3166_1": "US", "name": "United States of America"}],
+    "credits": {
+        "cast": [
+            {"id": 504, "name": "Tim Robbins", "profile_path": "/tim.jpg", "order": 0},
+            {"id": 192, "name": "Morgan Freeman", "profile_path": None, "order": 1},
+        ],
+        "crew": [
+            {"id": 4027, "name": "Frank Darabont", "profile_path": "/frank.jpg", "job": "Director"},
+            {"id": 4027, "name": "Frank Darabont", "profile_path": "/frank.jpg", "job": "Screenplay"},
+            {"id": 1, "name": "Someone Else", "profile_path": None, "job": "Gaffer"},
+        ],
+    },
+}
+SHOW_BODY = {
+    "first_air_date": "2008-01-20",
+    "episode_run_time": [45, 47],
+    "number_of_episodes": 62,
+    "genres": [{"id": 18, "name": "Drama"}],
+    "origin_country": ["US"],
+    "created_by": [{"id": 66633, "name": "Vince Gilligan", "profile_path": "/vince.jpg"}],
+    "aggregate_credits": {
+        "cast": [
+            {"id": 17419, "name": "Bryan Cranston", "profile_path": "/bryan.jpg", "order": 0},
+            {"id": 84497, "name": "Aaron Paul", "profile_path": "/aaron.jpg", "order": 1},
+        ],
+        "crew": [
+            {"id": 66633, "name": "Vince Gilligan", "profile_path": "/vince.jpg", "jobs": [{"job": "Director", "episode_count": 3}, {"job": "Writer", "episode_count": 9}]},
+            {"id": 2, "name": "Editor Person", "profile_path": None, "jobs": [{"job": "Editor", "episode_count": 62}]},
+        ],
+    },
+}
+
+
+def test_tmdb_profile_movie_and_show():
+    movie = a.tmdb_profile(MOVIE_BODY, "movie")
+    assert movie["year"] == 1994 and movie["runtime"] == 142
+    assert movie["genres"] == ["Drama", "Crime"]
+    assert movie["countries"] == [["US", "United States of America"]]
+    assert [p[1] for p in movie["cast"]] == ["Tim Robbins", "Morgan Freeman"]
+    assert movie["cast"][0] == [504, "Tim Robbins", "/tim.jpg"] and movie["cast"][1][2] is None
+    assert [p[1] for p in movie["directors"]] == ["Frank Darabont"]
+    assert [p[1] for p in movie["writers"]] == ["Frank Darabont"], "a person listed twice counts once"
+
+    show = a.tmdb_profile(SHOW_BODY, "show")
+    assert show["year"] == 2008 and show["runtime"] == 46 and show["episodes"] == 62
+    assert show["countries"] == [["US", "US"]], "falls back to the origin country code"
+    assert [p[1] for p in show["directors"]] == ["Vince Gilligan"]
+    assert [p[1] for p in show["writers"]] == ["Vince Gilligan"], "creator and writer credit are the same person"
+    assert a.tmdb_profile("nope", "movie") is None
+    assert a.tmdb_profile({}, "movie")["cast"] == []
+
+
+def test_watch_counts_from_history_payloads():
+    episodes = [
+        {"show": {"title": "A", "ids": {"tmdb": 100}}, "episode": {"season": 1, "number": 1}},
+        {"show": {"title": "A", "ids": {"tmdb": 100}}, "episode": {"season": 1, "number": 2}},
+        {"show": {"title": "B"}, "episode": {"season": 1, "number": 1}},
+    ]
+    movies = [{"movie": {"ids": {"tmdb": 7}}, "kind": "first_watch"}, {"movie": {"ids": {"tmdb": 7}}, "kind": "rewatch"}]
+    assert a.watch_counts(episodes, "show") == {100: 2}
+    assert a.watch_counts(movies, "movie") == {7: 2}
+    assert a.watch_counts({"unexpected": 1}, "movie") == {}
+
+
+def lib_item(kind, status, tmdb, **extra):
+    return {"type": kind, "status": status, "title": f"{kind}{tmdb}", "ids": {"tmdb": tmdb}, **extra}
+
+
+def test_pick_candidates_prefer_history_and_skip_the_unwatched():
+    library = [
+        lib_item("movie", "completed", 1),
+        lib_item("movie", "planned", 2),
+        lib_item("show", "completed", 3),
+        lib_item("show", "in_progress", 4),
+        lib_item("show", "in_progress", 5, progress={"watched_episodes": 6}),
+        lib_item("show", "planned", 6),
+        {"type": "movie", "status": "completed", "title": "no id"},
+    ]
+    got = {c["key"]: c for c in a.pick_candidates(library, {3: 20, 4: 4}, {1: 2, 9: 1})}
+    assert got["movie:1"]["count"] == 2, "plays from the history"
+    assert "movie:2" not in got and "show:6" not in got, "watchlist only"
+    assert got["show:3"]["count"] == 20 and got["show:4"]["count"] == 4
+    assert got["show:5"]["count"] == 6, "library says six episodes were watched"
+    assert got["movie:9"]["count"] == 1, "the history knows a title the library doesn't"
+    nohist = {c["key"]: c for c in a.pick_candidates(library, {}, {})}
+    assert nohist["movie:1"]["count"] == 1
+    assert nohist["show:3"]["assume_all"] is True and nohist["show:3"]["count"] is None
+    assert "show:4" not in nohist, "in progress with no amount watched"
+    ordered = [c["key"] for c in a.pick_candidates(library, {3: 20, 4: 4}, {1: 2})]
+    assert ordered.index("show:3") < ordered.index("show:4") < ordered.index("movie:1")
+
+
+def test_build_top_picks_ranks_by_minutes_watched():
+    movie, show = a.tmdb_profile(MOVIE_BODY, "movie"), a.tmdb_profile(SHOW_BODY, "show")
+    candidates = [
+        {"key": "show:1", "kind": "show", "id": 1, "count": 10, "assume_all": False},  # 10 x 46 = 460 min
+        {"key": "movie:2", "kind": "movie", "id": 2, "count": 1, "assume_all": False},  # 142 min
+        {"key": "movie:3", "kind": "movie", "id": 3, "count": 1, "assume_all": False},  # no profile yet
+        {"key": "movie:4", "kind": "movie", "id": 4, "count": 1, "assume_all": False},  # TMDB doesn't know it
+        {"key": "show:5", "kind": "show", "id": 5, "count": None, "assume_all": True},  # all 62 episodes
+    ]
+    profiles = {"show:1": show, "movie:2": movie, "movie:4": {"missing": True}, "show:5": show}
+    top = a.build_top_picks(candidates, profiles, image_base="https://img")
+    assert (top["titles"], top["total"], top["pending"]) == (3, 5, 1)
+    # the two leads of the show are tied, so the order is alphabetical
+    assert [r["name"] for r in top["actor"]][:2] == ["Aaron Paul", "Bryan Cranston"]
+    assert top["actor"][1]["photo"] == "https://img/bryan.jpg"
+    assert top["actor"][0]["hours"] == round((460 + 62 * 46) / 60, 1) and top["actor"][0]["titles"] == 2
+    assert top["director"][0]["name"] == "Vince Gilligan" and top["writer"][0]["name"] == "Vince Gilligan"
+    assert top["decade"][0] == {"name": "2000s", "titles": 2, "decade": 2000, "hours": top["decade"][0]["hours"]}
+    assert top["genre"][0]["name"] == "Drama" and top["genre"][0]["titles"] == 3
+    assert top["country"][0]["code"] == "US" and top["country"][0]["titles"] == 3
+    assert top["actor"][-1]["name"] in ("Tim Robbins", "Morgan Freeman") and len(top["actor"]) == 3
+    assert a.build_top_picks([], {})["actor"] == []
+
+
+def test_build_top_picks_uses_default_runtimes_and_skips_what_it_cannot_time():
+    bare = {"cast": [[1, "A", None]], "genres": [], "countries": [], "directors": [], "writers": [], "year": None, "runtime": None, "episodes": None}
+    movie = {"key": "movie:1", "kind": "movie", "id": 1, "count": 2, "assume_all": False}
+    show = {"key": "show:2", "kind": "show", "id": 2, "count": 3, "assume_all": False}
+    profiles = {"movie:1": bare, "show:2": bare}
+    none = a.build_top_picks([movie, show], profiles)
+    assert none["titles"] == 0 and none["actor"] == []
+    top = a.build_top_picks([movie, show], profiles, episode_minutes=40, movie_minutes=100)
+    assert top["titles"] == 2 and top["actor"][0]["hours"] == round((200 + 120) / 60, 1)
+    assert top["decade"] == [], "no release year, no decade"

@@ -4,7 +4,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/Big-Edge2297/ha-refract)](https://github.com/Big-Edge2297/ha-refract/releases/latest)
 [![Validate](https://github.com/Big-Edge2297/ha-refract/actions/workflows/validate.yml/badge.svg)](https://github.com/Big-Edge2297/ha-refract/actions/workflows/validate.yml)
 
-Unofficial [Home Assistant](https://www.home-assistant.io/) integration for [Refract](https://getrefract.app/), the cross-media tracker for movies, TV and anime. It uses Refract's official [personal API keys](https://getrefract.app/developers) and [TMDB's API key](https://www.themoviedb.org/settings/api) for posters.
+Unofficial [Home Assistant](https://www.home-assistant.io/) integration for [Refract](https://getrefract.app/), the cross-media tracker for movies, TV and anime. It uses Refract's official [personal API keys](https://getrefract.app/developers) and [TMDB's API key](https://www.themoviedb.org/settings/api) for posters and your most watched actors, directors, genres and more.
 
 ![Refract Stats Card](docs/dashboard-card.png)
 
@@ -83,7 +83,7 @@ The card has three layouts: `full` (everything), `compact` (total watch time, st
 |---|---|---|
 | Update interval | 15 min | How often Refract is checked for changes |
 | Fetch watch history | on | Needed for *Last 7 days* and *Average per week*. The history is refreshed at most hourly. For large libraries it is many requests (200 per page); turn it off to skip them |
-| TMDB API key | empty | Optional. Adds posters. See below |
+| TMDB API key | empty | Optional. Adds posters and *Most watched*. See below |
 
 ### Posters (optional)
 
@@ -91,6 +91,8 @@ Refract's API doesn't include images or episode counts for shows you haven't sta
 
 1. Create a free account and get an API key at [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api). Either the v3 API key or the v4 read access token works.
 2. Paste it into the **TMDB API key** option.
+
+The same key also powers *Most watched*: the integration looks up the credits, genres, countries and release year of every title you watched, a batch at a time (the most watched titles first), and the card shows your top actor, director, writer, decade, genre and country with photos. The lookups are cached on disk and repeated only after about six months. See [Most watched](docs/dashboard-card.md#most-watched) for how it counts.
 
 Each show is looked up once for its poster, and the episode counts and runtimes for *Still to finish* are looked up and cached too (episode counts are refreshed every few days). Everything is cached on disk. Posters are loaded from `image.tmdb.org` by your browser, and your key stays in Home Assistant. Without a key the card simply shows no posters.
 
@@ -106,6 +108,7 @@ Each show is looked up once for its poster, and the episode counts and runtimes 
 | `calendar.*_upcoming_episodes` | library |
 | `todo.*_watchlist` (items can be removed) | library |
 | `sensor.*_shows_waiting`, `sensor.*_next_up` (with `poster_url` when a TMDB key is set) | history |
+| `sensor.*_top_picks` (titles analysed; the top 3 actors, directors, writers, decades, genres and countries with hours and titles in the attributes; needs the TMDB key) | library |
 | `sensor.*_still_to_finish` (estimated time left for movies and shows not finished yet, with counts, episodes and started / not started per kind; needs the TMDB key for shows you haven't started) | library |
 | `sensor.*_catch_up` (aired episodes waiting across all shows, per-show counts and next episode, estimated minutes) | history |
 | `sensor.*_last_7_days` (episodes and movies per day, busiest day) | history + fetch watch history |
@@ -163,6 +166,7 @@ To log playback from Plex, Jellyfin, Emby or Sonarr/Radarr, trigger these action
 |---|---|
 | The card isn't in the card picker | Restart Home Assistant, then hard-refresh the browser |
 | No *Last 7 days* / *Average per week* | Your key needs the "See what you watched and when" permission, and *Fetch watch history* must be on |
+| No *Most watched* section | Add a TMDB key in the options. It shows *Still building* while the details are collected, which takes a few updates |
 | No posters | Add a TMDB key in the options, wait for the next update, and check `show_posters` isn't `false` |
 | Setup says the key is rejected | Check it was copied in full (it starts with `rfk_`) and wasn't revoked |
 

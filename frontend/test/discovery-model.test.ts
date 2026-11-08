@@ -18,9 +18,10 @@ test("discovery by name prefix finds every sensor", () => {
   assert.equal(d.prefix, PREFIX);
   assert.equal(d.entities.library_total, `sensor.${PREFIX}library_total`);
   assert.equal(d.entities.watchlist, `sensor.${PREFIX}watchlist`); // sensor, not the todo entity
-  assert.equal(Object.keys(d.entities).length, 27);
+  assert.equal(Object.keys(d.entities).length, 28);
   assert.equal(d.entities.catch_up, `sensor.${PREFIX}catch_up`);
   assert.equal(d.entities.last_7_days, `sensor.${PREFIX}last_7_days`);
+  assert.equal(d.entities.top_picks, `sensor.${PREFIX}top_picks`);
 });
 
 test("discovery works from a non-sensor anchor such as the todo list", () => {

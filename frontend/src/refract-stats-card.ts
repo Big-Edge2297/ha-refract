@@ -6,9 +6,18 @@ import { CARD_TYPE, DOMAIN, EDITOR_TYPE } from "./const";
 import { discover, type Discovery } from "./discovery";
 import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, timeOfDay, weekdayName } from "./format";
 import { languageOf, t } from "./localize";
-import { buildModel, showKey, type CatchupShow, type Model, type ShowItem } from "./model";
+import { buildModel, showKey, type CatchupShow, type Model, type ShowItem, type TopPick } from "./model";
 import { cardStyles } from "./styles";
-import { DEFAULT_CONFIG, layoutSections, resolveLayout, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
+import {
+  DEFAULT_CONFIG,
+  PICK_KINDS,
+  layoutSections,
+  resolveLayout,
+  type HomeAssistant,
+  type PickKind,
+  type RefractCardConfig,
+  type SectionId,
+} from "./types";
 
 type ResolvedConfig = RefractCardConfig & Required<Pick<RefractCardConfig, keyof typeof DEFAULT_CONFIG>>;
 type ActionState = "idle" | "confirm" | "busy" | "done" | "error";
@@ -73,6 +82,7 @@ export class RefractStatsCard extends LitElement {
       streak: 3,
       average: 0,
       last_7_days: 3,
+      top_picks: 6,
       next_up: 3,
       catchup: 2 + Math.min(c.queue_length, 5),
       airing: 2 + Math.min(c.airing_length, 5),
@@ -143,6 +153,7 @@ export class RefractStatsCard extends LitElement {
       streak: () => (m.streak ? this._streak(m) : nothing),
       average: () => this._average(m),
       last_7_days: () => this._last7(m),
+      top_picks: () => this._topPicks(m),
       next_up: () => this._next(m, posters),
       catchup: () => this._catchup(m, posters),
       airing: () => this._airing(m),
@@ -800,6 +811,79 @@ export class RefractStatsCard extends LitElement {
   }
 
   // ------------------------------------------------------------- airing
+
+  private _topPicks(m: Model): TemplateResult | typeof nothing {
+    const tp = m.topPicks;
+    if (!tp) return nothing;
+    const lang = languageOf(this.hass);
+    const tiles = this._cfg.top_picks_items
+      .filter((k, i, all) => (PICK_KINDS as readonly string[]).includes(k) && all.indexOf(k) === i)
+      .map((kind) => ({ kind, pick: tp.picks[kind]?.[0] }))
+      .filter((x): x is { kind: PickKind; pick: TopPick } => !!x.pick);
+    const hours = (h: number) => `${fmtNumber(h, lang, h < 10 ? 1 : 0)} h`;
+    const initials = (name: string) =>
+      name
+        .split(/\s+/)
+        .map((w) => w[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+    const flag = (code?: string) =>
+      code && /^[A-Za-z]{2}$/.test(code)
+        ? String.fromCodePoint(...[...code.toUpperCase()].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65))
+        : undefined;
+    const countryName = (p: TopPick) => {
+      try {
+        return (p.code && new Intl.DisplayNames([lang], { type: "region" }).of(p.code.toUpperCase())) || p.name;
+      } catch {
+        return p.name;
+      }
+    };
+    const avatar = (kind: PickKind, p: TopPick) => {
+      if (kind === "country") {
+        const f = flag(p.code);
+        return f ? html`<span class="flag">${f}</span>` : html`<ha-icon icon="mdi:earth"></ha-icon>`;
+      }
+      if (kind === "decade") return html`<ha-icon icon="mdi:calendar-range"></ha-icon>`;
+      if (kind === "genre") return html`<ha-icon icon="mdi:drama-masks"></ha-icon>`;
+      return p.photoUrl
+        ? html`<img src=${p.photoUrl} alt="" loading="lazy" referrerpolicy="no-referrer" />`
+        : html`<span class="initials">${initials(p.name)}</span>`;
+    };
+
+    return html`<div class="panel picks">
+      <div class="panel-head">
+        <span class="label">${t(this.hass, "picks.title")}</span>
+        ${tp.pending > 0 ? html`<span class="badge">${t(this.hass, "picks.building")}</span>` : nothing}
+      </div>
+      ${tiles.length
+        ? html`<div class="picks-grid">
+            ${tiles.map(({ kind, pick }) => {
+              const sub = t(this.hass, pick.titles === 1 ? "picks.sub_one" : "picks.sub_other", {
+                n: fmtNumber(pick.titles, lang),
+                time: hours(pick.hours),
+              });
+              const name = kind === "country" ? countryName(pick) : pick.name;
+              return html`<div class="pick" title="${t(this.hass, `picks.${kind}`)}: ${name} · ${sub}">
+                <span class="pick-avatar ${kind}">${avatar(kind, pick)}</span>
+                <span class="pick-text">
+                  <span class="pick-label">${t(this.hass, `picks.${kind}`)}</span>
+                  <b class="pick-name">${name}</b>
+                  <span class="pick-sub">${sub}</span>
+                </span>
+              </div>`;
+            })}
+          </div>`
+        : html`<div class="empty">${t(this.hass, tp.pending > 0 ? "picks.waiting" : "picks.none")}</div>`}
+      ${tp.total > 0
+        ? html`<div class="picks-foot">
+            ${t(this.hass, "picks.based_on", { n: fmtNumber(tp.titles, lang), total: fmtNumber(tp.total, lang) })} ·
+            <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a>
+          </div>`
+        : nothing}
+    </div>`;
+  }
 
   private _airing(m: Model): TemplateResult | typeof nothing {
     const items = m.airing;

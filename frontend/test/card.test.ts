@@ -834,7 +834,7 @@ test("editor reorders sections with the arrows and keeps the YAML clean", async 
   document.body.appendChild(editor);
   await editor.updateComplete;
   const rows = () => [...editor.shadowRoot.querySelectorAll(".order-row")] as HTMLElement[];
-  assert.equal(rows().length, 10);
+  assert.equal(rows().length, 11);
   assert.match(rows()[0].textContent!, /Watch time summary/);
   assert.equal(editor.shadowRoot.querySelector(".order-reset"), null, "no reset button on the default order");
 
@@ -936,4 +936,76 @@ test("loading the bundle twice doesn't throw and keeps the first registration", 
   } finally {
     console.warn = originalWarn;
   }
+});
+
+// ------------------------------------------------------------ most watched
+
+const without = (key: string) => {
+  const { [`sensor.${PREFIX}${key}`]: _gone, ...rest } = baseStates;
+  return makeHass({ states: rest });
+};
+
+test("most watched shows the leader of each ranking with photos, flag and decade", async () => {
+  const el = await mount({});
+  const panel = el.shadowRoot!.querySelector(".panel.picks")!;
+  assert.ok(panel, "the section is there");
+  const tiles = [...panel.querySelectorAll(".pick-text")].map((x) => x.textContent!.replace(/\s+/g, " ").trim());
+  assert.deepEqual(tiles, [
+    "Actor Bryan Cranston 4 titles · 121 h",
+    "Director Vince Gilligan 2 titles · 98 h",
+    "Writer Jonathan Nolan 1 title · 61 h",
+    "Decade 2010s 312 titles · 1,450 h",
+    "Genre Drama 401 titles · 2,800 h",
+    "Country United States 640 titles · 3,900 h",
+  ]);
+  const imgs = [...panel.querySelectorAll("img")].map((i) => i.getAttribute("src"));
+  assert.deepEqual(imgs, ["https://image.tmdb.org/t/p/w185/bryan.jpg", "https://image.tmdb.org/t/p/w185/vince.jpg"]);
+  assert.equal(panel.querySelector(".initials")!.textContent, "JN", "no photo: the initials");
+  assert.equal(panel.querySelector(".flag")!.textContent, "\u{1F1FA}\u{1F1F8}");
+  assert.match(panel.querySelector(".picks-foot")!.textContent!.replace(/\s+/g, " "), /Based on 812 of 896 titles · TMDB/);
+  assert.equal(panel.querySelector(".picks-foot a")!.getAttribute("href"), "https://www.themoviedb.org");
+});
+
+test("top_picks_items chooses and orders the tiles", async () => {
+  const el = await mount({ top_picks_items: ["country", "actor", "bogus", "actor"] });
+  const labels = [...el.shadowRoot!.querySelectorAll(".panel.picks .pick-label")].map((x) => x.textContent);
+  assert.deepEqual(labels, ["Country", "Actor"]);
+});
+
+test("most watched is left out without the sensor, without data and in compact", async () => {
+  const noSensor = await mount({}, without("top_picks"));
+  assert.equal(noSensor.shadowRoot!.querySelector(".panel.picks"), null);
+  assert.equal((await mount({ layout: "compact" })).shadowRoot!.querySelector(".panel.picks"), null);
+  assert.equal((await mount({ layout: "custom", show_top_picks: false })).shadowRoot!.querySelector(".panel.picks"), null);
+  assert.ok((await mount({ layout: "custom" })).shadowRoot!.querySelector(".panel.picks"));
+});
+
+test("most watched says it is still building while TMDB details are collected", async () => {
+  const building = (attributes: Record<string, unknown>, state = "0") =>
+    makeHass({ states: { ...baseStates, [`sensor.${PREFIX}top_picks`]: { entity_id: "p", state, attributes } } });
+  const el = await mount({}, building({ total: 896, pending: 896 }));
+  const panel = el.shadowRoot!.querySelector(".panel.picks")!;
+  assert.match(panel.textContent!, /Still building/);
+  assert.match(panel.textContent!, /Collecting details from TMDB/);
+  assert.equal(panel.querySelector(".pick"), null);
+  const partial = await mount({}, building({ total: 896, pending: 84, actor: [{ name: "A B", hours: 5, titles: 1 }] }, "812"));
+  assert.match(partial.shadowRoot!.querySelector(".panel.picks")!.textContent!, /Still building/);
+  assert.ok(partial.shadowRoot!.querySelector(".panel.picks .pick"));
+  const done = await mount({}, building({ total: 0, pending: 0 }));
+  assert.match(done.shadowRoot!.querySelector(".panel.picks")!.textContent!, /Nothing to show yet/);
+});
+
+test("the editor offers the most watched switch and tiles", async () => {
+  const { names } = await editorFor({});
+  assert.ok(names.includes("top_picks_items"), "tiles are chosen in every layout");
+  assert.ok(!names.includes("show_top_picks"));
+  assert.ok((await editorFor({ layout: "custom" })).names.includes("show_top_picks"));
+  const { editor } = await editorFor({});
+  const form = editor.shadowRoot.querySelector("ha-form");
+  let emitted: any;
+  editor.addEventListener("config-changed", (e: CustomEvent) => (emitted = e.detail.config));
+  form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, top_picks_items: ["actor", "genre"] } } }));
+  assert.deepEqual(emitted.top_picks_items, ["actor", "genre"]);
+  form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, top_picks_items: ["actor", "director", "writer", "decade", "genre", "country"] } } }));
+  assert.equal(emitted.top_picks_items, undefined, "the default list is not written to the YAML");
 });
