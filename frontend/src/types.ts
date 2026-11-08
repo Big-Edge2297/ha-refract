@@ -101,6 +101,7 @@ export function hasSectionCustomization(config: object | undefined): boolean {
   const c = (config ?? {}) as Record<string, unknown>;
   if (c.section_order !== undefined && c.section_order !== null) return true;
   if (c.show_queue === false) return true;
+  if (c.top_picks_items !== undefined && c.top_picks_items !== null) return true;
   return SECTION_IDS.some((id) => c[`show_${id}`] === false);
 }
 

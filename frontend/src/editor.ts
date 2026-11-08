@@ -57,7 +57,7 @@ const HELPERS: Record<string, string> = {
   show_posters: "Needs a TMDB API key in the Refract integration options.",
   show_last_7_days: "Needs watch history turned on in the integration options.",
   show_top_picks: "Needs a TMDB API key in the Refract integration options.",
-  top_picks_items: "The leader of each ranking you pick, in the order you pick them.",
+  top_picks_items: "Only for the Custom layout. Full shows all six, Compact hides this section.",
   show_average: "Needs watch history turned on in the integration options.",
   color_movies: "Hex color such as #2a78d6. Leave empty for the default.",
 };
@@ -108,28 +108,28 @@ const buildSchema = (custom: boolean) => [
               { name: "show_airing", selector: { boolean: {} } },
             ],
           },
+        {
+          name: "top_picks_items",
+          selector: {
+            select: {
+              multiple: true,
+              mode: "list",
+              options: [
+                option("actor", "Actor"),
+                option("director", "Director"),
+                option("writer", "Writer"),
+                option("decade", "Decade"),
+                option("genre", "Genre"),
+                option("country", "Country"),
+              ],
+            },
+          },
+        },
         ],
       },
     ]
     : []),
   { name: "show_posters", selector: { boolean: {} } },
-  {
-    name: "top_picks_items",
-    selector: {
-      select: {
-        multiple: true,
-        mode: "list",
-        options: [
-          option("actor", "Actor"),
-          option("director", "Director"),
-          option("writer", "Writer"),
-          option("decade", "Decade"),
-          option("genre", "Genre"),
-          option("country", "Country"),
-        ],
-      },
-    },
-  },
   {
     type: "expandable",
     name: "",

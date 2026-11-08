@@ -31,7 +31,7 @@ The Refract API doesn't say which actors, directors, genres or countries you wat
 - **It fills in over time.** The first time, the integration asks TMDB for the credits of every title you watched, the most watched ones first, a batch on each update. The section says *Still building* and *Based on 812 of 896 titles* until it is done, and the leaders are already right for the titles that count most. Details are cached on disk and looked at again only after about six months, so later updates cost nothing.
 - **It can differ from the Refract app.** This is our own calculation from TMDB's data, so the numbers and some names may not match what the app shows. Titles TMDB doesn't know are left out.
 - **Photos** are loaded by your browser from `image.tmdb.org`, like the posters. A person without a photo shows their initials.
-- Pick which tiles to show, and in which order, with `top_picks_items`, for example `[actor, director, writer, decade]`. The `show_top_picks` switch (Custom layout) hides the whole section.
+- **Layouts.** The Full layout shows all six tiles and Compact doesn't show this section. Only the Custom layout lets you pick which tiles to show, and in which order, with `top_picks_items` (for example `[actor, director, writer, decade]`), and hide the whole section with `show_top_picks`. In the editor both are under **Sections**.
 
 ## Posters
 
@@ -148,7 +148,7 @@ Cards from before 0.4.4 that have no `layout` but hide sections or set a `sectio
 | `show_next_up` | `true` | Next up tile |
 | `show_catchup` | `true` | Catch-up backlog |
 | `show_airing` | `true` | Airing this week |
-| `top_picks_items` | all six | Tiles of Most watched, in order: `actor`, `director`, `writer`, `decade`, `genre`, `country` |
+| `top_picks_items` | all six | Tiles of Most watched, in order: `actor`, `director`, `writer`, `decade`, `genre`, `country`. Only used by `layout: custom` |
 | `show_posters` | `true` | Posters (needs a TMDB key in the integration options) |
 | `show_actions` | `false` | Show the "Mark watched" button on the next up tile |
 | `confirm_actions` | `true` | Ask for a second tap before marking watched |

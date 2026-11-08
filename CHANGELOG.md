@@ -2,6 +2,12 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.5.3
+
+### Changed
+- **Most watched tiles** can only be chosen with the **Custom** layout. **Full** always shows all six tiles and **Compact** doesn't show the section. In the editor, *Most watched shows* moved into **Sections** and only appears for Custom
+- A card that has `top_picks_items` but no `layout` is read as Custom, so it keeps its tiles. A card with `layout: full` or `compact` now ignores `top_picks_items`
+
 ## 0.5.2
 
 ### Fixed

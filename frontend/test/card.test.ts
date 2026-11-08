@@ -966,10 +966,17 @@ test("most watched shows the leader of each ranking with photos, flag and decade
   assert.equal(panel.querySelector(".picks-foot a")!.getAttribute("href"), "https://www.themoviedb.org");
 });
 
-test("top_picks_items chooses and orders the tiles", async () => {
-  const el = await mount({ top_picks_items: ["country", "actor", "bogus", "actor"] });
-  const labels = [...el.shadowRoot!.querySelectorAll(".panel.picks .pick-label")].map((x) => x.textContent);
-  assert.deepEqual(labels, ["Country", "Actor"]);
+test("only the custom layout chooses and orders the most watched tiles", async () => {
+  const labelsOf = async (config: Record<string, unknown>) =>
+    [...(await mount(config)).shadowRoot!.querySelectorAll(".panel.picks .pick-label")].map((x) => x.textContent);
+  const items = ["country", "actor", "bogus", "actor"];
+  assert.deepEqual(await labelsOf({ layout: "custom", top_picks_items: items }), ["Country", "Actor"]);
+  const all = ["Actor", "Director", "Writer", "Decade", "Genre", "Country"];
+  assert.deepEqual(await labelsOf({ layout: "full", top_picks_items: items }), all, "full shows all six");
+  assert.deepEqual(await labelsOf({ layout: "compact", top_picks_items: items }), [], "compact hides the section");
+  assert.deepEqual(await labelsOf({}), all);
+  // a card that picked tiles before this only applied to custom is read as custom
+  assert.deepEqual(await labelsOf({ top_picks_items: ["genre"] }), ["Genre"]);
 });
 
 test("most watched is left out without the sensor, without data and in compact", async () => {
@@ -995,12 +1002,14 @@ test("most watched says it is still building while TMDB details are collected", 
   assert.match(done.shadowRoot!.querySelector(".panel.picks")!.textContent!, /Nothing to show yet/);
 });
 
-test("the editor offers the most watched switch and tiles", async () => {
-  const { names } = await editorFor({});
-  assert.ok(names.includes("top_picks_items"), "tiles are chosen in every layout");
-  assert.ok(!names.includes("show_top_picks"));
-  assert.ok((await editorFor({ layout: "custom" })).names.includes("show_top_picks"));
-  const { editor } = await editorFor({});
+test("the editor offers the most watched switch and tiles only for the custom layout", async () => {
+  for (const layout of [undefined, "full", "compact"]) {
+    const { names } = await editorFor(layout ? { layout } : {});
+    assert.ok(!names.includes("top_picks_items") && !names.includes("show_top_picks"), `nothing for ${layout}`);
+  }
+  const custom = await editorFor({ layout: "custom" });
+  assert.ok(custom.names.includes("show_top_picks") && custom.names.includes("top_picks_items"));
+  const { editor } = custom;
   const form = editor.shadowRoot.querySelector("ha-form");
   let emitted: any;
   editor.addEventListener("config-changed", (e: CustomEvent) => (emitted = e.detail.config));

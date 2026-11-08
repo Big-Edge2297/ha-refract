@@ -816,7 +816,9 @@ export class RefractStatsCard extends LitElement {
     const tp = m.topPicks;
     if (!tp) return nothing;
     const lang = languageOf(this.hass);
-    const tiles = this._cfg.top_picks_items
+    // Full shows every tile; only the custom layout picks them (Compact doesn't show this section).
+    const wanted = resolveLayout(this._config) === "custom" ? this._cfg.top_picks_items : [...PICK_KINDS];
+    const tiles = wanted
       .filter((k, i, all) => (PICK_KINDS as readonly string[]).includes(k) && all.indexOf(k) === i)
       .map((kind) => ({ kind, pick: tp.picks[kind]?.[0] }))
       .filter((x): x is { kind: PickKind; pick: TopPick } => !!x.pick);

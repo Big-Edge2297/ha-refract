@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3
+
+- **Changed:** the *Most watched* tiles (`top_picks_items`) only apply to the Custom layout and are only in the editor for Custom (under **Sections**). Full shows all six tiles; Compact hides the section. A card with `top_picks_items` and no `layout` is read as Custom
+
 ## 0.5.2
 
 - **Fixed:** the card finds the *Most watched* sensor under its old id `sensor.*_most_watched` too (Home Assistant keeps the id registered by 0.5.0). Update the card, hard-refresh, no renaming needed
