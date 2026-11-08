@@ -868,9 +868,16 @@ test("the sections and their order only show up in the editor for the custom lay
     assert.equal(panel, null, `no section order for ${layout}`);
     assert.ok(names.includes("show_posters") && names.includes("fun_stat") && names.includes("layout"), "other settings stay");
   }
-  const { names, panel } = await editorFor({ layout: "custom" });
+  const { editor, names, panel } = await editorFor({ layout: "custom" });
   assert.ok(names.includes("show_hero") && names.includes("show_airing"));
   assert.match(panel.getAttribute("header"), /Section order/);
+  // section order sits directly under Sections, before posters and the other settings
+  const wrap = editor.shadowRoot.querySelector(".wrap");
+  const kids = [...wrap.children].map((c: any) => c.tagName.toLowerCase());
+  assert.deepEqual(kids.slice(0, 3), ["ha-form", "ha-expansion-panel", "ha-form"]);
+  const first = wrap.children[0].schema.map((f: any) => f.title ?? f.name);
+  assert.equal(first[first.length - 1], "Sections");
+  assert.equal(wrap.children[2].schema[0].name, "show_posters");
 });
 
 test("the layout list offers Full, Compact and Custom, and switching shows the section settings", async () => {

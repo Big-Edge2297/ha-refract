@@ -2,6 +2,11 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.4.5
+
+### Changed
+- In the card editor with the **Custom** layout, **Section order** now sits directly under **Sections**, above Posters and the other settings
+
 ## 0.4.4
 
 ### Added

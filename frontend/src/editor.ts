@@ -172,16 +172,20 @@ export class RefractStatsCardEditor extends LitElement {
     const data: Record<string, unknown> = { ...DEFAULT_CONFIG, ...this._config, layout };
     if (this._config.show_queue !== undefined && this._config.show_catchup === undefined) data.show_catchup = this._config.show_queue;
     const actionMissing = !!this._config.show_actions && !this.hass.services?.[DOMAIN]?.mark_episode_watched;
+    // In the custom layout the section order sits right under the Sections switches, so the form is split around it.
+    const full = buildSchema(layout === "custom");
+    const at = layout === "custom" ? full.findIndex((f) => (f as { title?: string }).title === "Sections") + 1 : full.length;
+    const form = (schema: unknown[]) => html`<ha-form
+      .hass=${this.hass}
+      .data=${data}
+      .schema=${schema}
+      .computeLabel=${(s: { name: string }) => LABELS[s.name] ?? s.name}
+      .computeHelper=${(s: { name: string }) => HELPERS[s.name]}
+      @value-changed=${this._valueChanged}
+    ></ha-form>`;
     return html`<div class="wrap">
-      <ha-form
-        .hass=${this.hass}
-        .data=${data}
-        .schema=${buildSchema(layout === "custom")}
-        .computeLabel=${(s: { name: string }) => LABELS[s.name] ?? s.name}
-        .computeHelper=${(s: { name: string }) => HELPERS[s.name]}
-        @value-changed=${this._valueChanged}
-      ></ha-form>
-      ${layout === "custom" ? this._orderPanel() : nothing}
+      ${form(full.slice(0, at))} ${layout === "custom" ? this._orderPanel() : nothing}
+      ${at < full.length ? form(full.slice(at)) : nothing}
       ${actionMissing
         ? html`<ha-alert alert-type="warning">
             The button stays hidden until the <code>refract.mark_episode_watched</code> action is available. Check

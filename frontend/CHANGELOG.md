@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.5
+
+- **Changed:** with the Custom layout, the editor shows **Section order** directly under **Sections**
+
 ## 0.4.4
 
 - **New:** `layout: custom`. *Layout* is now Full, Compact or Custom
