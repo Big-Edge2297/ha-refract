@@ -474,6 +474,15 @@ def build_finish(
 WATCHED_STATUSES = ("completed", "up_to_date", "in_progress", "on_hold", "dropped")
 _WRITER_JOBS = frozenset({"Writer", "Screenplay", "Story", "Teleplay", "Creator"})
 _CAST_LIMIT = 10
+# A director or writer of a TV show counts when they made at least this share of its episodes (or created it):
+# TMDB lists everyone who worked on any single episode, which would credit a one-episode guest with the whole show.
+_CREW_SHARE = 0.25
+# TMDB names TV genres differently from movie genres; use the movie names so both count together.
+_TV_GENRES = {
+    "Action & Adventure": ["Action", "Adventure"],
+    "Sci-Fi & Fantasy": ["Science Fiction", "Fantasy"],
+    "War & Politics": ["War"],
+}
 _PEOPLE_LIMIT = 6
 TOP_LIMIT = 3
 
@@ -563,6 +572,16 @@ def _unique(people: Iterable[list[Any] | None], limit: int) -> list[list[Any]]:
     return out
 
 
+def _genres(body: dict[str, Any], movie: bool) -> list[str]:
+    names: list[str] = []
+    for g in body.get("genres") or []:
+        if isinstance(g, dict) and isinstance(g.get("name"), str):
+            for name in [g["name"]] if movie else _TV_GENRES.get(g["name"], [g["name"]]):
+                if name not in names:
+                    names.append(name)
+    return names
+
+
 def tmdb_profile(body: Any, kind: str) -> dict[str, Any] | None:
     """What the "most watched" numbers need from a TMDB `/movie/{id}` or `/tv/{id}` response.
 
@@ -582,14 +601,27 @@ def tmdb_profile(body: Any, kind: str) -> dict[str, Any] | None:
     cast_raw.sort(key=lambda c: c["order"] if isinstance(c.get("order"), int) else 10_000)
     crew = [c for c in credits.get("crew") or [] if isinstance(c, dict)]
 
-    def jobs(member: dict[str, Any]) -> set[str]:
-        if movie:
-            return {member["job"]} if isinstance(member.get("job"), str) else set()
-        return {j["job"] for j in member.get("jobs") or [] if isinstance(j, dict) and isinstance(j.get("job"), str)}
+    series_episodes = body.get("number_of_episodes")
+    enough = (
+        max(1.0, _CREW_SHARE * series_episodes)
+        if isinstance(series_episodes, (int, float)) and not isinstance(series_episodes, bool)
+        else 1.0
+    )
 
-    directors = _unique((_person(c) for c in crew if "Director" in jobs(c)), _PEOPLE_LIMIT)
+    def jobs(member: dict[str, Any], wanted: Iterable[str]) -> bool:
+        """Whether the person had one of the jobs, on enough episodes when it is a show."""
+        if movie:
+            return member.get("job") in wanted
+        for j in member.get("jobs") or []:
+            if isinstance(j, dict) and j.get("job") in wanted:
+                count = j.get("episode_count")
+                if not isinstance(count, (int, float)) or isinstance(count, bool) or count >= enough:
+                    return True
+        return False
+
+    directors = _unique((_person(c) for c in crew if jobs(c, ("Director",))), _PEOPLE_LIMIT)
     writers = _unique(
-        [_person(c) for c in crew if jobs(c) & _WRITER_JOBS]
+        [_person(c) for c in crew if jobs(c, _WRITER_JOBS)]
         + ([_person(c) for c in body.get("created_by") or []] if not movie else []),
         _PEOPLE_LIMIT,
     )
@@ -619,7 +651,7 @@ def tmdb_profile(body: Any, kind: str) -> dict[str, Any] | None:
         "year": year,
         "runtime": runtime,
         "episodes": episodes if isinstance(episodes, int) and not isinstance(episodes, bool) else None,
-        "genres": [g["name"] for g in body.get("genres") or [] if isinstance(g, dict) and isinstance(g.get("name"), str)],
+        "genres": _genres(body, movie),
         "countries": countries,
         "cast": _unique((_person(c) for c in cast_raw), _CAST_LIMIT),
         "directors": directors,
@@ -636,8 +668,9 @@ def build_top_picks(
 ) -> dict[str, Any]:
     """Actor, director, writer, decade, genre and country with the most watch time.
 
-    Every title gives its watched minutes to each of its credited people, genres and countries
-    (the top billed cast of a title are equal). `profiles` is keyed `movie:<id>` / `show:<id>`;
+    Every title counts once for each of its credited people, genres and countries and gives them its
+    watched minutes. The ranking is by number of titles, like the Refract app, with the hours as the
+    tie-break (the top billed cast of a title are equal). `profiles` is keyed `movie:<id>` / `show:<id>`;
     titles with no profile yet are counted as `pending`, and titles TMDB doesn't know are skipped. Each ranking keeps its best `TOP_LIMIT`.
     """
     boards: dict[str, dict[Any, dict[str, Any]]] = {
@@ -682,7 +715,7 @@ def build_top_picks(
             credit("country", code, name, minutes, code=code)
 
     def top(rows: dict[Any, dict[str, Any]]) -> list[dict[str, Any]]:
-        ranked = sorted(rows.values(), key=lambda r: (-r["minutes"], -r["titles"], r["name"]))[:TOP_LIMIT]
+        ranked = sorted(rows.values(), key=lambda r: (-r["titles"], -r["minutes"], r["name"]))[:TOP_LIMIT]
         return [{**{k: v for k, v in r.items() if k != "minutes"}, "hours": round(r["minutes"] / 60, 1)} for r in ranked]
 
     return {

@@ -29,6 +29,8 @@ _SHOW_DETAILS_DAYS = 3
 # hardly change, so it is only looked at again after a long time. The heaviest titles come first.
 _PROFILES_PER_REFRESH = 100
 _PROFILE_DAYS = 180
+# Bumped when what a profile holds changes, so cached ones are fetched again.
+_PROFILE_VERSION = 2
 
 
 def _auth(api_key: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -183,7 +185,7 @@ class TmdbClient:
 
         def fresh(key: str) -> bool:
             entry = self._profiles.get(key)
-            if entry is None:
+            if entry is None or entry.get("v") != _PROFILE_VERSION:
                 return False
             try:
                 return date.fromisoformat(entry.get("day", "")) + timedelta(days=_PROFILE_DAYS) > today
@@ -213,7 +215,7 @@ class TmdbClient:
                                 self._disabled = True
                                 return
                             if resp.status == 404:
-                                self._profiles[key] = {"missing": True, "day": today.isoformat()}
+                                self._profiles[key] = {"missing": True, "v": _PROFILE_VERSION, "day": today.isoformat()}
                                 return
                             if resp.status != 200:
                                 return
@@ -223,7 +225,7 @@ class TmdbClient:
                         return
                 profile = tmdb_profile(body, kind)
                 if profile is not None:
-                    self._profiles[key] = {**profile, "day": today.isoformat()}
+                    self._profiles[key] = {**profile, "v": _PROFILE_VERSION, "day": today.isoformat()}
 
             await asyncio.gather(*(fetch(*t) for t in todo))
             self._profile_store.async_delay_save(lambda: self._profiles, 10)

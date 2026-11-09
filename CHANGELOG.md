@@ -2,6 +2,16 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.5.4
+
+### Changed
+- **Most watched is ranked by number of titles**, like the Refract app, instead of by hours. The hours are still shown and break ties. A long series no longer outranks someone in many films
+- **Directors and writers of a TV show** only count when they made at least a quarter of its episodes, and the creators always count as writers. Before, someone who directed a single episode got credit for the whole show
+- **TV genres use the movie names**: *Action & Adventure* counts as Action and Adventure, *Sci-Fi & Fantasy* as Science Fiction and Fantasy, *War & Politics* as War. Before, Action could never beat Drama because shows and movies named it differently
+
+### Upgrading
+- The cached TMDB details are fetched again so the new rules apply (about 100 titles per update, the most watched first). Until that is done the section shows the numbers of the old rules for the titles not yet refreshed
+
 ## 0.5.3
 
 ### Changed

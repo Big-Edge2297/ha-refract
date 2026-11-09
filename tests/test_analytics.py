@@ -449,8 +449,8 @@ def test_tmdb_profile_movie_and_show():
     show = a.tmdb_profile(SHOW_BODY, "show")
     assert show["year"] == 2008 and show["runtime"] == 46 and show["episodes"] == 62
     assert show["countries"] == [["US", "US"]], "falls back to the origin country code"
-    assert [p[1] for p in show["directors"]] == ["Vince Gilligan"]
-    assert [p[1] for p in show["writers"]] == ["Vince Gilligan"], "creator and writer credit are the same person"
+    assert show["directors"] == [], "3 of 62 episodes is not the director of the show"
+    assert [p[1] for p in show["writers"]] == ["Vince Gilligan"], "the creator always counts as a writer"
     assert a.tmdb_profile("nope", "movie") is None
     assert a.tmdb_profile({}, "movie")["cast"] == []
 
@@ -495,7 +495,7 @@ def test_pick_candidates_prefer_history_and_skip_the_unwatched():
     assert ordered.index("show:3") < ordered.index("show:4") < ordered.index("movie:1")
 
 
-def test_build_top_picks_ranks_by_minutes_watched():
+def test_build_top_picks_credits_each_title_with_its_watched_minutes():
     movie, show = a.tmdb_profile(MOVIE_BODY, "movie"), a.tmdb_profile(SHOW_BODY, "show")
     candidates = [
         {"key": "show:1", "kind": "show", "id": 1, "count": 10, "assume_all": False},  # 10 x 46 = 460 min
@@ -511,7 +511,8 @@ def test_build_top_picks_ranks_by_minutes_watched():
     assert [r["name"] for r in top["actor"]][:2] == ["Aaron Paul", "Bryan Cranston"]
     assert top["actor"][1]["photo"] == "https://img/bryan.jpg"
     assert top["actor"][0]["hours"] == round((460 + 62 * 46) / 60, 1) and top["actor"][0]["titles"] == 2
-    assert top["director"][0]["name"] == "Vince Gilligan" and top["writer"][0]["name"] == "Vince Gilligan"
+    assert top["director"][0]["name"] == "Frank Darabont" and top["director"][0]["titles"] == 1, "only the movie has a director"
+    assert top["writer"][0]["name"] == "Vince Gilligan" and top["writer"][0]["titles"] == 2
     assert top["decade"][0] == {"name": "2000s", "titles": 2, "decade": 2000, "hours": top["decade"][0]["hours"]}
     assert top["genre"][0]["name"] == "Drama" and top["genre"][0]["titles"] == 3
     assert top["country"][0]["code"] == "US" and top["country"][0]["titles"] == 3
@@ -529,3 +530,50 @@ def test_build_top_picks_uses_default_runtimes_and_skips_what_it_cannot_time():
     top = a.build_top_picks([movie, show], profiles, episode_minutes=40, movie_minutes=100)
     assert top["titles"] == 2 and top["actor"][0]["hours"] == round((200 + 120) / 60, 1)
     assert top["decade"] == [], "no release year, no decade"
+
+
+def test_tv_crew_needs_a_real_share_of_the_episodes_and_tv_genres_use_movie_names():
+    body = {
+        "first_air_date": "2004-09-22",
+        "number_of_episodes": 100,
+        "episode_run_time": [43],
+        "genres": [{"name": "Action & Adventure"}, {"name": "Drama"}, {"name": "Sci-Fi & Fantasy"}, {"name": "Reality"}],
+        "created_by": [],
+        "aggregate_credits": {
+            "cast": [],
+            "crew": [
+                {"id": 1, "name": "Guest Director", "profile_path": None, "jobs": [{"job": "Director", "episode_count": 1}]},
+                {"id": 2, "name": "Regular Director", "profile_path": None, "jobs": [{"job": "Director", "episode_count": 30}]},
+                {"id": 3, "name": "Guest Writer", "profile_path": None, "jobs": [{"job": "Writer", "episode_count": 24}]},
+                {"id": 4, "name": "Showrunner", "profile_path": None, "jobs": [{"job": "Writer", "episode_count": 25}]},
+                {"id": 5, "name": "No Count", "profile_path": None, "jobs": [{"job": "Writer"}]},
+            ],
+        },
+    }
+    profile = a.tmdb_profile(body, "show")
+    assert [p[1] for p in profile["directors"]] == ["Regular Director"], "one episode of a hundred is not the director"
+    assert [p[1] for p in profile["writers"]] == ["Showrunner", "No Count"], "a quarter of the episodes counts"
+    assert profile["genres"] == ["Action", "Adventure", "Drama", "Science Fiction", "Fantasy", "Reality"]
+    movie = a.tmdb_profile({"genres": [{"name": "Action & Adventure"}], "credits": {"crew": [{"id": 9, "name": "M", "job": "Director"}]}}, "movie")
+    assert movie["genres"] == ["Action & Adventure"], "movie genres are left alone"
+    assert [p[1] for p in movie["directors"]] == ["M"], "movies have no episode counts"
+    short = dict(body, number_of_episodes=2)
+    assert [p[1] for p in a.tmdb_profile(short, "show")["directors"]] == ["Guest Director", "Regular Director"], "at least one episode"
+
+
+def test_build_top_picks_ranks_by_number_of_titles_then_hours():
+    def person(i, name):
+        return {"cast": [[i, name, None]], "genres": [], "countries": [], "directors": [], "writers": [], "year": None, "runtime": 100, "episodes": None}
+
+    candidates = [{"key": f"movie:{i}", "kind": "movie", "id": i, "count": 1, "assume_all": False} for i in (1, 2, 3)]
+    candidates.append({"key": "show:4", "kind": "show", "id": 4, "count": 200, "assume_all": False})
+    profiles = {
+        "movie:1": person(10, "Action Star"),
+        "movie:2": person(10, "Action Star"),
+        "movie:3": person(11, "Other"),
+        "show:4": {**person(12, "Long Series Lead"), "runtime": 45},
+    }
+    top = a.build_top_picks(candidates, profiles)
+    names = [r["name"] for r in top["actor"]]
+    assert names[0] == "Action Star" and top["actor"][0]["titles"] == 2, "two movies beat one long series"
+    assert names[1:] == ["Long Series Lead", "Other"], "equal titles: more hours first"

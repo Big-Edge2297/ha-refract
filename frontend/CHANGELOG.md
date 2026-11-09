@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.4
+
+- **Changed:** *Most watched* is ranked by number of titles (hours break ties), TV directors and writers need a quarter of a show's episodes, and TV genres use the movie names. The card itself is unchanged
+
 ## 0.5.3
 
 - **Changed:** the *Most watched* tiles (`top_picks_items`) only apply to the Custom layout and are only in the editor for Custom (under **Sections**). Full shows all six tiles; Compact hides the section. A card with `top_picks_items` and no `layout` is read as Custom
