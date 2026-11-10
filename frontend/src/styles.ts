@@ -131,11 +131,89 @@ export const cardStyles = css`
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px 14px;
   }
+  .picks-grid {
+    align-items: start;
+  }
+  .pick-cell {
+    min-width: 0;
+  }
   .pick {
     display: flex;
     align-items: center;
     gap: 10px;
     min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+  }
+  button.pick {
+    cursor: pointer;
+    border-radius: 12px;
+  }
+  button.pick:focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 2px;
+  }
+  .pick-chevron {
+    flex: none;
+    margin: -3px 0;
+    color: var(--secondary-text-color);
+    --mdc-icon-size: 18px;
+  }
+  .pick-runners {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0 0 0 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .pick-runners li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .pick-runners .pick-name {
+    font-size: 13px;
+  }
+  .pick-rank {
+    flex: none;
+    width: 14px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+  }
+  .pick-avatar.small {
+    width: 32px;
+    height: 32px;
+    --mdc-icon-size: 18px;
+  }
+  .pick-avatar.small .flag {
+    font-size: 18px;
+  }
+  .pick-avatar.small .initials {
+    font-size: 11px;
+  }
+  .picks-progress {
+    margin-top: 12px;
+    height: 6px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--c-accent) 18%, transparent);
+    overflow: hidden;
+  }
+  .picks-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: var(--c-accent);
+    transition: width 0.4s ease;
   }
   .pick-avatar {
     flex: none;
@@ -155,6 +233,7 @@ export const cardStyles = css`
     object-fit: cover;
   }
   .pick-avatar .flag {
+    font-family: "Twemoji Country Flags", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
     font-size: 26px;
     line-height: 1;
   }
@@ -169,6 +248,10 @@ export const cardStyles = css`
     line-height: 1.3;
   }
   .pick-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
     font-size: 12px;
     color: var(--secondary-text-color);
   }

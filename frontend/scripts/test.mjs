@@ -17,6 +17,7 @@ await build({
   external: ["jsdom", "node:*"],
   outExtension: { ".js": ".mjs" },
   define: { __VERSION__: '"test"' },
+  loader: { ".woff2": "dataurl" },
   logLevel: "warning",
 });
 

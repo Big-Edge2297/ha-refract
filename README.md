@@ -198,3 +198,5 @@ Releases: tag `vX.Y.Z` to match `manifest.json`'s `version`, and add the changes
 ## License
 
 MIT
+
+The country flags use the *Twemoji Country Flags* font from [country-flag-emoji-polyfill](https://github.com/talkjs/country-flag-emoji-polyfill) (MIT), whose flag artwork comes from [Twemoji](https://github.com/twitter/twemoji) and is licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). The font is a subset of the one distributed by that project.

@@ -2,6 +2,16 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.5.5
+
+### Added
+- **Runners-up in Most watched**: a tile with a small arrow opens when you tap it and shows places 2 and 3 of that ranking, with photos, titles and hours
+- **Progress bar for TMDB**: while the details are still being collected, Most watched shows a bar and *Collecting details from TMDB · 812 of 896 titles*. It turns into *Based on 812 of 896 titles* when done
+
+### Changed
+- **Flags are drawn by a small flag font built into the card**, so the Country tile shows a real flag on Windows too (it showed the letters "US" before). Nothing is loaded from the internet for it. The card file grows from about 84 KB to about 190 KB because of it
+- The README credits the font and the Twemoji artwork (CC-BY 4.0)
+
 ## 0.5.4
 
 ### Changed

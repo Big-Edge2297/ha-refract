@@ -1018,3 +1018,50 @@ test("the editor offers the most watched switch and tiles only for the custom la
   form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, top_picks_items: ["actor", "director", "writer", "decade", "genre", "country"] } } }));
   assert.equal(emitted.top_picks_items, undefined, "the default list is not written to the YAML");
 });
+
+test("a most watched tile with runners-up opens to show places 2 and 3", async () => {
+  const el = await mount({});
+  const root = el.shadowRoot!;
+  assert.equal(root.querySelectorAll("button.pick").length, 1, "only the actor ranking has runners-up in the fixture");
+  const button = root.querySelector("button.pick") as HTMLButtonElement;
+  assert.equal(button.getAttribute("aria-expanded"), "false");
+  assert.equal(root.querySelector(".pick-runners"), null);
+  button.click();
+  await el.updateComplete;
+  assert.equal(root.querySelector("button.pick")!.getAttribute("aria-expanded"), "true");
+  const rows = [...root.querySelectorAll(".pick-runners li")].map((li) => li.textContent!.replace(/\s+/g, " ").trim());
+  // Aaron Paul has a photo; Dean Norris has none, so his initials show
+  assert.deepEqual(rows, ["2 Aaron Paul 3 titles · 110 h", "3 DN Dean Norris 1 title · 60 h"]);
+  button.click();
+  await el.updateComplete;
+  assert.equal(root.querySelector(".pick-runners"), null, "closes again");
+});
+
+test("most watched shows how far TMDB is, and drops the bar when done", async () => {
+  const state = (attributes: Record<string, unknown>) =>
+    makeHass({ states: { ...baseStates, [`sensor.${PREFIX}top_picks`]: { entity_id: "p", state: "812", attributes } } });
+  const building = (await mount({}, state({ total: 896, pending: 84, actor: [{ name: "A B", hours: 5, titles: 1 }] }))).shadowRoot!;
+  const bar = building.querySelector(".picks-progress")!;
+  assert.equal(bar.getAttribute("role"), "progressbar");
+  assert.equal(bar.getAttribute("aria-valuenow"), "91");
+  assert.match((bar.firstElementChild as HTMLElement).getAttribute("style")!, /width:\s*91%/);
+  assert.match(building.querySelector(".picks-foot")!.textContent!.replace(/\s+/g, " "), /Collecting details from TMDB · 812 of 896 titles · TMDB/);
+  const done = (await mount({})).shadowRoot!;
+  assert.equal(done.querySelector(".picks-progress"), null);
+  assert.match(done.querySelector(".picks-foot")!.textContent!, /Based on 812 of 896 titles/);
+});
+
+test("the flag font is added to the page once, only for the flag characters", async () => {
+  document.getElementById("refract-flag-font")?.remove();
+  await mount({});
+  await mount({});
+  const styles = document.querySelectorAll("style#refract-flag-font");
+  assert.equal(styles.length, 1);
+  const css = styles[0].textContent!;
+  assert.match(css, /font-family:"Twemoji Country Flags"/);
+  assert.match(css, /unicode-range:U\+1F1E6-1F1FF/);
+  assert.match(css, /src:url\(data:font\/woff2;base64,/);
+  document.getElementById("refract-flag-font")!.remove();
+  await mount({ layout: "custom", top_picks_items: ["actor"] });
+  assert.equal(document.getElementById("refract-flag-font"), null, "not loaded when there is no country tile");
+});

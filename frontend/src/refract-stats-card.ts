@@ -4,6 +4,7 @@ import { defineOnce } from "./define";
 import { styleMap } from "lit/directives/style-map.js";
 import { CARD_TYPE, DOMAIN, EDITOR_TYPE } from "./const";
 import { discover, type Discovery } from "./discovery";
+import { ensureFlagFont, flagEmoji } from "./flags";
 import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, timeOfDay, weekdayName } from "./format";
 import { languageOf, t } from "./localize";
 import { buildModel, showKey, type CatchupShow, type Model, type ShowItem, type TopPick } from "./model";
@@ -31,6 +32,8 @@ export class RefractStatsCard extends LitElement {
   @state() private _config?: RefractCardConfig;
   @state() private _catchupExpanded = false;
   @state() private _airingExpanded = false;
+  /** Most watched tiles that show their runners-up. */
+  @state() private _openPicks: PickKind[] = [];
   @state() private _actionState: ActionState = "idle";
   @state() private _actionError = "";
 
@@ -812,6 +815,10 @@ export class RefractStatsCard extends LitElement {
 
   // ------------------------------------------------------------- airing
 
+  private _togglePick(kind: PickKind): void {
+    this._openPicks = this._openPicks.includes(kind) ? this._openPicks.filter((k) => k !== kind) : [...this._openPicks, kind];
+  }
+
   private _topPicks(m: Model): TemplateResult | typeof nothing {
     const tp = m.topPicks;
     if (!tp) return nothing;
@@ -820,8 +827,9 @@ export class RefractStatsCard extends LitElement {
     const wanted = resolveLayout(this._config) === "custom" ? this._cfg.top_picks_items : [...PICK_KINDS];
     const tiles = wanted
       .filter((k, i, all) => (PICK_KINDS as readonly string[]).includes(k) && all.indexOf(k) === i)
-      .map((kind) => ({ kind, pick: tp.picks[kind]?.[0] }))
-      .filter((x): x is { kind: PickKind; pick: TopPick } => !!x.pick);
+      .map((kind) => ({ kind, picks: tp.picks[kind] ?? [] }))
+      .filter((x): x is { kind: PickKind; picks: TopPick[] } => x.picks.length > 0);
+    if (tiles.some((x) => x.kind === "country")) ensureFlagFont();
     const hours = (h: number) => `${fmtNumber(h, lang, h < 10 ? 1 : 0)} h`;
     const initials = (name: string) =>
       name
@@ -831,10 +839,6 @@ export class RefractStatsCard extends LitElement {
         .slice(0, 2)
         .join("")
         .toUpperCase();
-    const flag = (code?: string) =>
-      code && /^[A-Za-z]{2}$/.test(code)
-        ? String.fromCodePoint(...[...code.toUpperCase()].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65))
-        : undefined;
     const countryName = (p: TopPick) => {
       try {
         return (p.code && new Intl.DisplayNames([lang], { type: "region" }).of(p.code.toUpperCase())) || p.name;
@@ -842,9 +846,15 @@ export class RefractStatsCard extends LitElement {
         return p.name;
       }
     };
+    const nameOf = (kind: PickKind, p: TopPick) => (kind === "country" ? countryName(p) : p.name);
+    const subOf = (p: TopPick) =>
+      t(this.hass, p.titles === 1 ? "picks.sub_one" : "picks.sub_other", {
+        n: fmtNumber(p.titles, lang),
+        time: hours(p.hours),
+      });
     const avatar = (kind: PickKind, p: TopPick) => {
       if (kind === "country") {
-        const f = flag(p.code);
+        const f = flagEmoji(p.code);
         return f ? html`<span class="flag">${f}</span>` : html`<ha-icon icon="mdi:earth"></ha-icon>`;
       }
       if (kind === "decade") return html`<ha-icon icon="mdi:calendar-range"></ha-icon>`;
@@ -854,33 +864,79 @@ export class RefractStatsCard extends LitElement {
         : html`<span class="initials">${initials(p.name)}</span>`;
     };
 
+    const tile = (kind: PickKind, picks: TopPick[]) => {
+      const lead = picks[0];
+      const rest = picks.slice(1, 3);
+      const open = rest.length > 0 && this._openPicks.includes(kind);
+      const label = t(this.hass, `picks.${kind}`);
+      const chevron = rest.length
+        ? html`<ha-icon class="pick-chevron" icon=${open ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>`
+        : nothing;
+      const body = html`<span class="pick-avatar ${kind}">${avatar(kind, lead)}</span>
+        <span class="pick-text">
+          <span class="pick-label">${label}${chevron}</span>
+          <b class="pick-name">${nameOf(kind, lead)}</b>
+          <span class="pick-sub">${subOf(lead)}</span>
+        </span>`;
+      const hint = `${label}: ${nameOf(kind, lead)} · ${subOf(lead)}`;
+      return html`<div class="pick-cell">
+        ${rest.length
+          ? html`<button
+              class="pick"
+              type="button"
+              title=${hint}
+              aria-expanded=${open ? "true" : "false"}
+              aria-label="${hint}. ${t(this.hass, open ? "picks.less" : "picks.more")}"
+              @click=${() => this._togglePick(kind)}
+            >
+              ${body}
+            </button>`
+          : html`<div class="pick" title=${hint}>${body}</div>`}
+        ${open
+          ? html`<ol class="pick-runners">
+              ${rest.map(
+                (p, i) => html`<li>
+                  <span class="pick-rank">${i + 2}</span>
+                  <span class="pick-avatar small ${kind}">${avatar(kind, p)}</span>
+                  <span class="pick-text">
+                    <b class="pick-name">${nameOf(kind, p)}</b>
+                    <span class="pick-sub">${subOf(p)}</span>
+                  </span>
+                </li>`,
+              )}
+            </ol>`
+          : nothing}
+      </div>`;
+    };
+
+    const done = Math.max(0, tp.total - tp.pending);
+    const percent = tp.total > 0 ? Math.round((done / tp.total) * 100) : 0;
     return html`<div class="panel picks">
       <div class="panel-head">
         <span class="label">${t(this.hass, "picks.title")}</span>
         ${tp.pending > 0 ? html`<span class="badge">${t(this.hass, "picks.building")}</span>` : nothing}
       </div>
       ${tiles.length
-        ? html`<div class="picks-grid">
-            ${tiles.map(({ kind, pick }) => {
-              const sub = t(this.hass, pick.titles === 1 ? "picks.sub_one" : "picks.sub_other", {
-                n: fmtNumber(pick.titles, lang),
-                time: hours(pick.hours),
-              });
-              const name = kind === "country" ? countryName(pick) : pick.name;
-              return html`<div class="pick" title="${t(this.hass, `picks.${kind}`)}: ${name} · ${sub}">
-                <span class="pick-avatar ${kind}">${avatar(kind, pick)}</span>
-                <span class="pick-text">
-                  <span class="pick-label">${t(this.hass, `picks.${kind}`)}</span>
-                  <b class="pick-name">${name}</b>
-                  <span class="pick-sub">${sub}</span>
-                </span>
-              </div>`;
-            })}
-          </div>`
+        ? html`<div class="picks-grid">${tiles.map(({ kind, picks }) => tile(kind, picks))}</div>`
         : html`<div class="empty">${t(this.hass, tp.pending > 0 ? "picks.waiting" : "picks.none")}</div>`}
+      ${tp.pending > 0 && tp.total > 0
+        ? html`<div
+            class="picks-progress"
+            role="progressbar"
+            aria-label=${t(this.hass, "picks.progress_label")}
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow=${percent}
+          >
+            <span style=${styleMap({ width: `${percent}%` })}></span>
+          </div>`
+        : nothing}
       ${tp.total > 0
         ? html`<div class="picks-foot">
-            ${t(this.hass, "picks.based_on", { n: fmtNumber(tp.titles, lang), total: fmtNumber(tp.total, lang) })} ·
+            ${tp.pending > 0
+              ? t(this.hass, "picks.progress", { n: fmtNumber(done, lang), total: fmtNumber(tp.total, lang) })
+              : t(this.hass, "picks.based_on", { n: fmtNumber(tp.titles, lang), total: fmtNumber(tp.total, lang) })}
+            ·
             <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a>
           </div>`
         : nothing}

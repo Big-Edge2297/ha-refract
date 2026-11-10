@@ -9,6 +9,7 @@ const options = {
   format: "esm",
   target: "es2021",
   legalComments: "none",
+  loader: { ".woff2": "dataurl" },
   outfile: "../custom_components/refract/www/refract-stats-card.js",
   define: { __VERSION__: JSON.stringify(pkg.version) },
   logLevel: "info",

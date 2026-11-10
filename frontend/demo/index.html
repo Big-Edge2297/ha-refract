@@ -132,12 +132,26 @@
       e("airing_this_week", 3, { episodes: airing }),
       e("top_picks", 812, {
         total: 896, pending: 0,
-        actor: [{ name: "Evan Rachel Wood", hours: 412.5, titles: 38, photo: on ? faces.actor : null }],
-        director: [{ name: "Jonathan Nolan", hours: 286, titles: 21, photo: on ? faces.director : null }],
-        writer: [{ name: "Lisa Joy", hours: 241.5, titles: 17, photo: on ? faces.writer : null }],
-        decade: [{ name: "2010s", hours: 2810, titles: 342, decade: 2010 }],
-        genre: [{ name: "Drama", hours: 3920, titles: 458 }],
-        country: [{ name: "United States of America", hours: 4630, titles: 571, code: "US" }],
+        actor: [
+          { name: "Evan Rachel Wood", hours: 412.5, titles: 38, photo: on ? faces.actor : null },
+          { name: "Jeffrey Wright", hours: 380, titles: 33, photo: on ? faces.director : null },
+          { name: "Thandiwe Newton", hours: 301.5, titles: 27, photo: on ? faces.writer : null },
+        ],
+        director: [
+          { name: "Jonathan Nolan", hours: 286, titles: 21, photo: on ? faces.director : null },
+          { name: "Richard J. Lewis", hours: 190, titles: 14, photo: on ? faces.actor : null },
+        ],
+        writer: [
+          { name: "Lisa Joy", hours: 241.5, titles: 17, photo: on ? faces.writer : null },
+          { name: "Ron Fitzgerald", hours: 150, titles: 12, photo: on ? faces.actor : null },
+        ],
+        decade: [{ name: "2010s", hours: 2810, titles: 342, decade: 2010 }, { name: "2000s", hours: 1620, titles: 198, decade: 2000 }],
+        genre: [{ name: "Drama", hours: 3920, titles: 458 }, { name: "Action", hours: 2100, titles: 301 }],
+        country: [
+          { name: "United States of America", hours: 4630, titles: 571, code: "US" },
+          { name: "United Kingdom", hours: 880, titles: 96, code: "GB" },
+          { name: "Japan", hours: 510, titles: 60, code: "JP" },
+        ],
       }),
     ]);
   };

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.5
+
+- **New:** tap a *Most watched* tile with an arrow to see places 2 and 3; a progress bar while TMDB details are collected
+- **Changed:** flags use an embedded *Twemoji Country Flags* font (a woff2 in `src/assets`, bundled as a data URL), so they also show on Windows. The bundle grows by about 105 KB. Credit in the README
+
 ## 0.5.4
 
 - **Changed:** *Most watched* is ranked by number of titles (hours break ties), TV directors and writers need a quarter of a show's episodes, and TV genres use the movie names. The card itself is unchanged

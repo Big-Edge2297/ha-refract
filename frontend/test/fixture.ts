@@ -100,6 +100,7 @@ export const states: Record<string, HassEntity> = Object.fromEntries([
     actor: [
       { name: "Bryan Cranston", hours: 120.5, titles: 4, id: 17419, photo: "https://image.tmdb.org/t/p/w185/bryan.jpg" },
       { name: "Aaron Paul", hours: 110, titles: 3, id: 84497, photo: "https://image.tmdb.org/t/p/w185/aaron.jpg" },
+      { name: "Dean Norris", hours: 60, titles: 1, id: 1, photo: null },
     ],
     director: [{ name: "Vince Gilligan", hours: 98.4, titles: 2, id: 66633, photo: "https://image.tmdb.org/t/p/w185/vince.jpg" }],
     writer: [{ name: "Jonathan Nolan", hours: 61, titles: 1, id: 7, photo: null }],
