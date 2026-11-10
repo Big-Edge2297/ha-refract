@@ -1065,3 +1065,30 @@ test("the flag font is added to the page once, only for the flag characters", as
   await mount({ layout: "custom", top_picks_items: ["actor"] });
   assert.equal(document.getElementById("refract-flag-font"), null, "not loaded when there is no country tile");
 });
+
+// ------------------------------------------------------------ languages
+
+const inLanguage = (language: string) => makeHass({ locale: { language, time_zone: "server" } as any, language } as any);
+
+test("the card shows in the language of Home Assistant", async () => {
+  const de = text(await mount({}, inLanguage("de")));
+  assert.match(de, /Gesamte Wiedergabezeit/);
+  assert.match(de, /Letzte 7 Tage/);
+  assert.match(de, /Am häufigsten gesehen/);
+  assert.match(de, /Nachholbedarf/);
+  assert.doesNotMatch(de, /Total watch time|Last 7 days|Most watched/);
+  const fr = text(await mount({}, inLanguage("fr")));
+  assert.match(fr, /Temps de visionnage total/);
+  assert.match(fr, /Basé sur 812 titres sur 896/);
+  assert.match(text(await mount({}, inLanguage("en"))), /Total watch time/);
+  assert.match(text(await mount({}, inLanguage("xx"))), /Total watch time/, "an unknown language shows English");
+});
+
+test("units, counts and the fun stat follow the plural rules of the language", async () => {
+  const pl = text(await mount({}, inLanguage("pl")));
+  assert.match(pl, /266 dni 14 godzin/, "266 days 14 hours");
+  assert.match(pl, /Łączny czas oglądania/);
+  assert.match(pl, /26 dni 5 godzin/, "still to finish: 26 days, 5 hours");
+  assert.match(pl, /Pokaż miejsca|Najczęściej oglądane/);
+  assert.match(text(await mount({}, inLanguage("en"))), /266 days 14 hours/);
+});

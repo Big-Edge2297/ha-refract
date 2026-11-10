@@ -128,7 +128,8 @@ export const cardStyles = css`
   /* most watched */
   .picks-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* two columns when the card is wide enough for them, else one: long names and translations need room */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 12px 14px;
   }
   .picks-grid {

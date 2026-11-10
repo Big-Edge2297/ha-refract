@@ -22,6 +22,10 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 
 Sections hide themselves when their sensors don't exist, so a read-only API key still gives a clean card.
 
+## Languages
+
+The card shows in the language of your Home Assistant profile: German, French, Spanish, Italian, Dutch, Portuguese and Polish, or English for any other language. The units follow the language too (days, hours, and the short forms such as `j` for jours in French). The card editor itself stays in English. See [Translations](translations.md).
+
 ## Most watched
 
 The Refract API doesn't say which actors, directors, genres or countries you watch most, so the integration works it out with [TMDB](https://www.themoviedb.org). It needs the same free TMDB API key as the posters. Without a key the section doesn't appear.

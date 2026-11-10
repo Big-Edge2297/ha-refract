@@ -1,0 +1,230 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz Refract",
+        "description": "W aplikacji Refract otwórz „Integrations > Access and connected apps”, utwórz osobisty klucz i wklej go tutaj. Włącz uprawnienia, z których ma korzystać Home Assistant.",
+        "data": {
+          "api_key": "Klucz API"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ponowne uwierzytelnienie Refract",
+        "description": "Twój klucz został odrzucony lub unieważniony. Wklej nowy dla tego samego konta.",
+        "data": {
+          "api_key": "Klucz API"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ten klucz został odrzucony. Sprawdź, czy został skopiowany w całości.",
+      "invalid_key_format": "Klucze Refract zaczynają się od rfk_.",
+      "missing_profile_scope": "Klucz wymaga uprawnienia „See your public profile”.",
+      "cannot_connect": "Nie można połączyć się z Refract.",
+      "unknown": "Nieoczekiwany błąd, sprawdź dziennik."
+    },
+    "abort": {
+      "already_configured": "To konto Refract jest już skonfigurowane.",
+      "reauth_successful": "Ponowne uwierzytelnienie zakończone powodzeniem.",
+      "wrong_account": "Ten klucz należy do innego konta Refract."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje Refract",
+        "description": "Plakaty i sekcja „Najczęściej oglądane” są opcjonalne. Wymagają Twojego własnego bezpłatnego klucza API TMDB i są ładowane z serwerów TMDB.",
+        "data": {
+          "scan_interval": "Interwał aktualizacji (minuty)",
+          "fetch_history": "Pobieraj historię oglądania (wykresy tygodniowe)",
+          "tmdb_api_key": "Klucz API TMDB (opcjonalny, dla plakatów i „Najczęściej oglądane”)"
+        },
+        "data_description": {
+          "scan_interval": "Jak często sprawdzać zmiany w Refract.",
+          "fetch_history": "Wymagane dla „Ostatnie 7 dni” i „Średnia tygodniowo”. Historia jest odświeżana co godzinę i przy dużych bibliotekach może oznaczać wiele zapytań.",
+          "tmdb_api_key": "Klucz API TMDB v3 lub token dostępu v4 tylko do odczytu. Zostaw puste, aby wyłączyć plakaty i „Najczęściej oglądane”."
+        }
+      }
+    },
+    "error": {
+      "invalid_tmdb_key": "TMDB odrzucił ten klucz.",
+      "tmdb_unreachable": "Nie można połączyć się z TMDB."
+    }
+  },
+  "services": {
+    "add_to_watchlist": {
+      "name": "Dodaj do listy do obejrzenia",
+      "description": "Dodaj tytuł do swojej listy do obejrzenia w Refract.",
+      "fields": {
+        "media_type": {
+          "name": "Typ",
+          "description": "Czy tytuł jest filmem, czy serialem."
+        },
+        "refract_id": {
+          "name": "ID Refract",
+          "description": "Identyfikator tytułu w Refract. Użyj go albo jednego z zewnętrznych identyfikatorów poniżej."
+        },
+        "tmdb_id": {
+          "name": "ID TMDB",
+          "description": "Identyfikator tytułu w TMDB."
+        },
+        "imdb_id": {
+          "name": "ID IMDb",
+          "description": "Identyfikator tytułu w IMDb (tt...)."
+        },
+        "tvdb_id": {
+          "name": "ID TheTVDB",
+          "description": "Identyfikator tytułu w TheTVDB."
+        },
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "Którego konta Refract użyć. Domyślnie pierwszego."
+        }
+      }
+    },
+    "set_status": {
+      "name": "Ustaw status",
+      "description": "Dodaj tytuł do biblioteki lub przenieś go do innego statusu.",
+      "fields": {
+        "media_type": {
+          "name": "Typ",
+          "description": "Czy tytuł jest filmem, czy serialem."
+        },
+        "status": {
+          "name": "Status",
+          "description": "planned, in_progress, up_to_date lub completed."
+        },
+        "refract_id": {
+          "name": "ID Refract",
+          "description": "Identyfikator tytułu w Refract. Użyj go albo jednego z zewnętrznych identyfikatorów poniżej."
+        },
+        "tmdb_id": {
+          "name": "ID TMDB",
+          "description": "Identyfikator tytułu w TMDB."
+        },
+        "imdb_id": {
+          "name": "ID IMDb",
+          "description": "Identyfikator tytułu w IMDb (tt...)."
+        },
+        "tvdb_id": {
+          "name": "ID TheTVDB",
+          "description": "Identyfikator tytułu w TheTVDB."
+        },
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "Którego konta Refract użyć. Domyślnie pierwszego."
+        }
+      }
+    },
+    "mark_episode_watched": {
+      "name": "Oznacz odcinek jako obejrzany",
+      "description": "Oznacz odcinek jako obejrzany (lub nieobejrzany). Działa z identyfikatorami serialu z TMDB, IMDb lub TVDB.",
+      "fields": {
+        "season": {
+          "name": "Sezon",
+          "description": "Numer sezonu (numeracja TMDB)."
+        },
+        "number": {
+          "name": "Odcinek",
+          "description": "Numer odcinka w sezonie (numeracja TMDB)."
+        },
+        "watched_at": {
+          "name": "Obejrzano",
+          "description": "Kiedy został obejrzany. Domyślnie teraz."
+        },
+        "watched": {
+          "name": "Obejrzane",
+          "description": "Wyłącz, aby oznaczyć odcinek jako nieobejrzany."
+        },
+        "refract_id": {
+          "name": "ID Refract",
+          "description": "Identyfikator tytułu w Refract. Użyj go albo jednego z zewnętrznych identyfikatorów poniżej."
+        },
+        "tmdb_id": {
+          "name": "ID TMDB",
+          "description": "Identyfikator tytułu w TMDB."
+        },
+        "imdb_id": {
+          "name": "ID IMDb",
+          "description": "Identyfikator tytułu w IMDb (tt...)."
+        },
+        "tvdb_id": {
+          "name": "ID TheTVDB",
+          "description": "Identyfikator tytułu w TheTVDB."
+        },
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "Którego konta Refract użyć. Domyślnie pierwszego."
+        }
+      }
+    },
+    "log_movie_play": {
+      "name": "Zapisz obejrzenie filmu",
+      "description": "Zapisz, że obejrzałeś film.",
+      "fields": {
+        "watched_at": {
+          "name": "Obejrzano",
+          "description": "Kiedy został obejrzany. Domyślnie teraz."
+        },
+        "refract_id": {
+          "name": "ID Refract",
+          "description": "Identyfikator tytułu w Refract. Użyj go albo jednego z zewnętrznych identyfikatorów poniżej."
+        },
+        "tmdb_id": {
+          "name": "ID TMDB",
+          "description": "Identyfikator tytułu w TMDB."
+        },
+        "imdb_id": {
+          "name": "ID IMDb",
+          "description": "Identyfikator tytułu w IMDb (tt...)."
+        },
+        "tvdb_id": {
+          "name": "ID TheTVDB",
+          "description": "Identyfikator tytułu w TheTVDB."
+        },
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "Którego konta Refract użyć. Domyślnie pierwszego."
+        }
+      }
+    },
+    "log_rewatch": {
+      "name": "Zapisz ponowne obejrzenie odcinka",
+      "description": "Zapisz ponowne obejrzenie odcinka, który już obejrzałeś.",
+      "fields": {
+        "season": {
+          "name": "Sezon",
+          "description": "Numer sezonu (numeracja TMDB)."
+        },
+        "number": {
+          "name": "Odcinek",
+          "description": "Numer odcinka w sezonie (numeracja TMDB)."
+        },
+        "watched_at": {
+          "name": "Obejrzano",
+          "description": "Kiedy został obejrzany. Domyślnie teraz."
+        },
+        "refract_id": {
+          "name": "ID Refract",
+          "description": "Identyfikator tytułu w Refract. Użyj go albo jednego z zewnętrznych identyfikatorów poniżej."
+        },
+        "tmdb_id": {
+          "name": "ID TMDB",
+          "description": "Identyfikator tytułu w TMDB."
+        },
+        "imdb_id": {
+          "name": "ID IMDb",
+          "description": "Identyfikator tytułu w IMDb (tt...)."
+        },
+        "tvdb_id": {
+          "name": "ID TheTVDB",
+          "description": "Identyfikator tytułu w TheTVDB."
+        },
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "Którego konta Refract użyć. Domyślnie pierwszego."
+        }
+      }
+    }
+  }
+}

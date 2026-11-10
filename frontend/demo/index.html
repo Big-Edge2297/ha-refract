@@ -20,6 +20,7 @@
 </head>
 <body class="dark">
 <div class="bar">
+  <label>Language <select id="lang"><option>en</option><option>de</option><option>fr</option><option>es</option><option>it</option><option>nl</option><option>pt</option><option>pl</option></select></label>
   <label>Theme <select id="theme"><option>dark</option><option>light</option></select></label>
   <label>Width <input id="width" type="range" min="300" max="900" value="520" /> <span id="wv">520</span>px</label>
   <label>Layout <select id="layout"><option>full</option><option>compact</option><option>custom</option></select></label>
@@ -177,7 +178,7 @@
       layout: $("layout").value, library_style: $("libstyle").value, watch_time_style: $("watchstyle").value, duration_format: $("dur").value,
       show_actions: $("actions").checked,
     });
-    card.hass = { ...hass, states: { ...states, ...dynamic($("posters").checked) } };
+    card.hass = { ...hass, locale: { ...hass.locale, language: $("lang").value }, language: $("lang").value, states: { ...states, ...dynamic($("posters").checked) } };
   };
   document.querySelectorAll(".bar select, .bar input").forEach((el) => el.addEventListener("input", apply));
   apply();

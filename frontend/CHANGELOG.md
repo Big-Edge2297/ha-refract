@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0
+
+- **New:** the card is translated into German, French, Spanish, Italian, Dutch, Portuguese and Polish (`src/translations`), with plural forms per language (`tn()` in `localize.ts`, using `Intl.PluralRules`). Short duration units follow the language
+- **Changed:** the plural keys of English changed to one scheme (`unit.day` = days, `unit.day_one` = day, `picks.sub`, `fun.months_one`, ...); `durationParts` now returns `unit` as `unit.day`, `unit.hour` or `unit.min` with the number `n`
+- **Changed:** *Most watched* tiles use one column when the card is narrow; the hours stay together with their number
+- The demo page has a language selector; `docs/translations.md` explains how to add a language
+
 ## 0.5.5
 
 - **New:** tap a *Most watched* tile with an arrow to see places 2 and 3; a progress bar while TMDB details are collected

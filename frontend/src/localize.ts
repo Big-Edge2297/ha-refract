@@ -1,6 +1,13 @@
 import type { HomeAssistant } from "./types";
+import { de } from "./translations/de";
+import { es } from "./translations/es";
+import { fr } from "./translations/fr";
+import { it } from "./translations/it";
+import { nl } from "./translations/nl";
+import { pl } from "./translations/pl";
+import { pt } from "./translations/pt";
 
-type Dict = Record<string, string>;
+export type Dict = Record<string, string>;
 
 const en: Dict = {
   "card.name": "Refract stats",
@@ -12,10 +19,10 @@ const en: Dict = {
   "hero.library": "Library",
   "hero.movies_seen": "Movies seen",
   "hero.episodes": "Episodes watched",
-  "unit.days": "days",
-  "unit.day": "day",
-  "unit.hours": "hours",
-  "unit.hour": "hour",
+  "unit.day": "days",
+  "unit.day_one": "day",
+  "unit.hour": "hours",
+  "unit.hour_one": "hour",
   "unit.min": "min",
   "unit.h": "h",
   "header.last_watched": "Last watched",
@@ -88,8 +95,8 @@ const en: Dict = {
   "picks.decade": "Decade",
   "picks.genre": "Genre",
   "picks.country": "Country",
+  "picks.sub": "{n} titles · {time}",
   "picks.sub_one": "{n} title · {time}",
-  "picks.sub_other": "{n} titles · {time}",
   "picks.based_on": "Based on {n} of {total} titles",
   "picks.building": "Still building",
   "picks.progress": "Collecting details from TMDB · {n} of {total} titles",
@@ -99,13 +106,16 @@ const en: Dict = {
   "picks.waiting": "Collecting details from TMDB. This fills in over the next few updates.",
   "picks.none": "Nothing to show yet.",
   "fun.months": "That's about {n} months of nonstop viewing",
+  "fun.months_one": "That's about {n} month of nonstop viewing",
   "fun.years": "That's about {n} years of nonstop viewing",
   "fun.days": "That's about {n} days of nonstop viewing",
+  "fun.days_one": "That's about {n} day of nonstop viewing",
   "fun.workweeks": "That's about {n} full-time work weeks",
   "fun.lotr": "Enough for the extended Lord of the Rings trilogy about {n} times",
   "fun.flights": "Enough time to fly around the world about {n} times",
   "fun.sleep_nights": "That's about {n} nights of sleep",
   "fun.sleep_years": "That's about {n} years of sleep at 8 hours a night",
+  "fun.sleep_years_one": "That's about {n} year of sleep at 8 hours a night",
   "fun.movies": "That's about {n} average movies back to back",
   "fun.seasons": "That's about {n} full 22-episode TV seasons",
   "fun.marathons": "Enough time to run about {n} marathons",
@@ -113,18 +123,58 @@ const en: Dict = {
   "fun.imdb": "Enough to watch the whole IMDb Top 250 about {n} times",
 };
 
-const dictionaries: Record<string, Dict> = { en };
+/** Translations other than English. A missing key falls back to English. */
+const dictionaries: Record<string, Dict> = { en, de, fr, es, it, nl, pt, pl };
+
+/** Languages the card is translated into. */
+export const LANGUAGES = Object.keys(dictionaries);
+
+export { en as ENGLISH };
 
 export function languageOf(hass?: HomeAssistant): string {
   return hass?.locale?.language || hass?.language || "en";
 }
 
-export function t(hass: HomeAssistant | undefined, key: string, vars: Record<string, string | number> = {}): string {
-  const lang = languageOf(hass).split("-")[0];
-  const dict = dictionaries[lang] ?? en;
-  let text = dict[key] ?? en[key] ?? key;
+function dictionaryOf(hass: HomeAssistant | undefined): Dict {
+  return dictionaries[languageOf(hass).split("-")[0]] ?? en;
+}
+
+function fill(text: string, vars: Record<string, string | number>): string {
   for (const [name, value] of Object.entries(vars)) {
-    text = text.replace(`{${name}}`, String(value));
+    text = text.split(`{${name}}`).join(String(value));
   }
   return text;
+}
+
+export function t(hass: HomeAssistant | undefined, key: string, vars: Record<string, string | number> = {}): string {
+  return fill(dictionaryOf(hass)[key] ?? en[key] ?? key, vars);
+}
+
+const pluralRules = new Map<string, Intl.PluralRules>();
+
+/** The plural form of a number in a language: `zero`, `one`, `two`, `few`, `many` or `other`. */
+export function pluralCategory(lang: string, n: number): Intl.LDMLPluralRule {
+  try {
+    let rules = pluralRules.get(lang);
+    if (!rules) pluralRules.set(lang, (rules = new Intl.PluralRules(lang)));
+    return rules.select(n);
+  } catch {
+    return n === 1 ? "one" : "other";
+  }
+}
+
+/**
+ * Like `t`, for a text that depends on a number. The key holds the general form, and `key_one`,
+ * `key_few`, `key_many`, `key_two` or `key_zero` hold the others, as far as the language needs them.
+ */
+export function tn(
+  hass: HomeAssistant | undefined,
+  key: string,
+  n: number,
+  vars: Record<string, string | number> = {},
+): string {
+  const category = pluralCategory(languageOf(hass).split("-")[0], n);
+  const dict = dictionaryOf(hass);
+  const pick = (d: Dict) => (category === "other" ? d[key] : (d[`${key}_${category}`] ?? d[key]));
+  return fill(pick(dict) ?? pick(en) ?? en[key] ?? key, vars);
 }

@@ -1,0 +1,230 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Refract koppelen",
+        "description": "Open in de Refract-app 'Integrations > Access and connected apps', maak een persoonlijke sleutel aan en plak die hier. Schakel de rechten in die Home Assistant mag gebruiken.",
+        "data": {
+          "api_key": "API-sleutel"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Refract opnieuw verifiëren",
+        "description": "Je sleutel is geweigerd of ingetrokken. Plak een nieuwe voor hetzelfde account.",
+        "data": {
+          "api_key": "API-sleutel"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Die sleutel is geweigerd. Controleer of hij volledig is gekopieerd.",
+      "invalid_key_format": "Refract-sleutels beginnen met rfk_.",
+      "missing_profile_scope": "De sleutel heeft de machtiging 'See your public profile' nodig.",
+      "cannot_connect": "Kan Refract niet bereiken.",
+      "unknown": "Onverwachte fout, zie het logboek."
+    },
+    "abort": {
+      "already_configured": "Dit Refract-account is al ingesteld.",
+      "reauth_successful": "Opnieuw verifiëren geslaagd.",
+      "wrong_account": "Die sleutel hoort bij een ander Refract-account."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Refract-opties",
+        "description": "Posters en het onderdeel 'Meest bekeken' zijn optioneel. Ze hebben je eigen gratis TMDB-API-sleutel nodig en worden geladen van de servers van TMDB.",
+        "data": {
+          "scan_interval": "Update-interval (minuten)",
+          "fetch_history": "Kijkgeschiedenis ophalen (weekgrafieken)",
+          "tmdb_api_key": "TMDB-API-sleutel (optioneel, voor posters en 'Meest bekeken')"
+        },
+        "data_description": {
+          "scan_interval": "Hoe vaak Refract op wijzigingen wordt gecontroleerd.",
+          "fetch_history": "Nodig voor 'Afgelopen 7 dagen' en 'Gemiddeld per week'. De geschiedenis wordt elk uur vernieuwd en kan bij grote bibliotheken veel verzoeken opleveren.",
+          "tmdb_api_key": "Een TMDB v3-API-sleutel of v4-leestoken. Laat leeg om posters en 'Meest bekeken' uit te schakelen."
+        }
+      }
+    },
+    "error": {
+      "invalid_tmdb_key": "TMDB heeft die sleutel geweigerd.",
+      "tmdb_unreachable": "Kan TMDB niet bereiken."
+    }
+  },
+  "services": {
+    "add_to_watchlist": {
+      "name": "Aan watchlist toevoegen",
+      "description": "Zet een titel op je Refract-watchlist.",
+      "fields": {
+        "media_type": {
+          "name": "Type",
+          "description": "Of de titel een film of een serie is."
+        },
+        "refract_id": {
+          "name": "Refract-ID",
+          "description": "De Refract-ID van de titel. Gebruik deze, of een van de externe ID's hieronder."
+        },
+        "tmdb_id": {
+          "name": "TMDB-ID",
+          "description": "De TMDB-ID van de titel."
+        },
+        "imdb_id": {
+          "name": "IMDb-ID",
+          "description": "De IMDb-ID van de titel (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB-ID",
+          "description": "De TheTVDB-ID van de titel."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Welk Refract-account moet worden gebruikt. Standaard het eerste."
+        }
+      }
+    },
+    "set_status": {
+      "name": "Status instellen",
+      "description": "Voeg een titel toe aan je bibliotheek of verplaats hem naar een andere status.",
+      "fields": {
+        "media_type": {
+          "name": "Type",
+          "description": "Of de titel een film of een serie is."
+        },
+        "status": {
+          "name": "Status",
+          "description": "planned, in_progress, up_to_date of completed."
+        },
+        "refract_id": {
+          "name": "Refract-ID",
+          "description": "De Refract-ID van de titel. Gebruik deze, of een van de externe ID's hieronder."
+        },
+        "tmdb_id": {
+          "name": "TMDB-ID",
+          "description": "De TMDB-ID van de titel."
+        },
+        "imdb_id": {
+          "name": "IMDb-ID",
+          "description": "De IMDb-ID van de titel (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB-ID",
+          "description": "De TheTVDB-ID van de titel."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Welk Refract-account moet worden gebruikt. Standaard het eerste."
+        }
+      }
+    },
+    "mark_episode_watched": {
+      "name": "Aflevering als gezien markeren",
+      "description": "Markeer een aflevering als gezien (of niet gezien). Werkt met TMDB-, IMDb- of TVDB-ID's van de serie.",
+      "fields": {
+        "season": {
+          "name": "Seizoen",
+          "description": "Seizoensnummer (TMDB-nummering)."
+        },
+        "number": {
+          "name": "Aflevering",
+          "description": "Afleveringsnummer in het seizoen (TMDB-nummering)."
+        },
+        "watched_at": {
+          "name": "Bekeken op",
+          "description": "Wanneer het is bekeken. Standaard nu."
+        },
+        "watched": {
+          "name": "Bekeken",
+          "description": "Schakel uit om de aflevering als niet gezien te markeren."
+        },
+        "refract_id": {
+          "name": "Refract-ID",
+          "description": "De Refract-ID van de titel. Gebruik deze, of een van de externe ID's hieronder."
+        },
+        "tmdb_id": {
+          "name": "TMDB-ID",
+          "description": "De TMDB-ID van de titel."
+        },
+        "imdb_id": {
+          "name": "IMDb-ID",
+          "description": "De IMDb-ID van de titel (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB-ID",
+          "description": "De TheTVDB-ID van de titel."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Welk Refract-account moet worden gebruikt. Standaard het eerste."
+        }
+      }
+    },
+    "log_movie_play": {
+      "name": "Filmweergave registreren",
+      "description": "Registreer dat je een film hebt gekeken.",
+      "fields": {
+        "watched_at": {
+          "name": "Bekeken op",
+          "description": "Wanneer het is bekeken. Standaard nu."
+        },
+        "refract_id": {
+          "name": "Refract-ID",
+          "description": "De Refract-ID van de titel. Gebruik deze, of een van de externe ID's hieronder."
+        },
+        "tmdb_id": {
+          "name": "TMDB-ID",
+          "description": "De TMDB-ID van de titel."
+        },
+        "imdb_id": {
+          "name": "IMDb-ID",
+          "description": "De IMDb-ID van de titel (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB-ID",
+          "description": "De TheTVDB-ID van de titel."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Welk Refract-account moet worden gebruikt. Standaard het eerste."
+        }
+      }
+    },
+    "log_rewatch": {
+      "name": "Herkijken van aflevering registreren",
+      "description": "Registreer het opnieuw kijken van een aflevering die je al had gezien.",
+      "fields": {
+        "season": {
+          "name": "Seizoen",
+          "description": "Seizoensnummer (TMDB-nummering)."
+        },
+        "number": {
+          "name": "Aflevering",
+          "description": "Afleveringsnummer in het seizoen (TMDB-nummering)."
+        },
+        "watched_at": {
+          "name": "Bekeken op",
+          "description": "Wanneer het is bekeken. Standaard nu."
+        },
+        "refract_id": {
+          "name": "Refract-ID",
+          "description": "De Refract-ID van de titel. Gebruik deze, of een van de externe ID's hieronder."
+        },
+        "tmdb_id": {
+          "name": "TMDB-ID",
+          "description": "De TMDB-ID van de titel."
+        },
+        "imdb_id": {
+          "name": "IMDb-ID",
+          "description": "De IMDb-ID van de titel (tt...)."
+        },
+        "tvdb_id": {
+          "name": "TheTVDB-ID",
+          "description": "De TheTVDB-ID van de titel."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "Welk Refract-account moet worden gebruikt. Standaard het eerste."
+        }
+      }
+    }
+  }
+}

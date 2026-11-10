@@ -6,7 +6,7 @@ import { CARD_TYPE, DOMAIN, EDITOR_TYPE } from "./const";
 import { discover, type Discovery } from "./discovery";
 import { ensureFlagFont, flagEmoji } from "./flags";
 import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, timeOfDay, weekdayName } from "./format";
-import { languageOf, t } from "./localize";
+import { languageOf, t, tn } from "./localize";
 import { buildModel, showKey, type CatchupShow, type Model, type ShowItem, type TopPick } from "./model";
 import { cardStyles } from "./styles";
 import {
@@ -246,7 +246,7 @@ export class RefractStatsCard extends LitElement {
                   (p, i) =>
                     html`<span class="part"
                         ><span class="num ${i > 0 ? "second" : ""}">${p.value}</span>
-                        <span class="unit">${t(this.hass, p.unit)}</span></span
+                        <span class="unit">${tn(this.hass, p.unit, p.n)}</span></span
                       >
                     `,
                 )}
@@ -353,7 +353,7 @@ export class RefractStatsCard extends LitElement {
   private _streak(m: Model): TemplateResult {
     const lang = languageOf(this.hass);
     const streak = m.streak!;
-    const unit = t(this.hass, streak.current === 1 ? "unit.day" : "unit.days");
+    const unit = tn(this.hass, "unit.day", streak.current);
     const dots = streakDots({ now: new Date(), lastWatchedIso: m.last?.iso, current: streak.current, timeZone: this._timeZone(), lang });
     const foot =
       streak.current === 0
@@ -361,7 +361,7 @@ export class RefractStatsCard extends LitElement {
         : [
             t(this.hass, "streak.longest", {
               n: streak.longest,
-              unit: t(this.hass, streak.longest === 1 ? "unit.day" : "unit.days"),
+              unit: tn(this.hass, "unit.day", streak.longest),
             }),
             dots.stillTimeToday ? t(this.hass, "streak.still_time") : "",
           ]
@@ -410,9 +410,9 @@ export class RefractStatsCard extends LitElement {
       <div class="avg-mid">
         ${a.hours !== undefined && a.itemsPerWeek !== undefined
           ? html`<div class="avg-items">
-              ${a.itemsPerWeek === 1
-                ? t(this.hass, "avg.items_line_one")
-                : t(this.hass, "avg.items_line", { n: fmtNumber(a.itemsPerWeek, lang, 1) })}
+              ${tn(this.hass, "avg.items_line", Math.round(a.itemsPerWeek * 10) / 10, {
+                n: fmtNumber(a.itemsPerWeek, lang, 1),
+              })}
             </div>`
           : nothing}
       </div>
@@ -513,7 +513,7 @@ export class RefractStatsCard extends LitElement {
     if (!f) return nothing;
     const lang = languageOf(this.hass);
     const fmt = this._cfg.duration_format;
-    const many = (key: string, n: number) => t(this.hass, n === 1 ? `${key}_one` : key, { n: fmtNumber(n, lang) });
+    const many = (key: string, n: number) => tn(this.hass, key, n, { n: fmtNumber(n, lang) });
     const timeOf = (minutes?: number) => (minutes === undefined ? "" : durationText(minutes, fmt, lang));
 
     const rows = [
@@ -532,7 +532,7 @@ export class RefractStatsCard extends LitElement {
                       (p, i) =>
                         html`<span class="part"
                             ><span class="num ${i > 0 ? "second" : ""}">${p.value}</span>
-                            <span class="unit">${t(this.hass, p.unit)}</span></span
+                            <span class="unit">${tn(this.hass, p.unit, p.n)}</span></span
                           >
                         `,
                     )}
@@ -830,7 +830,8 @@ export class RefractStatsCard extends LitElement {
       .map((kind) => ({ kind, picks: tp.picks[kind] ?? [] }))
       .filter((x): x is { kind: PickKind; picks: TopPick[] } => x.picks.length > 0);
     if (tiles.some((x) => x.kind === "country")) ensureFlagFont();
-    const hours = (h: number) => `${fmtNumber(h, lang, h < 10 ? 1 : 0)} h`;
+    // a non-breaking space keeps the "h" with its number
+    const hours = (h: number) => `${fmtNumber(h, lang, h < 10 ? 1 : 0)}\u00a0h`;
     const initials = (name: string) =>
       name
         .split(/\s+/)
@@ -848,10 +849,7 @@ export class RefractStatsCard extends LitElement {
     };
     const nameOf = (kind: PickKind, p: TopPick) => (kind === "country" ? countryName(p) : p.name);
     const subOf = (p: TopPick) =>
-      t(this.hass, p.titles === 1 ? "picks.sub_one" : "picks.sub_other", {
-        n: fmtNumber(p.titles, lang),
-        time: hours(p.hours),
-      });
+      tn(this.hass, "picks.sub", p.titles, { n: fmtNumber(p.titles, lang), time: hours(p.hours) });
     const avatar = (kind: PickKind, p: TopPick) => {
       if (kind === "country") {
         const f = flagEmoji(p.code);

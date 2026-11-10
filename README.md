@@ -152,6 +152,12 @@ data:
 
 To log playback from Plex, Jellyfin, Emby or Sonarr/Radarr, trigger these actions from their webhooks or events. You need the title's TMDB, IMDb or TVDB id, which those tools provide.
 
+## Languages
+
+The setup screens, options and service descriptions of the integration, and everything the dashboard card shows, are translated into **German, French, Spanish, Italian, Dutch, Portuguese (Brazilian) and Polish**. Home Assistant picks the language from your profile, and anything that isn't translated shows in English. Dates, weekdays, numbers and country names follow your language too.
+
+Not translated: the card editor (the settings you click in the card configuration) and the names of the entities, which stay English because the card finds its sensors by those names. The translations were written without native review, so corrections are very welcome. See [Translations](docs/translations.md) for how to fix a text or add a language.
+
 ## Notes and limitations
 
 - **Estimates:** Refract's history has dates but no runtimes, so *Average per week* and the catch-up time are estimated from your average runtime per item. They are marked as estimates.

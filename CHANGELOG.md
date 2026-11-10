@@ -2,6 +2,23 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.6.0
+
+### Added
+- **Translations**: the dashboard card and the integration (setup and re-authentication screens, options, errors, service names and descriptions) are now available in **German, French, Spanish, Italian, Dutch, Portuguese (Brazilian) and Polish**. Home Assistant picks the language from your profile, anything not translated shows in English
+- Plurals follow the rules of each language ("1 dzień", "2 dni", "5 dni", "1,5 dnia" in Polish), also for the unit after a number, the fun stats and the counts in *Still to finish*
+- Short duration units follow the language: `j` for days in French, `g` in Italian, `u` for hours in Dutch
+- A language selector in the demo page, and a guide for fixing a text or adding a language: `docs/translations.md`
+- Tests that every translation has all the texts of English with the same placeholders, and that the integration's texts name the card sections the way the card does
+
+### Changed
+- **Most watched** tiles switch to one column on narrow cards instead of squeezing long names and translations, and the hours no longer wrap away from their number
+- The options text now says the TMDB key is also used for *Most watched*, not only for posters
+- A fun stat of exactly one month, day or year now reads "1 month" instead of "1 months"
+
+### Not translated
+- The card editor, and the entity names (they stay English because the card finds its sensors by them)
+
 ## 0.5.5
 
 ### Added

@@ -1,5 +1,5 @@
 import type { DurationFormat, FunStatMode, HassEntity, HomeAssistant } from "./types";
-import { languageOf, t } from "./localize";
+import { languageOf, tn } from "./localize";
 
 const DAY_MS = 86_400_000;
 
@@ -23,18 +23,29 @@ export function fmtNumber(n: number, lang = "en", maxFractionDigits = 0): string
   }
 }
 
-export type UnitKey = "unit.days" | "unit.day" | "unit.hours" | "unit.hour" | "unit.min";
+/** Text keys of the units; the card picks the plural form with `tn(hass, unit, n)`. */
+export type UnitKey = "unit.day" | "unit.hour" | "unit.min";
 export interface DurationPart {
   value: string;
+  /** The number itself, which decides the plural form of the unit. */
+  n: number;
   unit: UnitKey;
   short: string;
 }
 
+/** Abbreviations that differ from "d", "h" and "min": jours, giorni, uur. */
+const ABBREVIATIONS: Record<string, Partial<Record<"d" | "h" | "min", string>>> = {
+  fr: { d: "j" },
+  it: { d: "g" },
+  nl: { h: "u" },
+};
+
 const part = (n: number, unit: "d" | "h" | "min", lang: string): DurationPart => {
   const value = fmtNumber(n, lang);
-  if (unit === "d") return { value, unit: n === 1 ? "unit.day" : "unit.days", short: "d" };
-  if (unit === "h") return { value, unit: n === 1 ? "unit.hour" : "unit.hours", short: "h" };
-  return { value, unit: "unit.min", short: "min" };
+  const short = ABBREVIATIONS[lang.split("-")[0]]?.[unit] ?? unit;
+  if (unit === "d") return { value, n, unit: "unit.day", short };
+  if (unit === "h") return { value, n, unit: "unit.hour", short };
+  return { value, n, unit: "unit.min", short };
 };
 
 /** Breaks a number of minutes into display parts such as 266 days + 14 hours. */
@@ -110,23 +121,28 @@ const FUN_KINDS: FunKind[] = ["months", "workweeks", "lotr", "flights", "sleep",
 
 function funText(hass: HomeAssistant | undefined, kind: FunKind, minutes: number): string | undefined {
   const lang = languageOf(hass);
+  // The plural form follows the number as it is shown: 1.0 months is "1 month", 1.4 is "1.4 months".
+  const say = (key: string, value: number, digits = 0) => {
+    const shown = digits ? Math.round(value * 10 ** digits) / 10 ** digits : Math.round(value);
+    return tn(hass, key, shown, { n: fmtNumber(value, lang, digits) });
+  };
   const days = minutes / 1440;
   if (kind === "months") {
     if (days < 1) return undefined;
-    if (days < 30) return t(hass, "fun.days", { n: fmtNumber(days, lang) });
+    if (days < 30) return say("fun.days", days);
     const months = days / 30.4375;
-    if (months < 24) return t(hass, "fun.months", { n: fmtNumber(months, lang, 1) });
-    return t(hass, "fun.years", { n: fmtNumber(months / 12, lang, 1) });
+    if (months < 24) return say("fun.months", months, 1);
+    return say("fun.years", months / 12, 1);
   }
   if (kind === "sleep") {
     const nights = minutes / (8 * 60);
-    if (nights < 365) return nights >= 2 ? t(hass, "fun.sleep_nights", { n: fmtNumber(nights, lang) }) : undefined;
-    return t(hass, "fun.sleep_years", { n: fmtNumber(nights / 365.25, lang, 1) });
+    if (nights < 365) return nights >= 2 ? say("fun.sleep_nights", nights) : undefined;
+    return say("fun.sleep_years", nights / 365.25, 1);
   }
   const unit = RATIO_MINUTES[kind];
   if (!unit) return undefined;
   const times = minutes / unit;
-  return times >= 2 ? t(hass, `fun.${kind}`, { n: fmtNumber(times, lang) }) : undefined;
+  return times >= 2 ? say(`fun.${kind}`, times) : undefined;
 }
 
 /** One friendly comparison for the hero. Rotates once a day in "rotate" mode. */
