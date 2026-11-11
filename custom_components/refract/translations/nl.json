@@ -36,12 +36,12 @@
         "description": "Posters en het onderdeel 'Meest bekeken' zijn optioneel. Ze hebben je eigen gratis TMDB-API-sleutel nodig en worden geladen van de servers van TMDB.",
         "data": {
           "scan_interval": "Update-interval (minuten)",
-          "fetch_history": "Kijkgeschiedenis ophalen (weekgrafieken)",
+          "fetch_history": "Kijkgeschiedenis ophalen (weekgrafieken en maandoverzicht)",
           "tmdb_api_key": "TMDB-API-sleutel (optioneel, voor posters en 'Meest bekeken')"
         },
         "data_description": {
           "scan_interval": "Hoe vaak Refract op wijzigingen wordt gecontroleerd.",
-          "fetch_history": "Nodig voor 'Afgelopen 7 dagen' en 'Gemiddeld per week'. De geschiedenis wordt elk uur vernieuwd en kan bij grote bibliotheken veel verzoeken opleveren.",
+          "fetch_history": "Nodig voor 'Afgelopen 7 dagen', 'Gemiddeld per week' en 'Maandoverzicht'. De geschiedenis wordt elk uur vernieuwd en kan bij grote bibliotheken veel verzoeken opleveren.",
           "tmdb_api_key": "Een TMDB v3-API-sleutel of v4-leestoken. Laat leeg om posters en 'Meest bekeken' uit te schakelen."
         }
       }

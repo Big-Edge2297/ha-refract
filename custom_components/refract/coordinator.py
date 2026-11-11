@@ -18,6 +18,8 @@ from .analytics import (
     build_backlog,
     build_finish,
     build_top_picks,
+    build_wraps,
+    iter_watch_records,
     finish_lookups,
     busiest_day,
     daily_counts,
@@ -122,6 +124,7 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "movies": movie_plays,
             "episode_counts": watch_counts(episodes, "show"),
             "movie_counts": watch_counts(movies, "movie"),
+            "records": iter_watch_records(episodes, movies),
             "at": now,
         }
         self._history_stale = False
@@ -209,18 +212,43 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             show_ids, movie_ids = finish_lookups(library)
             finish_details = await self.tmdb.async_details(show_ids, movie_ids)
 
-        # Most watched actor, director, writer, decade, genre and country (needs the TMDB key)
+        # Most watched actor, director, writer, decade, genre and country, and the monthly wraps
+        # (both use the TMDB details, which need the TMDB key; the wraps also work without)
         top_picks = None
-        if self.tmdb and library:
-            candidates = pick_candidates(
+        wraps = None
+        records = (history or {}).get("records") or []
+        profiles: dict[str, dict[str, Any]] = {}
+        candidates = (
+            pick_candidates(
                 library,
                 (history or {}).get("episode_counts", {}),
                 (history or {}).get("movie_counts", {}),
             )
-            profiles = await self.tmdb.async_profiles([(c["kind"], c["id"]) for c in candidates])
+            if library
+            else []
+        )
+        if self.tmdb and (candidates or records):
+            # The titles of the months the wraps show come first, then the most watched ones
+            recent = [
+                (r["kind"], r["id"])
+                for r in sorted(records, key=lambda r: r["day"], reverse=True)
+                if r["id"] is not None and r["day"] >= (dt_util.now().date() - timedelta(days=400)).isoformat()
+            ]
+            wanted = list(dict.fromkeys(recent + [(c["kind"], c["id"]) for c in candidates]))
+            profiles = await self.tmdb.async_profiles(wanted)
+        if self.tmdb and library:
             top_picks = build_top_picks(
                 candidates,
                 profiles,
+                per_episode or per_item,
+                average_movie_minutes(flat) or per_item,
+                TMDB_IMAGE_BASE,
+            )
+        if records:
+            wraps = build_wraps(
+                records,
+                profiles,
+                dt_util.now().date(),
                 per_episode or per_item,
                 average_movie_minutes(flat) or per_item,
                 TMDB_IMAGE_BASE,
@@ -249,6 +277,7 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
             "analytics": analytics,
             "top_picks": top_picks,
+            "wraps": wraps,
             "history_enabled": bool(self.config_entry.options.get(CONF_FETCH_HISTORY, True)),
         }
 

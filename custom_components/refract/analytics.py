@@ -649,6 +649,7 @@ def tmdb_profile(body: Any, kind: str) -> dict[str, Any] | None:
 
     return {
         "year": year,
+        "poster": body.get("poster_path") if isinstance(body.get("poster_path"), str) and body.get("poster_path") else None,
         "runtime": runtime,
         "episodes": episodes if isinstance(episodes, int) and not isinstance(episodes, bool) else None,
         "genres": _genres(body, movie),
@@ -724,6 +725,221 @@ def build_top_picks(
         "pending": pending,
         **{name: top(rows) for name, rows in boards.items()},
     }
+
+
+# ------------------------------------------------------------ monthly wrap
+#
+# One summary per completed month, built from the watch history. Refract's history only has the
+# day of each watch (no time of day), so the wrap is about days, titles and amounts, not hours of
+# the day. Genres, countries and posters come from the TMDB details when a key is set.
+
+WRAP_MONTHS = 12
+_WRAP_TOP_GENRES = 5
+_WRAP_TOP_TITLES = 3
+_WRAP_FIRSTS = 3
+
+
+def iter_watch_records(episodes: Any, movies: Any) -> list[dict[str, Any]]:
+    """One record per watched episode or played movie: day, title, TMDB id, rewatch, known minutes."""
+    out: list[dict[str, Any]] = []
+
+    def collect(payload: Any, kind: str) -> None:
+        if isinstance(payload, list):
+            for entry in payload:
+                collect(entry, kind)
+            return
+        if not isinstance(payload, dict):
+            return
+        found = _first_date(payload, _WATCH_KEYS)
+        obj = payload.get(kind)
+        if found and isinstance(obj, dict):
+            ids = obj.get("ids")
+            tmdb = ids.get("tmdb") if isinstance(ids, dict) else None
+            tmdb = tmdb if isinstance(tmdb, int) and not isinstance(tmdb, bool) else None
+            title = obj.get("title") if isinstance(obj.get("title"), str) else ""
+            if kind == "movie":
+                rewatch = payload.get("kind") == "rewatch"
+                minutes = None
+            else:
+                count = payload.get("rewatch_count")
+                rewatch = isinstance(count, (int, float)) and not isinstance(count, bool) and count > 0
+                runtime = payload.get("runtime_minutes")
+                minutes = float(runtime) if isinstance(runtime, (int, float)) and not isinstance(runtime, bool) and runtime > 0 else None
+            out.append(
+                {
+                    "day": found.isoformat(),
+                    "kind": kind,
+                    "id": tmdb,
+                    "key": f"{kind}:{tmdb}" if tmdb is not None else f"{kind}:?:{title}",
+                    "title": title,
+                    "anime": bool(obj.get("is_anime")),
+                    "rewatch": bool(rewatch),
+                    "minutes": minutes,
+                }
+            )
+
+    collect(episodes, "show")
+    collect(movies, "movie")
+    return out
+
+
+def _best_streak(days: list[int]) -> int:
+    best = run = 0
+    for count in days:
+        run = run + 1 if count else 0
+        best = max(best, run)
+    return best
+
+
+def _previous_months(today: date, count: int) -> list[tuple[int, int]]:
+    """The `count` completed months before today's, newest first, as (year, month)."""
+    year, month = today.year, today.month
+    out: list[tuple[int, int]] = []
+    for _ in range(count):
+        month -= 1
+        if month == 0:
+            year, month = year - 1, 12
+        out.append((year, month))
+    return out
+
+
+def build_wraps(
+    records: list[dict[str, Any]],
+    profiles: dict[str, dict[str, Any]],
+    today: date,
+    episode_minutes: float | None = None,
+    movie_minutes: float | None = None,
+    image_base: str = "",
+    months: int = WRAP_MONTHS,
+) -> dict[str, Any]:
+    """A summary per completed month (newest first, only months with something watched).
+
+    Each month has the amounts (items, episodes, movies, titles, minutes), the day by day activity,
+    the share on weekends, the best streak, first watches against rewatches, the most watched
+    titles and, with TMDB details, the top genres, and the countries seen for the first time.
+    `pending` counts titles of those months still waiting for their TMDB details; the countries
+    "firsts" need every title of the whole history, so they only show once nothing is pending there.
+    """
+    wanted = _previous_months(today, months)
+    in_window = set(wanted)
+    by_month: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    first_seen: dict[str, str] = {}
+    for rec in records:
+        day = rec["day"]
+        if rec["key"] not in first_seen or day < first_seen[rec["key"]]:
+            first_seen[rec["key"]] = day
+        ym = (int(day[:4]), int(day[5:7]))
+        if ym in in_window:
+            by_month.setdefault(ym, []).append(rec)
+
+    def profile_of(rec: dict[str, Any]) -> dict[str, Any] | None:
+        if rec["id"] is None:
+            return None
+        found = profiles.get(rec["key"])
+        return None if not found or found.get("missing") else found
+
+    # Titles of the whole history without details: "first from a country" can't be said yet.
+    history_pending = {
+        k for k in first_seen if not k.split(":")[1] == "?" and k not in profiles
+    }
+    # Earliest day each country appears in the history.
+    country_first: dict[str, tuple[str, str, str]] = {}
+    for key, day in first_seen.items():
+        prof = profiles.get(key)
+        if not prof or prof.get("missing"):
+            continue
+        for code, name in prof.get("countries") or []:
+            if code not in country_first or day < country_first[code][0]:
+                country_first[code] = (day, name, key)
+    titles_by_key = {rec["key"]: rec["title"] for rec in records}
+
+    out: list[dict[str, Any]] = []
+    window_pending: set[str] = set()
+    for year, month in wanted:
+        recs = by_month.get((year, month))
+        if not recs:
+            continue
+        days_in_month = (date(year + (month == 12), month % 12 + 1, 1) - date(year, month, 1)).days
+        days = [0] * days_in_month
+        minutes = 0.0
+        estimated = False
+        weekend = 0
+        rewatches = 0
+        titles: dict[str, dict[str, Any]] = {}
+        genres: dict[str, set[str]] = {}
+        for rec in recs:
+            day_index = int(rec["day"][8:10]) - 1
+            days[day_index] += 1
+            if date.fromisoformat(rec["day"]).weekday() >= 5:
+                weekend += 1
+            if rec["rewatch"]:
+                rewatches += 1
+            prof = profile_of(rec)
+            if rec["id"] is not None and rec["key"] not in profiles:
+                window_pending.add(rec["key"])
+            if rec["kind"] == "movie":
+                runtime = (prof or {}).get("runtime") or movie_minutes
+                if (prof or {}).get("runtime") is None:
+                    estimated = True
+            else:
+                runtime = rec["minutes"] or (prof or {}).get("runtime") or episode_minutes
+                if not rec["minutes"]:
+                    estimated = True
+            if runtime:
+                minutes += runtime
+            row = titles.setdefault(
+                rec["key"],
+                {"title": rec["title"], "kind": rec["kind"], "anime": rec["anime"], "id": rec["id"], "count": 0, "minutes": 0.0, "poster": None},
+            )
+            row["count"] += 1
+            row["minutes"] += runtime or 0
+            if prof and prof.get("poster"):
+                row["poster"] = f"{image_base}{prof['poster']}"
+            for genre in (prof or {}).get("genres") or []:
+                genres.setdefault(genre, set()).add(rec["key"])
+
+        shows = [r for r in titles.values() if r["kind"] == "show"]
+        busiest_index = max(range(days_in_month), key=lambda i: (days[i], -i))
+        ranked = sorted(titles.values(), key=lambda r: (-r["count"], -r["minutes"], r["title"]))[:_WRAP_TOP_TITLES]
+        month_info: dict[str, Any] = {
+            "month": f"{year:04d}-{month:02d}",
+            "items": len(recs),
+            "episodes": sum(1 for r in recs if r["kind"] == "show"),
+            "movies": sum(1 for r in recs if r["kind"] == "movie"),
+            "titles": len(titles),
+            "show_titles": sum(1 for r in shows if not r["anime"]),
+            "anime_titles": sum(1 for r in shows if r["anime"]),
+            "movie_titles": sum(1 for r in titles.values() if r["kind"] == "movie"),
+            "minutes": round(minutes),
+            "estimated": estimated,
+            "days": days,
+            "active_days": sum(1 for c in days if c),
+            "weekend_share": round(100 * weekend / len(recs)),
+            "best_streak": _best_streak(days),
+            "busiest": {"day": f"{year:04d}-{month:02d}-{busiest_index + 1:02d}", "count": days[busiest_index]},
+            "first_watch": len(recs) - rewatches,
+            "rewatch": rewatches,
+            "top": [
+                {"title": r["title"], "kind": r["kind"], "anime": r["anime"], "count": r["count"], "poster": r["poster"]}
+                for r in ranked
+            ],
+            "genres": [
+                {"name": name, "titles": len(keys)}
+                for name, keys in sorted(genres.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:_WRAP_TOP_GENRES]
+            ],
+        }
+        if not history_pending:
+            firsts = []
+            for key, row in titles.items():
+                prof = profiles.get(key)
+                for code, name in (prof or {}).get("countries") or []:
+                    day, _, first_key = country_first.get(code, ("", "", ""))
+                    if day[:7] == f"{year:04d}-{month:02d}" and first_key == key:
+                        firsts.append({"code": code, "name": name, "title": titles_by_key.get(key, row["title"]), "day": day})
+            month_info["firsts"] = sorted(firsts, key=lambda f: (f["day"], f["name"]))[:_WRAP_FIRSTS]
+        out.append(month_info)
+
+    return {"months": out, "pending": len(window_pending), "firsts_ready": not history_pending}
 
 
 # -------------------------------------------------------------- calendar

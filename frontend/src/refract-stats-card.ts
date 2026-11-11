@@ -34,6 +34,9 @@ export class RefractStatsCard extends LitElement {
   @state() private _airingExpanded = false;
   /** Most watched tiles that show their runners-up. */
   @state() private _openPicks: PickKind[] = [];
+  /** Monthly wrap: which month (0 is the newest) and which tab. */
+  @state() private _wrapIndex = 0;
+  @state() private _wrapTab: "overview" | "tastes" | "patterns" | "moments" = "overview";
   @state() private _actionState: ActionState = "idle";
   @state() private _actionError = "";
 
@@ -86,6 +89,7 @@ export class RefractStatsCard extends LitElement {
       average: 0,
       last_7_days: 3,
       top_picks: 6,
+      monthly_wrap: 7,
       next_up: 3,
       catchup: 2 + Math.min(c.queue_length, 5),
       airing: 2 + Math.min(c.airing_length, 5),
@@ -157,6 +161,7 @@ export class RefractStatsCard extends LitElement {
       average: () => this._average(m),
       last_7_days: () => this._last7(m),
       top_picks: () => this._topPicks(m),
+      monthly_wrap: () => this._monthlyWrap(m),
       next_up: () => this._next(m, posters),
       catchup: () => this._catchup(m, posters),
       airing: () => this._airing(m),
@@ -938,6 +943,185 @@ export class RefractStatsCard extends LitElement {
             <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a>
           </div>`
         : nothing}
+    </div>`;
+  }
+
+  private _monthlyWrap(m: Model): TemplateResult | typeof nothing {
+    const wrap = m.wrap;
+    if (!wrap) return nothing;
+    const lang = languageOf(this.hass);
+    const months = wrap.months;
+    const header = (right: TemplateResult | typeof nothing) =>
+      html`<div class="panel-head"><span class="label">${t(this.hass, "wrap.title")}</span>${right}</div>`;
+    if (months.length === 0) {
+      return html`<div class="panel wrap">${header(nothing)}<div class="empty">${t(this.hass, "wrap.none")}</div></div>`;
+    }
+    const index = Math.min(this._wrapIndex, months.length - 1);
+    const cur = months[index];
+    const [year, month] = cur.month.split("-").map(Number);
+    const at = (y: number, mo: number, d = 1) => new Date(Date.UTC(y, mo - 1, d));
+    const monthName = (y: number, mo: number) => {
+      const text = new Intl.DateTimeFormat(lang, { month: "long", year: "numeric", timeZone: "UTC" }).format(at(y, mo));
+      return text.charAt(0).toLocaleUpperCase(lang) + text.slice(1);
+    };
+    const dayName = (iso: string) => {
+      const [y, mo, d] = iso.split("-").map(Number);
+      return new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", timeZone: "UTC" }).format(at(y, mo, d));
+    };
+    const hoursOf = (minutes: number) => minutes / 60;
+    const hoursText = (h: number) => fmtNumber(h, lang, h < 10 ? 1 : 0);
+    const daysInMonth = cur.days.length;
+    const go = (to: number) => {
+      this._wrapIndex = Math.max(0, Math.min(months.length - 1, to));
+    };
+
+    // the month before this one, when it is in the list too
+    const before = months[index + 1];
+    const previousKey = month === 1 ? `${year - 1}-12` : `${year}-${String(month - 1).padStart(2, "0")}`;
+    const prev = before && before.month === previousKey && before.minutes > 0 ? before : undefined;
+    let change: string | undefined;
+    if (prev) {
+      const pct = Math.round(((cur.minutes - prev.minutes) / prev.minutes) * 100);
+      change = `${pct > 0 ? "+" : pct < 0 ? "\u2212" : ""}${fmtNumber(Math.abs(pct), lang)}%`;
+    }
+    const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+
+    const tabs = (["overview", "tastes", "patterns", "moments"] as const).map(
+      (tab) => html`<button
+        type="button"
+        role="tab"
+        class="wrap-tab ${this._wrapTab === tab ? "active" : ""}"
+        aria-selected=${this._wrapTab === tab ? "true" : "false"}
+        @click=${() => (this._wrapTab = tab)}
+      >
+        ${t(this.hass, `wrap.tab.${tab}`)}
+      </button>`,
+    );
+
+    let body: TemplateResult;
+    if (this._wrapTab === "overview") {
+      const hours = hoursOf(cur.minutes);
+      body = html`<div class="wrap-hero">
+          <span class="wrap-hours">${cur.estimated ? "~" : ""}${hoursText(hours)}</span>
+          <span class="wrap-unit">${t(this.hass, "wrap.hours")}</span>
+          ${change ? html`<span class="badge accent">${t(this.hass, "wrap.vs", { change, month: monthName(...(before!.month.split("-").map(Number) as [number, number])) })}</span>` : nothing}
+        </div>
+        <div class="wrap-tiles">
+          ${[
+            ["wrap.episodes", cur.episodes],
+            ["wrap.movies", cur.movieTitles],
+            ["wrap.shows", cur.showTitles],
+            ["wrap.anime", cur.animeTitles],
+          ].map(([key, value]) => html`<div class="tile"><div class="value">${fmtNumber(value as number, lang)}</div><div class="muted">${t(this.hass, key as string)}</div></div>`)}
+        </div>
+        ${cur.estimated ? html`<div class="picks-foot">${t(this.hass, "wrap.estimated")}</div>` : nothing}`;
+    } else if (this._wrapTab === "tastes") {
+      const parts = [
+        { key: "wrap.shows", n: cur.showTitles, color: "var(--c-shows)" },
+        { key: "wrap.anime", n: cur.animeTitles, color: "var(--c-anime)" },
+        { key: "wrap.movies", n: cur.movieTitles, color: "var(--c-movies)" },
+      ].filter((x) => x.n > 0);
+      const maxGenre = Math.max(1, ...cur.genres.map((g) => g.titles));
+      body = html`<div class="wrap-section">${t(this.hass, "wrap.split")}</div>
+        <div class="wrap-split" role="img" aria-label=${parts.map((x) => `${t(this.hass, x.key)} ${pct(x.n, cur.titles)}%`).join(", ")}>
+          ${parts.map((x) => html`<span style=${styleMap({ flex: `${x.n} 1 0`, background: x.color })}></span>`)}
+        </div>
+        <div class="legend-row">
+          ${parts.map((x) => html`<span><span class="swatch" style=${styleMap({ background: x.color })}></span>${t(this.hass, x.key)} · ${fmtNumber(pct(x.n, cur.titles), lang)}%</span>`)}
+        </div>
+        <div class="wrap-section">${t(this.hass, "wrap.genres")}</div>
+        ${cur.genres.length
+          ? html`<div class="wrap-genres">
+              ${cur.genres.map(
+                (g) => html`<div class="wrap-genre">
+                  <span class="wrap-genre-name">${g.name}</span>
+                  <span class="wrap-genre-bar"><span style=${styleMap({ width: `${Math.round((g.titles / maxGenre) * 100)}%` })}></span></span>
+                  <b>${fmtNumber(g.titles, lang)}</b>
+                </div>`,
+              )}
+            </div>`
+          : html`<div class="empty">${t(this.hass, "wrap.genres_none")}</div>`}
+        <div class="wrap-section">${t(this.hass, "wrap.discovery")}</div>
+        <div class="wrap-tiles two">
+          <div class="tile"><div class="value">${fmtNumber(pct(cur.firstWatch, cur.items), lang)}%</div><div class="muted">${t(this.hass, "wrap.first_watch")} · ${t(this.hass, "wrap.new", { n: fmtNumber(cur.firstWatch, lang) })}</div></div>
+          <div class="tile"><div class="value">${fmtNumber(pct(cur.rewatch, cur.items), lang)}%</div><div class="muted">${t(this.hass, "wrap.rewatch")} · ${t(this.hass, "wrap.revisited", { n: fmtNumber(cur.rewatch, lang) })}</div></div>
+        </div>`;
+    } else if (this._wrapTab === "patterns") {
+      const max = Math.max(1, ...cur.days);
+      const perDay = (x: number) => fmtNumber(x / daysInMonth, lang, 1);
+      body = html`<div class="wrap-tiles two">
+          <div class="tile"><div class="value">${perDay(cur.items)}</div><div class="muted">${t(this.hass, "wrap.items_day")}</div></div>
+          <div class="tile"><div class="value">${perDay(hoursOf(cur.minutes))}</div><div class="muted">${t(this.hass, "wrap.hours_day")}</div></div>
+        </div>
+        <div class="wrap-section">${t(this.hass, "wrap.daily")}</div>
+        <div class="wrap-days" role="img" aria-label=${t(this.hass, "wrap.daily")}>
+          ${cur.days.map((n, i) => {
+            const iso = `${cur.month}-${String(i + 1).padStart(2, "0")}`;
+            return html`<span
+              class="wrap-day ${n === 0 ? "empty" : ""} ${iso === cur.busiest.day && n > 0 ? "peak" : ""}"
+              style=${styleMap({ height: n === 0 ? "3px" : `${Math.max(8, Math.round((n / max) * 100))}%` })}
+              title=${t(this.hass, "wrap.day", { day: dayName(iso), n: fmtNumber(n, lang) })}
+            ></span>`;
+          })}
+        </div>
+        <div class="wrap-axis"><span>1</span><span>${fmtNumber(daysInMonth, lang)}</span></div>
+        ${cur.busiest.count > 0
+          ? html`<div class="picks-foot">${tn(this.hass, "wrap.busiest", cur.busiest.count, { day: dayName(cur.busiest.day), n: fmtNumber(cur.busiest.count, lang) })}</div>`
+          : nothing}
+        <div class="wrap-tiles">
+          <div class="tile"><div class="value">${fmtNumber(cur.weekendShare, lang)}%</div><div class="muted">${t(this.hass, "wrap.weekend")}</div></div>
+          <div class="tile"><div class="value">${fmtNumber(cur.bestStreak, lang)} <span class="muted">${tn(this.hass, "unit.day", cur.bestStreak)}</span></div><div class="muted">${t(this.hass, "wrap.streak")}</div></div>
+          <div class="tile"><div class="value">${t(this.hass, "wrap.active_value", { n: fmtNumber(cur.activeDays, lang), total: fmtNumber(daysInMonth, lang) })}</div><div class="muted">${t(this.hass, "wrap.active")}</div></div>
+        </div>`;
+    } else {
+      const flag = (code: string) => flagEmoji(code) ?? "";
+      const country = (code: string, name: string) => {
+        try {
+          return (code && new Intl.DisplayNames([lang], { type: "region" }).of(code.toUpperCase())) || name;
+        } catch {
+          return name;
+        }
+      };
+      if (cur.firsts?.some((f) => flagEmoji(f.code))) ensureFlagFont();
+      body = html`<div class="wrap-section">${t(this.hass, "wrap.most_watched")}</div>
+        <div class="wrap-top">
+          ${cur.top.map(
+            (x) => html`<div class="wrap-top-row">
+              ${x.poster ? html`<img src=${x.poster} alt="" loading="lazy" referrerpolicy="no-referrer" />` : html`<span class="wrap-noposter"><ha-icon icon=${x.kind === "movie" ? "mdi:movie-open" : "mdi:television-play"}></ha-icon></span>`}
+              <span class="pick-text">
+                <b class="pick-name">${x.title}</b>
+                <span class="pick-sub">${x.kind === "movie" ? (x.count > 1 ? t(this.hass, "wrap.plays", { n: fmtNumber(x.count, lang) }) : t(this.hass, "wrap.movie_once")) : tn(this.hass, "wrap.episodes_n", x.count, { n: fmtNumber(x.count, lang) })}</span>
+              </span>
+            </div>`,
+          )}
+        </div>
+        <div class="wrap-section">${t(this.hass, "wrap.firsts")}</div>
+        ${cur.firsts === undefined
+          ? html`<div class="empty">${t(this.hass, "wrap.firsts_waiting")}</div>`
+          : cur.firsts.length
+            ? html`<div class="wrap-top">
+                ${cur.firsts.map(
+                  (f) => html`<div class="wrap-top-row">
+                    <span class="pick-avatar small country"><span class="flag">${flag(f.code)}</span></span>
+                    <span class="pick-text">
+                      <span class="pick-label">${t(this.hass, "wrap.first_from", { country: country(f.code, f.name) })}</span>
+                      <b class="pick-name">${f.title}</b>
+                    </span>
+                  </div>`,
+                )}
+              </div>`
+            : html`<div class="empty">${t(this.hass, "wrap.firsts_none")}</div>`}`;
+    }
+
+    return html`<div class="panel wrap">
+      ${header(html`<span class="wrap-nav">
+        <button type="button" class="wrap-arrow" aria-label=${t(this.hass, "wrap.older")} ?disabled=${index >= months.length - 1} @click=${() => go(index + 1)}><ha-icon icon="mdi:chevron-left"></ha-icon></button>
+        <button type="button" class="wrap-arrow" aria-label=${t(this.hass, "wrap.newer")} ?disabled=${index <= 0} @click=${() => go(index - 1)}><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+      </span>`)}
+      <div class="wrap-month">${monthName(year, month)}</div>
+      <div class="muted">${tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) })}</div>
+      <div class="wrap-tabs" role="tablist">${tabs}</div>
+      ${body}
     </div>`;
   }
 

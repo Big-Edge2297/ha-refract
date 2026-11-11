@@ -16,6 +16,7 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
 | **Last 7 days** | Episodes and movies per day as stacked bars, with the busiest day named | watch history |
 | **Most watched** | Your top actor, director, writer, decade, genre and country, each with a profile photo (people), a flag (country) or an icon, and the number of titles and hours behind it. Worked out from TMDB, see [Most watched](#most-watched) | library + TMDB key |
+| **Monthly wrap** | One page per completed month with four tabs: Overview, Tastes, Patterns and Moments. See [Monthly wrap](#monthly-wrap) | watch history |
 | **Next up** | The show (with poster), episode number and name, progress through aired episodes, premiere or finale badges and an optional **Mark watched** button. Tap a show in the catch-up backlog to show it here instead | history |
 | **Catch-up backlog** | How many aired episodes are waiting across all your shows, an estimate of the time, and the biggest backlogs as bars | history |
 | **Airing this week** | Episodes airing in the next 7 days for the shows you follow, with premiere and finale pills and the air time when Refract knows it | library |
@@ -25,6 +26,21 @@ Sections hide themselves when their sensors don't exist, so a read-only API key 
 ## Languages
 
 The card shows in the language of your Home Assistant profile: German, French, Spanish, Italian, Dutch, Portuguese and Polish, or English for any other language. The units follow the language too (days, hours, and the short forms such as `j` for jours in French). The card editor itself stays in English. See [Translations](translations.md).
+
+## Monthly wrap
+
+The *Monthly wrap* section is the integration's own version of the wraps in the Refract app: one summary for each completed month, up to the last 12. Use the arrows to go back through the months, and the tabs to switch between the pages:
+
+- **Overview**: the hours watched, with the change against the month before, and how many episodes, movies, shows and anime.
+- **Tastes**: shows, anime and movies as a share of the titles you watched, your top genres, and how much was a first watch and how much a rewatch.
+- **Patterns**: items and hours per day, a bar for every day of the month with the busiest day highlighted, the share watched on weekends, your best streak and the days you watched something.
+- **Moments**: the three most watched titles with their posters, and the countries you watched a title from for the first time.
+
+It is built from your watch history, so it needs **Fetch watch history** turned on in the integration options. Genres, posters and the first countries also need the TMDB API key, and show up as the TMDB details come in (the same details *Most watched* uses). Without a key you still get everything else.
+
+Differences from the Refract app, because the API doesn't provide them: there is **no time of day** (the history only has the day, so no peak hour or hourly chart), **no community rank** and **no ratings**. The hours use the runtimes in your history where they exist, and average runtimes otherwise; a `~` before the hours says they are partly estimated. A rewatch is counted when Refract says so for a movie, or an episode has been rewatched. The "first from a country" needs the TMDB details of every title in your history, so it says *Still collecting details from TMDB* until they are all there. The newest month is the last one that has finished, so the current month appears on the 1st of next month.
+
+The section is part of the Full layout and not shown in Compact. In the Custom layout, `show_monthly_wrap` switches it on or off. The sensor is `sensor.*_monthly_wrap`: its state is the number of items in the newest month, and the `months` attribute has all the months for your own cards.
 
 ## Most watched
 
@@ -124,7 +140,7 @@ section_order:
   - hero
 ```
 
-The default order is `hero`, `watch_time`, `library`, `still_to_finish`, `streak`, `average`, `last_7_days`, `top_picks`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other.
+The default order is `hero`, `watch_time`, `library`, `still_to_finish`, `streak`, `average`, `last_7_days`, `top_picks`, `monthly_wrap`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other.
 
 Cards from before 0.4.4 that have no `layout` but hide sections or set a `section_order` are treated as `custom`, so they keep looking the same. A card that sets `layout: full` explicitly now always shows everything.
 
@@ -151,6 +167,7 @@ Cards from before 0.4.4 that have no `layout` but hide sections or set a `sectio
 | `show_average` | `true` | Average per week |
 | `show_last_7_days` | `true` | Last 7 days chart and busiest day |
 | `show_top_picks` | `true` | Most watched (needs a TMDB key in the integration options) |
+| `show_monthly_wrap` | `true` | Monthly wrap (needs watch history) |
 | `show_next_up` | `true` | Next up tile |
 | `show_catchup` | `true` | Catch-up backlog |
 | `show_airing` | `true` | Airing this week |
@@ -213,7 +230,7 @@ entities:
   stats_streak_current_days: sensor.my_streak
 ```
 
-The keys are `library_total`, `completed`, `in_progress`, `watchlist`, `up_to_date`, `movies`, `tv_shows`, `anime`, `last_watched`, `shows_waiting`, `next_up`, `catch_up`, `last_7_days`, `average_per_week`, `airing_this_week`, `top_picks`, `stats_watch_time_total_minutes`, `stats_watch_time_shows_minutes`, `stats_watch_time_movies_minutes`, `stats_watch_time_anime_minutes`, `stats_shows_episodes_watched`, `stats_anime_episodes_watched`, `stats_movies_watched`, `stats_streak_current_days` and `stats_streak_longest_days`.
+The keys are `library_total`, `completed`, `in_progress`, `watchlist`, `up_to_date`, `movies`, `tv_shows`, `anime`, `last_watched`, `shows_waiting`, `next_up`, `catch_up`, `last_7_days`, `average_per_week`, `airing_this_week`, `top_picks`, `monthly_wrap`, `stats_watch_time_total_minutes`, `stats_watch_time_shows_minutes`, `stats_watch_time_movies_minutes`, `stats_watch_time_anime_minutes`, `stats_shows_episodes_watched`, `stats_anime_episodes_watched`, `stats_movies_watched`, `stats_streak_current_days` and `stats_streak_longest_days`.
 
 ### Several accounts
 
@@ -267,6 +284,8 @@ The card follows your Home Assistant theme. These optional theme variables overr
 **"Couldn't find any Refract entities"**: the chosen entity isn't from the Refract integration, or its sensors are unavailable. Pick an entity from the Refract device, or use the `entities` option.
 
 **A section is missing**: its sensors don't exist for your API key, or are unavailable. Check Developer Tools → States for the sensor. *Last 7 days* and *Average per week* also need **Fetch watch history** turned on in the integration options.
+
+**No Monthly wrap section**: it needs **Fetch watch history** in the integration options, and shows once a month has finished with something watched in it. The sensor is `sensor.*_monthly_wrap`. Genres, posters and firsts need the TMDB key.
 
 **No Most watched section** (the sensor is `sensor.*_top_picks`, or `sensor.*_most_watched` if you first installed 0.5.0; the card finds both): it needs a TMDB API key under **Settings → Devices & services → Refract → Configure**, the library permission on your Refract key, and `show_top_picks` not set to `false` in the Custom layout. Right after adding the key it shows *Still building* for a while.
 

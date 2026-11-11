@@ -36,12 +36,12 @@
         "description": "Le locandine e la sezione «Più guardati» sono facoltative. Richiedono la tua chiave API TMDB gratuita e vengono caricate dai server di TMDB.",
         "data": {
           "scan_interval": "Intervallo di aggiornamento (minuti)",
-          "fetch_history": "Recupera la cronologia di visione (grafici settimanali)",
+          "fetch_history": "Recupera la cronologia di visione (grafici settimanali e riepilogo mensile)",
           "tmdb_api_key": "Chiave API TMDB (facoltativa, per locandine e «Più guardati»)"
         },
         "data_description": {
           "scan_interval": "Ogni quanto vengono controllate le modifiche su Refract.",
-          "fetch_history": "Necessario per «Ultimi 7 giorni» e «Media settimanale». La cronologia viene aggiornata ogni ora e può richiedere molte richieste per le librerie grandi.",
+          "fetch_history": "Necessario per «Ultimi 7 giorni», «Media settimanale» e «Riepilogo mensile». La cronologia viene aggiornata ogni ora e può richiedere molte richieste per le librerie grandi.",
           "tmdb_api_key": "Una chiave API TMDB v3 o un token di accesso in lettura v4. Lascia vuoto per disattivare locandine e «Più guardati»."
         }
       }

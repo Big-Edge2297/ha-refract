@@ -25,6 +25,7 @@ export const SENSOR_KEYS = [
   "average_per_week",
   "airing_this_week",
   "top_picks",
+  "monthly_wrap",
   "still_to_finish",
   "stats_anime_episodes_watched",
   "stats_anime_titles",

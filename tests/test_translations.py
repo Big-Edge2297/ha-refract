@@ -55,12 +55,12 @@ def test_values_that_must_not_be_translated_survive():
 
 
 def test_the_options_texts_agree_with_the_card_names_in_each_language():
-    """The history option names two sections of the card; they must be called the same in the card."""
+    """The history option names three sections of the card; they must be called the same in the card."""
     card = ROOT.parents[1] / "frontend" / "src" / "translations"
     for language in LANGUAGES:
         source = (card / f"{language}.ts").read_text(encoding="utf-8")
         description = load(language)["options"]["step"]["init"]["data_description"]["fetch_history"]
-        for key in ("days7.title", "avg.title"):
+        for key in ("days7.title", "avg.title", "wrap.title"):
             line = next(l for l in source.splitlines() if f'"{key}"' in l)
             name = line.split(": ", 1)[1].strip().rstrip(",").strip('"')
             assert name in description, f"{language}: the card calls it {name!r}"

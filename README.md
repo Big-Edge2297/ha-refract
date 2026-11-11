@@ -108,6 +108,7 @@ Each show is looked up once for its poster, and the episode counts and runtimes 
 | `calendar.*_upcoming_episodes` | library |
 | `todo.*_watchlist` (items can be removed) | library |
 | `sensor.*_shows_waiting`, `sensor.*_next_up` (with `poster_url` when a TMDB key is set) | history |
+| `sensor.*_monthly_wrap` (items in the newest completed month; one summary per month, up to 12, in the `months` attribute) | history |
 | `sensor.*_top_picks` (titles analysed; the top 3 actors, directors, writers, decades, genres and countries with hours and titles in the attributes; needs the TMDB key) | library |
 | `sensor.*_still_to_finish` (estimated time left for movies and shows not finished yet, with counts, episodes and started / not started per kind; needs the TMDB key for shows you haven't started) | library |
 | `sensor.*_catch_up` (aired episodes waiting across all shows, per-show counts and next episode, estimated minutes) | history |
@@ -172,6 +173,7 @@ Not translated: the card editor (the settings you click in the card configuratio
 |---|---|
 | The card isn't in the card picker | Restart Home Assistant, then hard-refresh the browser |
 | No *Last 7 days* / *Average per week* | Your key needs the "See what you watched and when" permission, and *Fetch watch history* must be on |
+| No *Monthly wrap* section | Turn on *Fetch watch history* in the options. It appears when a month has finished with something watched in it |
 | No *Most watched* section | Add a TMDB key in the options. It shows *Still building* while the details are collected, which takes a few updates |
 | No posters | Add a TMDB key in the options, wait for the next update, and check `show_posters` isn't `false` |
 | Setup says the key is rejected | Check it was copied in full (it starts with `rfk_`) and wasn't revoked |

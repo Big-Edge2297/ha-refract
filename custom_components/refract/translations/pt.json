@@ -36,12 +36,12 @@
         "description": "Os pôsteres e a seção «Mais vistos» são opcionais. Eles precisam da sua própria chave de API do TMDB, gratuita, e são carregados dos servidores do TMDB.",
         "data": {
           "scan_interval": "Intervalo de atualização (minutos)",
-          "fetch_history": "Buscar o histórico de visualização (gráficos semanais)",
+          "fetch_history": "Buscar o histórico de visualização (gráficos semanais e resumo mensal)",
           "tmdb_api_key": "Chave de API do TMDB (opcional, para pôsteres e «Mais vistos»)"
         },
         "data_description": {
           "scan_interval": "Com que frequência o Refract é verificado em busca de mudanças.",
-          "fetch_history": "Necessário para «Últimos 7 dias» e «Média por semana». O histórico é atualizado a cada hora e pode gerar muitas requisições em bibliotecas grandes.",
+          "fetch_history": "Necessário para «Últimos 7 dias», «Média por semana» e «Resumo mensal». O histórico é atualizado a cada hora e pode gerar muitas requisições em bibliotecas grandes.",
           "tmdb_api_key": "Uma chave de API v3 do TMDB ou um token de acesso de leitura v4. Deixe vazio para desativar os pôsteres e «Mais vistos»."
         }
       }

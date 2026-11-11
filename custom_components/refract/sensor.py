@@ -123,6 +123,16 @@ def _average_attrs(data: dict[str, Any]) -> dict[str, Any]:
     return dict(info["average"]) if info else {}
 
 
+def _wrap_value(data: dict[str, Any]) -> int | None:
+    months = (data.get("wraps") or {}).get("months") or []
+    return months[0]["items"] if months else None
+
+
+def _wrap_attrs(data: dict[str, Any]) -> dict[str, Any]:
+    wraps = data.get("wraps") or {}
+    return {"months": wraps.get("months") or [], "pending": wraps.get("pending", 0), "firsts_ready": wraps.get("firsts_ready", False)}
+
+
 def _top_picks_attrs(data: dict[str, Any]) -> dict[str, Any]:
     info = data.get("top_picks")
     return {k: v for k, v in info.items() if k != "titles"} if info else {}
@@ -241,6 +251,17 @@ SENSORS: tuple[RefractSensorDescription, ...] = (
         attrs_fn=lambda d: {"episodes": d["airing"]},
     ),
     RefractSensorDescription(
+        key="monthly_wrap",
+        name="Monthly wrap",
+        icon="mdi:calendar-star",
+        scope=SCOPE_HISTORY,
+        native_unit_of_measurement="items",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_wrap_value,
+        attrs_fn=_wrap_attrs,
+        needs_history=True,
+    ),
+    RefractSensorDescription(
         key="top_picks",
         name="Top picks",  # the entity id comes from the name: sensor.*_top_picks
         icon="mdi:podium-gold",
@@ -293,7 +314,7 @@ class RefractSensor(RefractEntity, SensorEntity):
 
     entity_description: RefractSensorDescription
     _unrecorded_attributes = frozenset(
-        {"items", "days", "shows", "episodes", "actor", "director", "writer", "decade", "genre", "country"}
+        {"items", "days", "shows", "episodes", "actor", "director", "writer", "decade", "genre", "country", "months"}
     )
 
     def __init__(self, coordinator: RefractCoordinator, description: RefractSensorDescription) -> None:

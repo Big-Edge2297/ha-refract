@@ -117,6 +117,42 @@ export interface TopPicks {
   picks: Partial<Record<PickKind, TopPick[]>>;
 }
 
+/** One completed month of the monthly wrap. */
+export interface WrapMonth {
+  /** `YYYY-MM`. */
+  month: string;
+  items: number;
+  episodes: number;
+  movies: number;
+  /** Different titles watched. */
+  titles: number;
+  showTitles: number;
+  animeTitles: number;
+  movieTitles: number;
+  minutes: number;
+  /** Some runtimes are estimates. */
+  estimated: boolean;
+  /** Items watched on each day of the month. */
+  days: number[];
+  activeDays: number;
+  /** Share of the items watched on a Saturday or Sunday, in percent. */
+  weekendShare: number;
+  bestStreak: number;
+  busiest: { day: string; count: number };
+  firstWatch: number;
+  rewatch: number;
+  top: { title: string; kind: "show" | "movie"; anime: boolean; count: number; poster?: string }[];
+  genres: { name: string; titles: number }[];
+  /** Countries first seen this month; undefined until every title has its TMDB details. */
+  firsts?: { code: string; name: string; title: string }[];
+}
+export interface Wrap {
+  months: WrapMonth[];
+  /** Titles still waiting for their TMDB details. */
+  pending: number;
+  firstsReady: boolean;
+}
+
 export interface StatusCount {
   /** Normalised status key: completed, up_to_date, in_progress, planned, on_hold, dropped, or anything else Refract adds. */
   key: string;
@@ -148,6 +184,7 @@ export interface Model {
   next: NextUp;
   last7?: Last7;
   topPicks?: TopPicks;
+  wrap?: Wrap;
   average?: Average;
   catchup?: Catchup;
   /** Movies and shows still to finish; undefined when the sensor doesn't exist. */
@@ -306,6 +343,55 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     topPicks = { titles: parseNum(picksState) ?? 0, total: num(a.total) ?? 0, pending: num(a.pending) ?? 0, picks };
   }
 
+  // monthly wrap
+  let wrap: Wrap | undefined;
+  const wrapState = ent("monthly_wrap");
+  if (isUsable(wrapState)) {
+    const a = wrapState.attributes;
+    const months: WrapMonth[] = (Array.isArray(a.months) ? a.months : [])
+      .map((r: any): WrapMonth | undefined => {
+        if (typeof r?.month !== "string" || !/^\d{4}-\d{2}$/.test(r.month) || !Array.isArray(r.days)) return undefined;
+        return {
+          month: r.month,
+          items: num(r.items) ?? 0,
+          episodes: num(r.episodes) ?? 0,
+          movies: num(r.movies) ?? 0,
+          titles: num(r.titles) ?? 0,
+          showTitles: num(r.show_titles) ?? 0,
+          animeTitles: num(r.anime_titles) ?? 0,
+          movieTitles: num(r.movie_titles) ?? 0,
+          minutes: num(r.minutes) ?? 0,
+          estimated: !!r.estimated,
+          days: r.days.map((d: unknown) => num(d) ?? 0),
+          activeDays: num(r.active_days) ?? 0,
+          weekendShare: num(r.weekend_share) ?? 0,
+          bestStreak: num(r.best_streak) ?? 0,
+          busiest: { day: typeof r.busiest?.day === "string" ? r.busiest.day : "", count: num(r.busiest?.count) ?? 0 },
+          firstWatch: num(r.first_watch) ?? 0,
+          rewatch: num(r.rewatch) ?? 0,
+          top: (Array.isArray(r.top) ? r.top : [])
+            .filter((x: any) => typeof x?.title === "string")
+            .map((x: any) => ({
+              title: x.title,
+              kind: x.kind === "movie" ? "movie" : "show",
+              anime: !!x.anime,
+              count: num(x.count) ?? 0,
+              poster: typeof x.poster === "string" && x.poster ? x.poster : undefined,
+            })),
+          genres: (Array.isArray(r.genres) ? r.genres : [])
+            .filter((x: any) => typeof x?.name === "string")
+            .map((x: any) => ({ name: x.name, titles: num(x.titles) ?? 0 })),
+          firsts: Array.isArray(r.firsts)
+            ? r.firsts
+                .filter((x: any) => typeof x?.name === "string")
+                .map((x: any) => ({ code: String(x.code ?? ""), name: x.name, title: String(x.title ?? "") }))
+            : undefined,
+        };
+      })
+      .filter((x: WrapMonth | undefined): x is WrapMonth => !!x);
+    wrap = { months, pending: num(a.pending) ?? 0, firstsReady: !!a.firsts_ready };
+  }
+
   // average per week
   let average: Average | undefined;
   const avgState = ent("average_per_week");
@@ -425,6 +511,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     next,
     last7,
     topPicks,
+    wrap,
     average,
     catchup,
     finish,

@@ -72,6 +72,7 @@ export const SECTION_IDS = [
   "average",
   "last_7_days",
   "top_picks",
+  "monthly_wrap",
   "next_up",
   "catchup",
   "airing",
@@ -154,6 +155,7 @@ export interface RefractCardConfig {
   show_average?: boolean;
   show_last_7_days?: boolean;
   show_top_picks?: boolean;
+  show_monthly_wrap?: boolean;
   show_next_up?: boolean;
   show_catchup?: boolean;
   show_airing?: boolean;
@@ -196,6 +198,7 @@ export const DEFAULT_CONFIG = {
   show_average: true,
   show_last_7_days: true,
   show_top_picks: true,
+  show_monthly_wrap: true,
   show_next_up: true,
   show_catchup: true,
   show_airing: true,

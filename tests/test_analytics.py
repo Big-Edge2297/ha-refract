@@ -577,3 +577,106 @@ def test_build_top_picks_ranks_by_number_of_titles_then_hours():
     names = [r["name"] for r in top["actor"]]
     assert names[0] == "Action Star" and top["actor"][0]["titles"] == 2, "two movies beat one long series"
     assert names[1:] == ["Long Series Lead", "Other"], "equal titles: more hours first"
+
+
+# ------------------------------------------------------------ monthly wrap
+
+TODAY = date(2026, 11, 10)
+
+
+def rec(day, kind="show", tmdb=1, title="A Show", anime=False, rewatch=False, minutes=None):
+    key = f"{kind}:{tmdb}"
+    return {"day": day, "kind": kind, "id": tmdb, "key": key, "title": title, "anime": anime, "rewatch": rewatch, "minutes": minutes}
+
+
+def test_watch_records_read_both_history_payloads():
+    episodes = [dict(REAL_EPISODES[1], show=dict(REAL_EPISODES[1]["show"], is_anime=True)), REAL_EPISODES[0]]
+    movies = REAL_MOVIES + [{"movie": {"title": "No date", "ids": {"tmdb": 5}}, "kind": "first_watch"}]
+    records = a.iter_watch_records(episodes, movies)
+    assert len(records) == 4, "the entry without a date is left out"
+    one = next(r for r in records if r["day"] == "2026-11-04")
+    assert (one["kind"], one["id"], one["title"], one["anime"], one["rewatch"], one["minutes"]) == ("show", 100088, "The Last of Us", True, True, 52.0)
+    special = next(r for r in records if r["day"] == "2024-04-03")
+    assert special["rewatch"] is False and special["minutes"] is None
+    gun = next(r for r in records if r["title"] == "Top Gun: Maverick")
+    assert (gun["kind"], gun["key"], gun["rewatch"], gun["minutes"]) == ("movie", "movie:361743", False, None)
+    assert next(r for r in records if r["title"] == "How to Make a Killing")["rewatch"] is True
+    assert next(r for r in records if r["title"] == "How to Make a Killing")["key"] == "movie:?:How to Make a Killing"
+    assert a.iter_watch_records("nope", None) == []
+
+
+def test_wrap_months_are_the_completed_ones_newest_first():
+    records = [
+        rec("2026-11-02"),  # the running month is not wrapped yet
+        rec("2026-10-31"), rec("2026-08-05"),
+        rec("2025-10-15"),  # a year and a month ago
+        rec("2025-11-20"),  # 12th completed month back
+    ]
+    wraps = a.build_wraps(records, {}, TODAY)
+    assert [m["month"] for m in wraps["months"]] == ["2026-10", "2026-08", "2025-11"]
+    assert a.build_wraps([], {}, TODAY)["months"] == []
+    january = a.build_wraps([rec("2025-12-31")], {}, date(2026, 1, 15))
+    assert [m["month"] for m in january["months"]] == ["2025-12"], "the previous month across a new year"
+
+
+def test_wrap_month_amounts_days_and_patterns():
+    # October 2026: the 3rd is a Saturday, the 4th a Sunday
+    records = (
+        [rec("2026-10-01", tmdb=1, title="Show One", minutes=50)] * 2
+        + [rec("2026-10-02", tmdb=1, title="Show One", minutes=50)]
+        + [rec("2026-10-03", tmdb=2, title="Anime Two", anime=True, minutes=24, rewatch=True)]
+        + [rec("2026-10-04", "movie", tmdb=3, title="Movie Three")]
+        + [rec("2026-10-20", tmdb=1, title="Show One", minutes=50)]
+    )
+    profiles = {"movie:3": {"runtime": 120, "genres": ["Action"], "countries": [], "poster": "/m.jpg"}}
+    month = a.build_wraps(records, profiles, TODAY, episode_minutes=40, image_base="https://img")["months"][0]
+    assert (month["items"], month["episodes"], month["movies"], month["titles"]) == (6, 5, 1, 3)
+    assert (month["show_titles"], month["anime_titles"], month["movie_titles"]) == (1, 1, 1)
+    assert month["minutes"] == 50 * 4 + 24 + 120 and month["estimated"] is False
+    assert len(month["days"]) == 31 and month["days"][0] == 2 and month["days"][19] == 1 and sum(month["days"]) == 6
+    assert month["active_days"] == 5 and month["best_streak"] == 4
+    assert month["busiest"] == {"day": "2026-10-01", "count": 2}
+    assert month["weekend_share"] == 33, "the 3rd and 4th of 6 items"
+    assert (month["first_watch"], month["rewatch"]) == (5, 1)
+    assert [(t["title"], t["count"]) for t in month["top"]] == [("Show One", 4), ("Movie Three", 1), ("Anime Two", 1)], "equal counts: more minutes first"
+    assert month["top"][1]["poster"] == "https://img/m.jpg" and month["top"][0]["poster"] is None
+    assert month["genres"] == [{"name": "Action", "titles": 1}]
+    short = a.build_wraps([rec("2026-02-10", minutes=None)], {}, TODAY, episode_minutes=40)["months"][0]
+    assert len(short["days"]) == 28 and short["minutes"] == 40 and short["estimated"] is True
+    assert a.build_wraps([rec("2026-02-10")], {}, TODAY)["months"][0]["minutes"] == 0
+
+
+def test_wrap_genres_count_titles_not_episodes():
+    profile = {"runtime": 40, "genres": ["Drama", "Crime"], "countries": []}
+    records = [rec("2026-10-01", tmdb=1, title="One")] * 5 + [rec("2026-10-02", tmdb=2, title="Two")]
+    other = {"runtime": 40, "genres": ["Drama"], "countries": []}
+    month = a.build_wraps(records, {"show:1": profile, "show:2": other}, TODAY)["months"][0]
+    assert month["genres"] == [{"name": "Drama", "titles": 2}, {"name": "Crime", "titles": 1}]
+
+
+def test_wrap_firsts_need_every_title_of_the_history():
+    profiles = {
+        "show:1": {"runtime": 40, "genres": [], "countries": [["US", "United States"]]},
+        "show:2": {"runtime": 40, "genres": [], "countries": [["US", "United States"], ["CN", "China"]]},
+        "show:3": {"runtime": 40, "genres": [], "countries": [["JP", "Japan"]]},
+    }
+    records = [
+        rec("2025-05-01", tmdb=1, title="Old US Show"),
+        rec("2026-10-05", tmdb=2, title="Blades"),
+        rec("2026-10-06", tmdb=3, title="Anime"),
+        rec("2026-09-01", tmdb=1, title="Old US Show"),
+    ]
+    october = next(m for m in a.build_wraps(records, profiles, TODAY)["months"] if m["month"] == "2026-10")
+    assert [(f["code"], f["title"]) for f in october["firsts"]] == [("CN", "Blades"), ("JP", "Anime")], "the US had been seen before"
+    september = next(m for m in a.build_wraps(records, profiles, TODAY)["months"] if m["month"] == "2026-09")
+    assert september["firsts"] == []
+    # one title without details: no country can be called a first
+    partial = a.build_wraps(records, {k: v for k, v in profiles.items() if k != "show:1"}, TODAY)
+    assert partial["firsts_ready"] is False and "firsts" not in partial["months"][0]
+    assert a.build_wraps(records, profiles, TODAY)["firsts_ready"] is True
+
+
+def test_wrap_counts_the_titles_still_waiting_for_details():
+    records = [rec("2026-10-01", tmdb=1), rec("2026-10-02", tmdb=2), rec("2026-10-03", "movie", tmdb=None, title="Unknown id")]
+    wraps = a.build_wraps(records, {"show:1": {"runtime": 40, "genres": [], "countries": []}}, TODAY)
+    assert wraps["pending"] == 1, "show 2 waits; a title without a TMDB id never can"

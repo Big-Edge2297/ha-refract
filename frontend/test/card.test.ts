@@ -834,7 +834,7 @@ test("editor reorders sections with the arrows and keeps the YAML clean", async 
   document.body.appendChild(editor);
   await editor.updateComplete;
   const rows = () => [...editor.shadowRoot.querySelectorAll(".order-row")] as HTMLElement[];
-  assert.equal(rows().length, 11);
+  assert.equal(rows().length, 12);
   assert.match(rows()[0].textContent!, /Watch time summary/);
   assert.equal(editor.shadowRoot.querySelector(".order-reset"), null, "no reset button on the default order");
 
@@ -1091,4 +1091,136 @@ test("units, counts and the fun stat follow the plural rules of the language", a
   assert.match(pl, /26 dni 5 godzin/, "still to finish: 26 days, 5 hours");
   assert.match(pl, /Pokaż miejsca|Najczęściej oglądane/);
   assert.match(text(await mount({}, inLanguage("en"))), /266 days 14 hours/);
+});
+
+// ------------------------------------------------------------ monthly wrap
+
+const wrapRoot = async (config: Record<string, unknown> = {}, hass?: any) => {
+  const el = await mount(config, hass);
+  return { el, root: el.shadowRoot! };
+};
+const press = async (el: any, selector: string, index = 0) => {
+  ((el.shadowRoot as ShadowRoot).querySelectorAll(selector)[index] as HTMLElement).click();
+  await el.updateComplete;
+};
+const tile = (x: Element) => `${x.children[0].textContent!.trim()} ${x.children[1].textContent!.trim()}`.replace(/\s+/g, " ");
+const compact = (node: Element | null) => node!.textContent!.replace(/\s+/g, " ").trim();
+
+test("monthly wrap opens on the newest completed month with its overview", async () => {
+  const { root } = await wrapRoot();
+  const panel = root.querySelector(".panel.wrap")!;
+  assert.ok(panel, "the section is there in the full layout");
+  assert.equal(panel.querySelector(".wrap-month")!.textContent, "October 2026");
+  assert.match(compact(panel), /27 items watched/);
+  assert.equal(panel.querySelector(".wrap-hours")!.textContent, "26", "1560 minutes");
+  const tiles = [...panel.querySelectorAll(".wrap-tiles .tile")].map(tile);
+  assert.deepEqual(tiles, ["25 Episodes", "2 Movies", "4 Shows", "0 Anime"]);
+  assert.match(compact(panel.querySelector(".badge")), /\u221218% vs September 2026/, "less than the month before");
+  const tabs = [...panel.querySelectorAll(".wrap-tab")].map((x) => x.textContent!.trim());
+  assert.deepEqual(tabs, ["Overview", "Tastes", "Patterns", "Moments"]);
+  assert.equal(panel.querySelector(".wrap-tab.active")!.textContent!.trim(), "Overview");
+});
+
+test("monthly wrap moves between months with the arrows", async () => {
+  const { el, root } = await wrapRoot();
+  const arrows = () => [...root.querySelectorAll(".wrap-arrow")] as HTMLButtonElement[];
+  assert.deepEqual(arrows().map((b) => b.disabled), [false, true], "newest month: no newer one");
+  await press(el, ".wrap-arrow", 0);
+  assert.equal(root.querySelector(".wrap-month")!.textContent, "September 2026");
+  assert.match(compact(root.querySelector(".panel.wrap")), /32 items watched/);
+  assert.deepEqual(arrows().map((b) => b.disabled), [true, false], "oldest month: no older one");
+  assert.equal(root.querySelector(".panel.wrap .badge"), null, "no month before September in the list");
+  await press(el, ".wrap-arrow", 1);
+  assert.equal(root.querySelector(".wrap-month")!.textContent, "October 2026");
+});
+
+test("monthly wrap tastes: split, top genres and discovery", async () => {
+  const { el, root } = await wrapRoot();
+  await press(el, ".wrap-tab", 1);
+  const panel = root.querySelector(".panel.wrap")!;
+  assert.equal(panel.querySelector(".wrap-tab.active")!.textContent!.trim(), "Tastes");
+  const legend = compact(panel.querySelector(".legend-row"));
+  assert.match(legend, /Shows · 67%/);
+  assert.match(legend, /Movies · 33%/);
+  assert.doesNotMatch(legend, /Anime/, "no anime this month");
+  const genres = [...panel.querySelectorAll(".wrap-genre")].map((g) => compact(g));
+  assert.deepEqual(genres, ["Action 2", "Adventure 2", "Crime 2", "Drama 2", "Science Fiction 1"]);
+  const bars = [...panel.querySelectorAll(".wrap-genre-bar > span")].map((b) => (b as HTMLElement).style.width);
+  assert.deepEqual(bars, ["100%", "100%", "100%", "100%", "50%"]);
+  const discovery = [...panel.querySelectorAll(".wrap-tiles.two .tile")].map(tile);
+  assert.deepEqual(discovery, ["100% First watch · 27 new", "0% Rewatch · 0 revisited"]);
+});
+
+test("monthly wrap patterns: per day, daily activity, weekends and streak", async () => {
+  const { el, root } = await wrapRoot();
+  await press(el, ".wrap-tab", 2);
+  const panel = root.querySelector(".panel.wrap")!;
+  const tiles = [...panel.querySelectorAll(".wrap-tiles .tile")].map(tile);
+  assert.deepEqual(tiles, ["0.9 Items / day", "0.8 Hours / day", "25% On weekends", "6 days Best streak", "17 of 31 Active days"]);
+  const bars = panel.querySelectorAll(".wrap-day");
+  assert.equal(bars.length, 31, "one bar per day of October");
+  assert.equal(panel.querySelectorAll(".wrap-day.peak").length, 1, "the busiest day stands out");
+  assert.ok(bars[30].classList.contains("peak"));
+  assert.ok(bars[0].classList.contains("empty"));
+  assert.equal(bars[30].getAttribute("title"), "Oct 31: 3");
+  assert.match(compact(panel.querySelector(".picks-foot")), /Busiest day: Oct 31 · 3 items/);
+});
+
+test("monthly wrap moments: most watched titles and firsts", async () => {
+  const { el, root } = await wrapRoot();
+  await press(el, ".wrap-tab", 3);
+  const panel = root.querySelector(".panel.wrap")!;
+  const rows = [...panel.querySelectorAll(".wrap-top-row")].map((r) => compact(r));
+  assert.deepEqual(rows.slice(0, 3), ["The Gentlemen 8 episodes", "Monster: The Lizzie Borden Story 5 episodes", "Blades of the Guardians Movie"]);
+  assert.equal(panel.querySelectorAll(".wrap-top-row img").length, 1, "one poster, the others a placeholder");
+  assert.equal(panel.querySelectorAll(".wrap-noposter").length, 2);
+  assert.equal(rows[3], "\u{1F1E8}\u{1F1F3} First title from China Blades of the Guardians");
+  assert.ok(document.getElementById("refract-flag-font"), "the flag font is there for the flag");
+});
+
+test("monthly wrap handles no firsts yet, no firsts at all, estimated hours and an empty list", async () => {
+  const withMonths = (months: unknown[], extra: Record<string, unknown> = {}) =>
+    makeHass({ states: { ...baseStates, [`sensor.${PREFIX}monthly_wrap`]: { entity_id: "w", state: "1", attributes: { months, ...extra } } } });
+  const month = (extra: Record<string, unknown>) => ({
+    month: "2026-10", items: 3, episodes: 3, movies: 0, titles: 1, show_titles: 1, anime_titles: 0, movie_titles: 0,
+    minutes: 90, estimated: true, days: new Array(31).fill(0).map((_, i) => (i === 3 ? 3 : 0)), active_days: 1,
+    weekend_share: 0, best_streak: 1, busiest: { day: "2026-10-04", count: 3 }, first_watch: 3, rewatch: 0, top: [], genres: [], ...extra,
+  });
+  const waiting = await wrapRoot({}, withMonths([month({})]));
+  assert.match(compact(waiting.root.querySelector(".wrap-hero")), /~1\.5 Hours/, "estimated hours get a tilde");
+  assert.match(compact(waiting.root.querySelector(".panel.wrap")), /Hours are estimated from average runtimes/);
+  await press(waiting.el, ".wrap-tab", 3);
+  assert.match(compact(waiting.root.querySelector(".panel.wrap")), /Still collecting details from TMDB/, "firsts undefined: not ready");
+  await press(waiting.el, ".wrap-tab", 1);
+  assert.match(compact(waiting.root.querySelector(".panel.wrap")), /Genres appear once TMDB details are available/);
+  const none = await wrapRoot({}, withMonths([month({ firsts: [] })]));
+  await press(none.el, ".wrap-tab", 3);
+  assert.match(compact(none.root.querySelector(".panel.wrap")), /No new countries this month/);
+  const empty = await wrapRoot({}, withMonths([]));
+  assert.match(compact(empty.root.querySelector(".panel.wrap")), /No completed month with watches yet/);
+});
+
+test("monthly wrap is left out without the sensor, in compact and when switched off", async () => {
+  assert.equal((await wrapRoot({}, without("monthly_wrap"))).root.querySelector(".panel.wrap"), null);
+  assert.equal((await wrapRoot({ layout: "compact" })).root.querySelector(".panel.wrap"), null);
+  assert.equal((await wrapRoot({ layout: "custom", show_monthly_wrap: false })).root.querySelector(".panel.wrap"), null);
+  assert.ok((await wrapRoot({ layout: "custom" })).root.querySelector(".panel.wrap"));
+});
+
+test("monthly wrap follows the language", async () => {
+  const de = await wrapRoot({}, inLanguage("de"));
+  assert.match(compact(de.root.querySelector(".panel.wrap")), /Monatsrückblick/);
+  assert.equal(de.root.querySelector(".wrap-month")!.textContent, "Oktober 2026");
+  assert.match(compact(de.root.querySelector(".panel.wrap")), /27 Folgen und Filme gesehen/);
+  await press(de.el, ".wrap-tab", 3);
+  assert.match(compact(de.root.querySelector(".panel.wrap")), /8 Folgen/);
+  const pl = await wrapRoot({}, inLanguage("pl"));
+  await press(pl.el, ".wrap-tab", 3);
+  assert.match(compact(pl.root.querySelector(".panel.wrap")), /8 odcinków/);
+  assert.match(compact(pl.root.querySelector(".panel.wrap")), /5 odcinków/);
+});
+
+test("the editor offers the monthly wrap switch for the custom layout only", async () => {
+  assert.ok(!(await editorFor({})).names.includes("show_monthly_wrap"));
+  assert.ok((await editorFor({ layout: "custom" })).names.includes("show_monthly_wrap"));
 });

@@ -2,6 +2,23 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.7.0
+
+### Added
+- **Monthly wrap**: a new card section with a summary of every completed month (up to the last 12), like the wraps in the Refract app. Go through the months with the arrows and switch between four tabs: **Overview** (hours with the change against the month before, episodes, movies, shows, anime), **Tastes** (shows, anime and movies as a share of the titles, top genres, first watches against rewatches), **Patterns** (items and hours per day, a bar for each day with the busiest day highlighted, the share on weekends, best streak, active days) and **Moments** (the three most watched titles with posters, and the countries you watched a title from for the first time)
+- New sensor `sensor.*_monthly_wrap` (state: items in the newest completed month; the `months` attribute has every month) for your own cards and automations
+- The card option `show_monthly_wrap` (Custom layout, with a switch in the editor). The section is part of the Full layout and not shown in Compact
+- Translations of the new section in all seven languages, with tests
+
+### Changed
+- The cached TMDB details are fetched again once, because they now also keep the poster of each title. The most watched titles and the titles of the last months come first
+- The options text of *Fetch watch history* now mentions the monthly wrap, in all languages
+- The default section order puts *Monthly wrap* after *Most watched*. Cards with a custom `section_order` get it at the end
+
+### Notes
+- The wrap needs **Fetch watch history**. Genres, posters and the first countries need the TMDB key too; without it everything else works
+- Refract's history only has the day of each watch, so there is no peak hour or hourly chart, and the API has no community rank or ratings. Hours use the runtimes in the history where they exist and average runtimes otherwise (a `~` marks estimates)
+
 ## 0.6.0
 
 ### Added

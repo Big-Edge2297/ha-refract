@@ -36,12 +36,12 @@
         "description": "Plakaty i sekcja „Najczęściej oglądane” są opcjonalne. Wymagają Twojego własnego bezpłatnego klucza API TMDB i są ładowane z serwerów TMDB.",
         "data": {
           "scan_interval": "Interwał aktualizacji (minuty)",
-          "fetch_history": "Pobieraj historię oglądania (wykresy tygodniowe)",
+          "fetch_history": "Pobieraj historię oglądania (wykresy tygodniowe i podsumowanie miesiąca)",
           "tmdb_api_key": "Klucz API TMDB (opcjonalny, dla plakatów i „Najczęściej oglądane”)"
         },
         "data_description": {
           "scan_interval": "Jak często sprawdzać zmiany w Refract.",
-          "fetch_history": "Wymagane dla „Ostatnie 7 dni” i „Średnia tygodniowo”. Historia jest odświeżana co godzinę i przy dużych bibliotekach może oznaczać wiele zapytań.",
+          "fetch_history": "Wymagane dla „Ostatnie 7 dni”, „Średnia tygodniowo” i „Podsumowanie miesiąca”. Historia jest odświeżana co godzinę i przy dużych bibliotekach może oznaczać wiele zapytań.",
           "tmdb_api_key": "Klucz API TMDB v3 lub token dostępu v4 tylko do odczytu. Zostaw puste, aby wyłączyć plakaty i „Najczęściej oglądane”."
         }
       }

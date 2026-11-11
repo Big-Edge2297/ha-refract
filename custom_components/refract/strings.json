@@ -36,12 +36,12 @@
         "description": "Posters and the Most watched section are optional. They need your own free TMDB API key, and are loaded from TMDB's servers.",
         "data": {
           "scan_interval": "Update interval (minutes)",
-          "fetch_history": "Fetch watch history (weekly charts)",
+          "fetch_history": "Fetch watch history (weekly charts and monthly wrap)",
           "tmdb_api_key": "TMDB API key (optional, for posters and Most watched)"
         },
         "data_description": {
           "scan_interval": "How often Refract is checked for changes.",
-          "fetch_history": "Needed for 'Last 7 days' and 'Average per week'. History is refreshed hourly and can be many requests for large libraries.",
+          "fetch_history": "Needed for 'Last 7 days', 'Average per week' and 'Monthly wrap'. History is refreshed hourly and can be many requests for large libraries.",
           "tmdb_api_key": "A TMDB v3 API key or v4 read access token. Leave empty to turn posters and Most watched off."
         }
       }

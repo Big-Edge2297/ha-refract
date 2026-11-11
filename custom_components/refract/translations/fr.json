@@ -36,12 +36,12 @@
         "description": "Les affiches et la section « Les plus regardés » sont facultatives. Elles nécessitent votre propre clé API TMDB gratuite et sont chargées depuis les serveurs de TMDB.",
         "data": {
           "scan_interval": "Intervalle de mise à jour (minutes)",
-          "fetch_history": "Récupérer l'historique de visionnage (graphiques hebdomadaires)",
+          "fetch_history": "Récupérer l'historique de visionnage (graphiques hebdomadaires et bilan du mois)",
           "tmdb_api_key": "Clé API TMDB (facultative, pour les affiches et « Les plus regardés »)"
         },
         "data_description": {
           "scan_interval": "Fréquence de vérification des changements dans Refract.",
-          "fetch_history": "Nécessaire pour « 7 derniers jours » et « Moyenne par semaine ». L'historique est actualisé toutes les heures et peut représenter beaucoup de requêtes pour les grandes bibliothèques.",
+          "fetch_history": "Nécessaire pour « 7 derniers jours », « Moyenne par semaine » et « Bilan du mois ». L'historique est actualisé toutes les heures et peut représenter beaucoup de requêtes pour les grandes bibliothèques.",
           "tmdb_api_key": "Une clé API TMDB v3 ou un jeton d'accès en lecture v4. Laissez vide pour désactiver les affiches et « Les plus regardés »."
         }
       }

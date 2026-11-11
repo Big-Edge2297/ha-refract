@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.6.0
+## 0.7.0
+
+- **New:** the *Monthly wrap* section (`sensor.*_monthly_wrap`, option `show_monthly_wrap`): month arrows and four tabs (Overview, Tastes, Patterns, Moments), with new texts in all languages
+- Default order: `monthly_wrap` comes after `top_picks`; a custom `section_order` gets it at the end
+
 
 - **New:** the card is translated into German, French, Spanish, Italian, Dutch, Portuguese and Polish (`src/translations`), with plural forms per language (`tn()` in `localize.ts`, using `Intl.PluralRules`). Short duration units follow the language
 - **Changed:** the plural keys of English changed to one scheme (`unit.day` = days, `unit.day_one` = day, `picks.sub`, `fun.months_one`, ...); `durationParts` now returns `unit` as `unit.day`, `unit.hour` or `unit.min` with the number `n`

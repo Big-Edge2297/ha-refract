@@ -36,12 +36,12 @@
         "description": "Poster und der Bereich „Am häufigsten gesehen“ sind optional. Sie benötigen deinen eigenen kostenlosen TMDB-API-Schlüssel und werden von den Servern von TMDB geladen.",
         "data": {
           "scan_interval": "Aktualisierungsintervall (Minuten)",
-          "fetch_history": "Wiedergabeverlauf abrufen (Wochendiagramme)",
+          "fetch_history": "Wiedergabeverlauf abrufen (Wochendiagramme und Monatsrückblick)",
           "tmdb_api_key": "TMDB-API-Schlüssel (optional, für Poster und „Am häufigsten gesehen“)"
         },
         "data_description": {
           "scan_interval": "Wie oft Refract auf Änderungen geprüft wird.",
-          "fetch_history": "Wird für „Letzte 7 Tage“ und „Durchschnitt pro Woche“ benötigt. Der Verlauf wird stündlich aktualisiert und kann bei großen Bibliotheken viele Anfragen verursachen.",
+          "fetch_history": "Wird für „Letzte 7 Tage“, „Durchschnitt pro Woche“ und „Monatsrückblick“ benötigt. Der Verlauf wird stündlich aktualisiert und kann bei großen Bibliotheken viele Anfragen verursachen.",
           "tmdb_api_key": "Ein TMDB-v3-API-Schlüssel oder v4-Lesezugriffstoken. Leer lassen, um Poster und „Am häufigsten gesehen“ auszuschalten."
         }
       }

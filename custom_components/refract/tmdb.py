@@ -30,7 +30,7 @@ _SHOW_DETAILS_DAYS = 3
 _PROFILES_PER_REFRESH = 100
 _PROFILE_DAYS = 180
 # Bumped when what a profile holds changes, so cached ones are fetched again.
-_PROFILE_VERSION = 2
+_PROFILE_VERSION = 3
 
 
 def _auth(api_key: str) -> tuple[dict[str, str], dict[str, str]]:

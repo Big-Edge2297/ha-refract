@@ -94,6 +94,35 @@ export const states: Record<string, HassEntity> = Object.fromEntries([
   entity("last_7_days", "11", { days: last7Days, episodes: 8, movies: 3, busiest_day: { date: dayOffset(-3), count: 4 } }),
   entity("average_per_week", "2.5", { items_per_week: 2.8, change_percent: 12, window_days: 28, estimated: true }),
   entity("airing_this_week", "2", { episodes: airingEpisodes }),
+  entity("monthly_wrap", "27", {
+    pending: 0,
+    firsts_ready: true,
+    months: [
+      {
+        month: "2026-10", items: 27, episodes: 25, movies: 2, titles: 6, show_titles: 4, anime_titles: 0, movie_titles: 2,
+        minutes: 1560, estimated: false,
+        days: [0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 2, 0, 0, 2, 2, 0, 0, 0, 3, 0, 0, 0, 1, 0, 1, 0, 1, 1, 3].slice(0, 30).concat([3]),
+        active_days: 17, weekend_share: 25, best_streak: 6, busiest: { day: "2026-10-31", count: 3 },
+        first_watch: 27, rewatch: 0,
+        top: [
+          { title: "The Gentlemen", kind: "show", anime: false, count: 8, poster: "https://image.tmdb.org/t/p/w185/gentlemen.jpg" },
+          { title: "Monster: The Lizzie Borden Story", kind: "show", anime: false, count: 5, poster: null },
+          { title: "Blades of the Guardians", kind: "movie", anime: false, count: 1, poster: null },
+        ],
+        genres: [
+          { name: "Action", titles: 2 }, { name: "Adventure", titles: 2 }, { name: "Crime", titles: 2 },
+          { name: "Drama", titles: 2 }, { name: "Science Fiction", titles: 1 },
+        ],
+        firsts: [{ code: "CN", name: "China", title: "Blades of the Guardians" }],
+      },
+      {
+        month: "2026-09", items: 32, episodes: 30, movies: 2, titles: 9, show_titles: 5, anime_titles: 2, movie_titles: 2,
+        minutes: 1900, estimated: false, days: new Array(30).fill(1).concat([]).map((n, i) => (i < 2 ? 2 : n)),
+        active_days: 30, weekend_share: 30, best_streak: 30, busiest: { day: "2026-09-01", count: 2 },
+        first_watch: 30, rewatch: 2, top: [], genres: [], firsts: [],
+      },
+    ],
+  }),
   entity("top_picks", "812", {
     total: 896,
     pending: 0,
