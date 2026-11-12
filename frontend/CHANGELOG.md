@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1
+
+- **Fixed:** *Next up* passes over a show with 0 episodes remaining (to the next show with episodes waiting, or the empty state) when the integration still offers it
+- **Fixed:** the *Catch-up* bars show watched progress of the aired episodes, like the Next up bar, instead of the size next to the biggest backlog (that one stays as the fallback when `aired_episodes` is missing)
+
 ## 0.7.0
 
 - **New:** the *Monthly wrap* section (`sensor.*_monthly_wrap`, option `show_monthly_wrap`): month arrows and four tabs (Overview, Tastes, Patterns, Moments), with new texts in all languages

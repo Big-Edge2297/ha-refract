@@ -680,3 +680,32 @@ def test_wrap_counts_the_titles_still_waiting_for_details():
     records = [rec("2026-10-01", tmdb=1), rec("2026-10-02", tmdb=2), rec("2026-10-03", "movie", tmdb=None, title="Unknown id")]
     wraps = a.build_wraps(records, {"show:1": {"runtime": 40, "genres": [], "countries": []}}, TODAY)
     assert wraps["pending"] == 1, "show 2 waits; a title without a TMDB id never can"
+
+
+# ------------------------------------------------------------ up next with nothing left
+
+
+def up(title, remaining="missing", tmdb=1):
+    item = {"show": {"title": title, "ids": {"tmdb": tmdb}}, "aired_episodes": 25}
+    if remaining != "missing":
+        item["remaining_episodes"] = remaining
+    return item
+
+
+def test_up_next_skips_shows_with_nothing_left_to_watch():
+    lupin, westworld, tulsa = up("Lupin", 0, 1), up("Westworld", 20, 2), up("Tulsa King", 4, 3)
+    assert a.has_episodes_waiting(westworld) and not a.has_episodes_waiting(lupin)
+    assert a.first_waiting([lupin, westworld, tulsa]) is westworld, "Lupin is fully watched"
+    assert a.count_waiting([lupin, westworld, tulsa]) == 2
+    assert a.first_waiting([lupin]) is None and a.count_waiting([lupin]) == 0
+    assert a.first_waiting([]) is None
+    # a show without the count is still offered, as before
+    assert a.has_episodes_waiting(up("Unknown")) and a.first_waiting([up("Unknown"), westworld])["show"]["title"] == "Unknown"
+    assert not a.has_episodes_waiting({"remaining_episodes": -1})
+    assert a.has_episodes_waiting({"remaining_episodes": None}) and a.has_episodes_waiting({"remaining_episodes": True})
+
+
+def test_the_poster_of_next_up_is_that_of_the_first_show_with_something_waiting():
+    lupin, westworld = up("Lupin", 0, 1), up("Westworld", 20, 2)
+    assert a.poster_candidates([lupin, westworld])[0] == 2, "Westworld comes first, not the fully watched Lupin"
+    assert a.poster_candidates([lupin, westworld]) == [2, 1]

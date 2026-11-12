@@ -191,11 +191,31 @@ def _tmdb_id(item: dict[str, Any]) -> int | None:
     return value if isinstance(value, int) else None
 
 
+def has_episodes_waiting(item: dict[str, Any]) -> bool:
+    """Whether an up-next entry still has an aired episode to watch.
+
+    Refract's up-next list can keep a show that is fully watched (0 remaining), for instance while
+    it waits for its next episode. A show without the count is kept, as before.
+    """
+    remaining = item.get("remaining_episodes")
+    return not (isinstance(remaining, (int, float)) and not isinstance(remaining, bool) and remaining <= 0)
+
+
+def first_waiting(up_next: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The first up-next entry with something to watch: what "Next up" shows."""
+    return next((item for item in up_next if has_episodes_waiting(item)), None)
+
+
+def count_waiting(up_next: list[dict[str, Any]]) -> int:
+    """How many shows have aired episodes waiting."""
+    return sum(1 for item in up_next if has_episodes_waiting(item))
+
+
 def poster_candidates(up_next: list[dict[str, Any]], limit: int = 10) -> list[int]:
     """TMDB ids worth a poster: the next-up show, the biggest backlogs, then the rest."""
     ordered: list[dict[str, Any]] = []
-    if up_next:
-        ordered.append(up_next[0])
+    if (first := first_waiting(up_next)) is not None:
+        ordered.append(first)
     ordered += sorted(
         (i for i in up_next if isinstance(i.get("remaining_episodes"), int)),
         key=lambda i: -i["remaining_episodes"],

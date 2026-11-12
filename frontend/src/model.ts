@@ -52,6 +52,8 @@ export interface CatchupShow {
   title: string;
   year?: number;
   remaining: number;
+  /** Episodes aired so far, when known: the bar shows how many of them are watched. */
+  aired?: number;
   isAnime: boolean;
   tmdbId?: number;
   refractId?: string;
@@ -297,7 +299,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     next = item ? { kind: "item", item } : { kind: "empty" };
   }
 
-  const nextItem = next.kind === "item" ? next.item : undefined;
+  let nextItem = next.kind === "item" ? next.item : undefined;
 
   // last 7 days
   let last7: Last7 | undefined;
@@ -435,6 +437,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
           title: r.title,
           year: num(r.year),
           remaining,
+          aired: num(r.aired_episodes),
           isAnime: !!r.is_anime,
           tmdbId: num(r.tmdb_id),
           refractId,
@@ -457,6 +460,15 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
       })
       .filter((x): x is CatchupShow => !!x);
     catchup = { total, minutes: num(catchState.attributes.estimated_minutes), showCount: num(catchState.attributes.show_count) ?? shows.length, shows };
+  }
+
+  // Refract keeps a show with nothing left to watch in its up-next list, and older versions of the
+  // integration offered it as "next up". Pass over it, to the next show that has episodes waiting.
+  if (next.kind === "item" && next.item.remaining === 0) {
+    const current = showKey(next.item);
+    const other = catchup?.shows.find((x) => x.next && showKey(x) !== current)?.next;
+    next = other ? { kind: "item", item: other } : { kind: "empty" };
+    nextItem = next.kind === "item" ? next.item : undefined;
   }
 
   // still to finish

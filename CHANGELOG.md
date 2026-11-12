@@ -2,6 +2,16 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.7.1
+
+### Fixed
+- **Next up offered a show with nothing left to watch.** Refract keeps a fully watched show in its up-next list, for instance while it waits for its next episode, and the first one was shown as "Next up" with "0 remaining". Next up now takes the first show that has an aired episode to watch, and says "Nothing up next" when there is none. The card also passes over such a show when the integration is older
+- **The *Shows waiting* sensor counted fully watched shows** too. It now counts only shows with episodes waiting
+- **The Catch-up bars could look full while episodes were pending.** The bar was the size of the backlog next to the biggest one, so the biggest was always full, while the Next up bar shows progress. Now every catch-up bar shows how many of the show's aired episodes you have watched, so it is never full while something is waiting. Without the aired count (older integration) it keeps the old size comparison, and hovering a bar names the numbers
+
+### Changed
+- The poster of Next up follows the same rule: the first show with episodes waiting
+
 ## 0.7.0
 
 ### Added

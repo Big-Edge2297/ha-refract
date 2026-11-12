@@ -791,13 +791,23 @@ export class RefractStatsCard extends LitElement {
 
   private _catchupRow(x: CatchupShow, max: number, posters: boolean, lang: string, defaultKey?: string): TemplateResult {
     const key = showKey(x);
+    // The bar shows how much of the aired episodes is watched, like the Next up bar, so it is never
+    // full while episodes are waiting. Without the aired count it falls back to the size of the
+    // backlog next to the biggest one.
+    const known = x.aired !== undefined && x.aired > 0 && x.aired >= x.remaining;
+    const share = known
+      ? Math.round(((x.aired! - x.remaining) / x.aired!) * 1000) / 10
+      : Math.round((x.remaining / max) * 1000) / 10;
+    const progressLabel = known
+      ? t(this.hass, "next.progress", { watched: fmtNumber(x.aired! - x.remaining, lang), aired: fmtNumber(x.aired!, lang) })
+      : String(x.remaining);
     // The default show is already in the Next up tile, so it only becomes tappable (to go back to it)
     // while another show has taken over the tile.
     const pickable = this._cfg.show_next_up && !!x.next && (key !== defaultKey || this._selected !== undefined);
     const selected = pickable && this._selected === key;
     const body = html`${posters ? this._poster(x.posterUrl, x.title, "sm") : nothing}
       <span class="c-name" title=${x.title}>${x.title}</span>
-      <div class="progress" role="img" aria-label="${x.remaining}"><span style="width:${(x.remaining / max) * 100}%"></span></div>
+      <div class="progress" role="img" aria-label=${progressLabel} title=${progressLabel}><span style=${styleMap({ width: `${share}%` })}></span></div>
       <b class="c-count">${fmtNumber(x.remaining, lang)}</b>`;
     if (!pickable) return html`<div class="c-row">${body}</div>`;
     return html`<div

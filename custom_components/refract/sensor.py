@@ -18,6 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from .analytics import count_waiting, first_waiting
 from .const import SCOPE_HISTORY, SCOPE_LIBRARY, SCOPE_PROFILE
 from .coordinator import RefractConfigEntry, RefractCoordinator
 from .entity import RefractEntity
@@ -78,13 +79,15 @@ def _up_next_attrs(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _next_up_value(data: dict[str, Any]) -> str | None:
-    return item_title(data["up_next"][0]) if data["up_next"] else None
+    first = first_waiting(data["up_next"])
+    return item_title(first) if first else None
 
 
 def _next_up_attrs(data: dict[str, Any]) -> dict[str, Any]:
-    if not data["up_next"]:
+    waiting = first_waiting(data["up_next"])
+    if not waiting:
         return {}
-    first = dict(data["up_next"][0])
+    first = dict(waiting)
     tmdb = ((first.get("show") or {}).get("ids") or {}).get("tmdb")
     poster = data["posters"].get(tmdb) if tmdb is not None else None
     if poster:
@@ -186,7 +189,7 @@ SENSORS: tuple[RefractSensorDescription, ...] = (
         icon="mdi:playlist-play",
         scope=SCOPE_HISTORY,
         native_unit_of_measurement="shows",
-        value_fn=lambda d: len(d["up_next"]),
+        value_fn=lambda d: count_waiting(d["up_next"]),
         attrs_fn=_up_next_attrs,
     ),
     RefractSensorDescription(

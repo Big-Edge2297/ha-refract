@@ -16,7 +16,7 @@ for (const key of Object.getOwnPropertyNames(dom.window)) {
 
 const { RefractStatsCard } = await import("../src/refract-stats-card");
 await import("../src/editor");
-const { makeHass, PREFIX, last7Days, catchUpShows, westworld, states: baseStates } = await import("./fixture");
+const { makeHass, PREFIX, last7Days, catchUpShows, westworld, lupin, states: baseStates } = await import("./fixture");
 const { weekdayName } = await import("../src/format");
 const { resolveLayout } = await import("../src/types");
 
@@ -450,7 +450,7 @@ test("catch-up backlog: headline, estimate and rows, without a ready badge", asy
   assert.deepEqual(rows, ["Westworld 30", "Lupin 9"]);
   assert.equal(el.shadowRoot!.querySelector(".poster"), null);
   const widths = [...el.shadowRoot!.querySelectorAll<HTMLElement>(".c-row .progress > span")].map((s) => s.style.width);
-  assert.deepEqual(widths, ["100%", "30%"], "bars are relative to the biggest backlog");
+  assert.deepEqual(widths, ["16.7%", "55%"], "bars show how much of the aired episodes is watched, like the Next up bar");
 });
 
 test("catch-up backlog when there is nothing waiting", async () => {
@@ -1223,4 +1223,56 @@ test("monthly wrap follows the language", async () => {
 test("the editor offers the monthly wrap switch for the custom layout only", async () => {
   assert.ok(!(await editorFor({})).names.includes("show_monthly_wrap"));
   assert.ok((await editorFor({ layout: "custom" })).names.includes("show_monthly_wrap"));
+});
+
+// ------------------------------------------------------------ next up with nothing left, backlog bars
+
+const plain = (el: any) =>
+  [...(el.shadowRoot as ShadowRoot).children].filter((n) => n.tagName !== "STYLE").map((n) => n.textContent).join(" ").replace(/\s+/g, " ");
+const fullyWatched = { ...lupin, aired_episodes: 25, remaining_episodes: 0, next_episode: { season: 5, number: 1, aired: false } };
+const withNextUp = (item: Record<string, unknown>, drop: string[] = []) => {
+  const states: Record<string, any> = { ...baseStates, [`sensor.${PREFIX}next_up`]: { entity_id: "n", state: "Lupin", attributes: item } };
+  for (const key of drop) delete states[`sensor.${PREFIX}${key}`];
+  return makeHass({ states });
+};
+
+test("a fully watched show is not offered as next up; the next show with episodes waiting is", async () => {
+  const el = await mount({}, withNextUp(fullyWatched));
+  const text = plain(el);
+  assert.match(text, /Next up Westworld 2016/, "Westworld has episodes waiting");
+  assert.doesNotMatch(text, /25 of 25 aired episodes/);
+  assert.doesNotMatch(text, /(^|\s)0 remaining/);
+  assert.match(text, /30 remaining/);
+});
+
+test("with nothing left to watch anywhere, next up says so", async () => {
+  const el = await mount({}, withNextUp(fullyWatched, ["catch_up", "shows_waiting"]));
+  const text = plain(el);
+  assert.match(text, /Nothing up next/);
+  assert.doesNotMatch(text, /Lupin\s*2021/);
+});
+
+test("a show whose remaining count is missing is still next up", async () => {
+  const { remaining_episodes: _gone, ...unknownCount } = lupin as any;
+  const el = await mount({}, withNextUp(unknownCount));
+  assert.match(plain(el), /Next up.{0,20}Lupin 2021/);
+});
+
+test("catch-up bars never look full while episodes wait, and fall back to the size of the backlog", async () => {
+  const widthsOf = async (shows: unknown[]) => {
+    const hass = makeHass({
+      states: { ...baseStates, [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "30", attributes: { shows, show_count: shows.length, estimated_minutes: 600 } } },
+    });
+    const el = await mount({}, hass);
+    return [...el.shadowRoot!.querySelectorAll<HTMLElement>(".c-row .progress > span")].map((s) => s.style.width);
+  };
+  const row = (title: string, remaining: number, extra: Record<string, unknown> = {}) => ({ title, year: 2020, is_anime: false, remaining, tmdb_id: remaining, poster_url: null, ...extra });
+  // 20 of 36 waiting: 44.4% watched, never a full bar
+  assert.deepEqual(await widthsOf([row("A", 20, { aired_episodes: 36 }), row("B", 4, { aired_episodes: 8 })]), ["44.4%", "50%"]);
+  // everything waiting: an empty bar, not a full one
+  assert.deepEqual(await widthsOf([row("C", 10, { aired_episodes: 10 })]), ["0%"]);
+  // an older integration without the aired count: relative to the biggest backlog
+  assert.deepEqual(await widthsOf([row("D", 20), row("E", 5)]), ["100%", "25%"]);
+  const el = await mount({});
+  assert.equal(el.shadowRoot!.querySelector(".c-row .progress")!.getAttribute("aria-label"), "6 of 36 aired episodes");
 });
