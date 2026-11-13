@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3
+
+- **Changed:** *Most watched* keeps two columns on narrow cards and uses a container query (`@container picks (max-width: 400px)`) for smaller tiles, instead of switching to one column
+- **Changed:** on the first wrap page the hours are centered in the free space (`.wrap-body` is a column and `.wrap-hero` takes the rest), so the page has no empty bottom
+
 ## 0.7.2
 
 - **New:** `wrap_style: pages` (default) renders the monthly wrap as app-style pages (story bar, swipe, tap zones, arrow keys, one highlight per page); `tabs` keeps the 0.7.0 look. New texts in all languages

@@ -2,6 +2,12 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.7.3
+
+### Changed
+- **Most watched is side by side again on phones.** The tiles stay in two columns on narrow cards and get smaller there (a smaller photo and text), so names and numbers still fit in English, German, Polish and the other languages. Wide cards look as before
+- **The first wrap page, *Your month, wrapped*, has no dead space at the bottom any more.** The hours now take the free space in the middle of the page in large type, with the tiles at the bottom
+
 ## 0.7.2
 
 ### Added

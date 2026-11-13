@@ -126,11 +126,48 @@ export const cardStyles = css`
     font-variant-numeric: tabular-nums;
   }
   /* most watched */
+  .panel.picks {
+    container-type: inline-size;
+    container-name: picks;
+  }
   .picks-grid {
     display: grid;
-    /* two columns when the card is wide enough for them, else one: long names and translations need room */
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px 14px;
+  }
+  /* narrow cards (phones): the same two columns, with smaller tiles */
+  @container picks (max-width: 400px) {
+    .panel.picks .picks-grid {
+      gap: 10px 10px;
+    }
+    .panel.picks .pick {
+      gap: 7px;
+    }
+    .panel.picks .pick-avatar {
+      width: 36px;
+      height: 36px;
+      --mdc-icon-size: 18px;
+    }
+    .panel.picks .pick-avatar .flag {
+      font-size: 20px;
+    }
+    .panel.picks .pick-avatar .initials {
+      font-size: 12px;
+    }
+    .panel.picks .pick-label,
+    .panel.picks .pick-sub {
+      font-size: 10.5px;
+    }
+    .panel.picks .pick-name {
+      font-size: 13px;
+    }
+    .panel.picks .pick-chevron {
+      --mdc-icon-size: 16px;
+    }
+    .panel.picks .pick-avatar.small {
+      width: 28px;
+      height: 28px;
+    }
   }
   .picks-grid {
     align-items: start;
@@ -594,6 +631,18 @@ export const cardStyles = css`
     position: relative;
     z-index: 1;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .wrap-pages .wrap-hero {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 0 14px;
+    text-align: center;
   }
   .wrap-pages .tile {
     background: rgba(255, 255, 255, 0.14);
@@ -609,8 +658,9 @@ export const cardStyles = css`
     color: #fff;
   }
   .wrap-pages .wrap-hours {
-    font-size: 56px;
+    font-size: 84px;
     font-weight: 700;
+    line-height: 1;
   }
   .wrap-pages .wrap-unit {
     font-size: 14px;
