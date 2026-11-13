@@ -156,6 +156,8 @@ export interface RefractCardConfig {
   show_last_7_days?: boolean;
   show_top_picks?: boolean;
   show_monthly_wrap?: boolean;
+  /** Monthly wrap look: colored app-style pages, or the compact tabs. */
+  wrap_style?: "pages" | "tabs";
   show_next_up?: boolean;
   show_catchup?: boolean;
   show_airing?: boolean;
@@ -199,6 +201,7 @@ export const DEFAULT_CONFIG = {
   show_last_7_days: true,
   show_top_picks: true,
   show_monthly_wrap: true,
+  wrap_style: "pages" as "pages" | "tabs",
   show_next_up: true,
   show_catchup: true,
   show_airing: true,

@@ -18,6 +18,7 @@ const { RefractStatsCard } = await import("../src/refract-stats-card");
 await import("../src/editor");
 const { makeHass, PREFIX, last7Days, catchUpShows, westworld, lupin, states: baseStates } = await import("./fixture");
 const { weekdayName } = await import("../src/format");
+const { SECTION_CARDS } = await import("../src/section-cards");
 const { resolveLayout } = await import("../src/types");
 
 type Card = InstanceType<typeof RefractStatsCard>;
@@ -1096,7 +1097,7 @@ test("units, counts and the fun stat follow the plural rules of the language", a
 // ------------------------------------------------------------ monthly wrap
 
 const wrapRoot = async (config: Record<string, unknown> = {}, hass?: any) => {
-  const el = await mount(config, hass);
+  const el = await mount({ wrap_style: "tabs", ...config }, hass);
   return { el, root: el.shadowRoot! };
 };
 const press = async (el: any, selector: string, index = 0) => {
@@ -1275,4 +1276,199 @@ test("catch-up bars never look full while episodes wait, and fall back to the si
   assert.deepEqual(await widthsOf([row("D", 20), row("E", 5)]), ["100%", "25%"]);
   const el = await mount({});
   assert.equal(el.shadowRoot!.querySelector(".c-row .progress")!.getAttribute("aria-label"), "6 of 36 aired episodes");
+});
+
+// ------------------------------------------------------------ app-style wrap pages
+
+const pageRoot = async (config: Record<string, unknown> = {}, hass?: any) => {
+  const el = await mount(config, hass);
+  return { el, root: el.shadowRoot!, page: () => el.shadowRoot!.querySelector(".wrap-pages")! };
+};
+const pointer = (el: Element, type: string, x: number, y = 100) => {
+  const e = new (dom.window as any).Event(type, { bubbles: true });
+  Object.assign(e, { clientX: x, clientY: y });
+  el.dispatchEvent(e);
+};
+
+test("the monthly wrap is app-style pages by default, tabs when asked for", async () => {
+  const { page, root } = await pageRoot();
+  assert.ok(page(), "pages are the default");
+  assert.equal(root.querySelector(".wrap-tabs"), null);
+  const tabs = await pageRoot({ wrap_style: "tabs" });
+  assert.equal(tabs.page(), null);
+  assert.ok(tabs.root.querySelector(".wrap-tabs"));
+});
+
+test("a wrap page has the story bar, the brand, the month, a title, a highlight and the content", async () => {
+  const { page } = await pageRoot();
+  const p = page();
+  assert.ok(p.classList.contains("page-overview"));
+  assert.equal(p.querySelectorAll(".wrap-seg").length, 4);
+  assert.deepEqual([...p.querySelectorAll(".wrap-seg")].map((x) => x.classList.contains("done")), [true, false, false, false]);
+  assert.match(compact(p.querySelector(".wrap-brand")), /^Refract @/);
+  assert.equal(p.querySelector(".wrap-kicker")!.textContent, "October 2026");
+  assert.equal(p.querySelector(".wrap-title")!.textContent, "Your month, wrapped");
+  assert.equal(compact(p.querySelector(".wrap-insight")), "27 items watched");
+  assert.equal(p.querySelector(".wrap-hours")!.textContent, "26");
+  assert.equal((p.querySelector(".wrap-tap.prev") as HTMLElement).hidden, true, "no page before the first");
+  assert.equal((p.querySelector(".wrap-tap.next") as HTMLElement).hidden, false);
+});
+
+test("wrap pages turn with taps, the story bar, the arrow keys and swipes", async () => {
+  const { el, page } = await pageRoot();
+  const title = () => page().querySelector(".wrap-title")!.textContent;
+  await press(el, ".wrap-tap.next");
+  assert.equal(title(), "Your tastes");
+  assert.ok(page().classList.contains("page-tastes"));
+  assert.equal(compact(page().querySelector(".wrap-insight")), "100% of your watches were brand new");
+  assert.deepEqual([...page().querySelectorAll(".wrap-seg")].map((x) => x.classList.contains("done")), [true, true, false, false]);
+  await press(el, ".wrap-tap.prev");
+  assert.equal(title(), "Your month, wrapped");
+  await press(el, ".wrap-seg", 2);
+  assert.equal(title(), "Your patterns");
+  // the busiest weekday of October 2026, from the days in the sensor
+  const days = (baseStates[`sensor.${PREFIX}monthly_wrap`] as any).attributes.months[0].days as number[];
+  const perWeekday = new Array(7).fill(0);
+  days.forEach((n, i) => (perWeekday[new Date(Date.UTC(2026, 9, i + 1)).getUTCDay()] += n));
+  const busiest = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][perWeekday.indexOf(Math.max(...perWeekday))];
+  assert.equal(compact(page().querySelector(".wrap-insight")), `Your busiest day of the week was ${busiest}`);
+  page().dispatchEvent(new (dom.window as any).KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+  await el.updateComplete;
+  assert.equal(title(), "Your moments");
+  assert.equal(compact(page().querySelector(".wrap-insight")), "The Gentlemen was your most watched title");
+  assert.equal((page().querySelector(".wrap-tap.next") as HTMLElement).hidden, true, "no page after the last");
+  page().dispatchEvent(new (dom.window as any).KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+  await el.updateComplete;
+  assert.equal(title(), "Your moments", "stays on the last page");
+  // swipe right goes back, swipe left goes on; a short move or a vertical scroll does nothing
+  pointer(page(), "pointerdown", 100); pointer(page(), "pointerup", 220);
+  await el.updateComplete;
+  assert.equal(title(), "Your patterns");
+  pointer(page(), "pointerdown", 220); pointer(page(), "pointerup", 100);
+  await el.updateComplete;
+  assert.equal(title(), "Your moments");
+  pointer(page(), "pointerdown", 100); pointer(page(), "pointerup", 130);
+  pointer(page(), "pointerdown", 100, 0); pointer(page(), "pointerup", 200, 400);
+  await el.updateComplete;
+  assert.equal(title(), "Your moments", "a short move or a vertical scroll is not a swipe");
+  // the click that follows a swipe is not a tap
+  pointer(page(), "pointerdown", 220); pointer(page(), "pointerup", 100);
+});
+
+test("wrap pages keep the month arrows and follow the language", async () => {
+  const { el, page } = await pageRoot();
+  await press(el, ".wrap-arrow", 0);
+  assert.equal(page().querySelector(".wrap-kicker")!.textContent, "September 2026");
+  const de = await pageRoot({}, inLanguage("de"));
+  assert.equal(de.page().querySelector(".wrap-title")!.textContent, "Dein Monat im Rückblick");
+  assert.equal(de.page().querySelector(".wrap-kicker")!.textContent, "Oktober 2026");
+  await press(de.el, ".wrap-tap.next");
+  assert.equal(compact(de.page().querySelector(".wrap-insight")), "100 % deiner Wiedergaben waren neu");
+});
+
+// ------------------------------------------------------------ single-section cards
+
+const sectionCard = async (type: string, config: Record<string, unknown> = {}, hass: any = makeHass()) => {
+  const el = document.createElement(type) as any;
+  el.setConfig({ type: `custom:${type}`, entity: ENTITY, ...config });
+  el.hass = hass;
+  document.body.appendChild(el);
+  await el.updateComplete;
+  return el;
+};
+const cardFor = (section: string) => SECTION_CARDS.find((c) => c.section === section)!.type;
+
+test("there is a single-section card for every section, each with its own name", async () => {
+  const { SECTION_IDS } = await import("../src/types");
+  assert.deepEqual(SECTION_CARDS.map((c) => c.section).sort(), [...SECTION_IDS].sort());
+  assert.equal(new Set(SECTION_CARDS.map((c) => c.type)).size, SECTION_CARDS.length, "unique card types");
+  for (const info of SECTION_CARDS) {
+    assert.match(info.type, /^refract-[a-z0-9-]+-card$/);
+    assert.ok(customElements.get(info.type), `${info.type} is defined`);
+    assert.match(info.name, /^Refract: /);
+    assert.ok(info.description.length > 10);
+  }
+});
+
+test("a single-section card shows only its section, without the header", async () => {
+  for (const [section, selector] of [["next_up", ".panel.next"], ["top_picks", ".panel.picks"], ["monthly_wrap", ".panel.wrap"], ["catchup", ".panel.catchup, .panel"], ["airing", ".panel.airing, .panel"]] as const) {
+    const el = await sectionCard(cardFor(section));
+    const root = el.shadowRoot as ShadowRoot;
+    assert.ok(root.querySelector("ha-card.single"), `${section}: single card`);
+    assert.equal(root.querySelector(".header"), null, `${section}: no header`);
+    assert.ok(root.querySelector(selector), `${section}: its section`);
+    assert.equal(root.querySelectorAll(".panel").length <= 1, true, `${section}: just one panel`);
+  }
+  const next = plain(await sectionCard(cardFor("next_up")));
+  assert.match(next, /Next up/);
+  assert.doesNotMatch(next, /Most watched|Monthly wrap|Catch-up|Airing/);
+});
+
+test("single-section cards ignore the layout, take their own settings and show a title", async () => {
+  const el = await sectionCard(cardFor("top_picks"), { layout: "compact", name: "My leaders", top_picks_items: ["country", "actor"] });
+  const root = el.shadowRoot as ShadowRoot;
+  assert.equal(root.querySelector(".single-title")!.textContent, "My leaders");
+  assert.deepEqual([...root.querySelectorAll(".pick-label")].map((x) => x.textContent), ["Country", "Actor"]);
+  const wrap = await sectionCard(cardFor("monthly_wrap"));
+  assert.ok((wrap.shadowRoot as ShadowRoot).querySelector(".wrap-pages"), "the monthly wrap card uses pages");
+  const tabs = await sectionCard(cardFor("monthly_wrap"), { wrap_style: "tabs" });
+  assert.ok((tabs.shadowRoot as ShadowRoot).querySelector(".wrap-tabs"));
+  const lang = await sectionCard(cardFor("next_up"), {}, inLanguage("fr"));
+  assert.match(plain(lang), /À suivre/);
+});
+
+test("a single-section card says so when its section has nothing to show, and sizes itself", async () => {
+  const none = await sectionCard(cardFor("monthly_wrap"), {}, without("monthly_wrap"));
+  assert.match(plain(none), /Nothing to show here yet/);
+  const next = await sectionCard(cardFor("next_up"));
+  const catchup = await sectionCard(cardFor("catchup"), { queue_length: 3 });
+  assert.equal(next.getCardSize(), 3);
+  assert.equal(catchup.getCardSize(), 5);
+  assert.ok(next.getGridOptions().columns);
+  assert.equal(typeof (customElements.get("refract-stats-card") as any).getStubConfig, "function");
+  const stub = (customElements.get(cardFor("next_up")) as any).getStubConfig(makeHass());
+  assert.equal(typeof stub.entity, "string");
+});
+
+test("the single-section editor offers only what that section needs", async () => {
+  const fieldsFor = async (section: string, config: Record<string, unknown> = {}) => {
+    const el = (await (customElements.get(cardFor(section)) as any).getConfigElement()) as any;
+    el.setConfig({ type: `custom:${cardFor(section)}`, entity: ENTITY, ...config });
+    el.hass = makeHass();
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const names: string[] = [];
+    const walk = (schema: any[]) => schema.forEach((f) => (f.schema ? walk(f.schema) : names.push(f.name)));
+    walk(el.shadowRoot.querySelector("ha-form").schema);
+    return { el, names };
+  };
+  assert.deepEqual((await fieldsFor("streak")).names, ["entity", "name"]);
+  assert.deepEqual((await fieldsFor("next_up")).names, ["entity", "name", "show_posters", "show_actions", "confirm_actions"]);
+  assert.deepEqual((await fieldsFor("monthly_wrap")).names, ["entity", "name", "wrap_style"]);
+  assert.deepEqual((await fieldsFor("top_picks")).names, ["entity", "name", "top_picks_items"]);
+  assert.deepEqual((await fieldsFor("catchup")).names, ["entity", "name", "queue_length", "show_posters"]);
+  // changes stay free of layout keys, and the tile choice sticks
+  const { el } = await fieldsFor("top_picks");
+  let emitted: any;
+  el.addEventListener("config-changed", (e: CustomEvent) => (emitted = e.detail.config));
+  const form = el.shadowRoot.querySelector("ha-form");
+  form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, top_picks_items: ["genre"] } } }));
+  assert.deepEqual(emitted.top_picks_items, ["genre"]);
+  assert.equal(emitted.layout, undefined);
+  const card = await sectionCard(cardFor("top_picks"), emitted);
+  assert.deepEqual([...(card.shadowRoot as ShadowRoot).querySelectorAll(".pick-label")].map((x) => x.textContent), ["Genre"]);
+});
+
+test("the main editor offers the wrap style except in the compact layout", async () => {
+  const names = async (config: Record<string, unknown>) => {
+    const { editor } = await editorFor(config);
+    const out: string[] = [];
+    const walk = (schema: any[]) => schema.forEach((f) => (f.schema ? walk(f.schema) : out.push(f.name)));
+    editor.shadowRoot.querySelectorAll("ha-form").forEach((form: any) => walk(form.schema));
+    return out;
+  };
+  for (const layout of [undefined, "full", "custom"]) {
+    assert.ok((await names(layout ? { layout } : {})).includes("wrap_style"), `wrap_style for ${layout}`);
+  }
+  assert.ok(!(await names({ layout: "compact" })).includes("wrap_style"));
 });

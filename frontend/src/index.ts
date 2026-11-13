@@ -1,5 +1,7 @@
 import "./refract-stats-card";
 import "./editor";
+import "./section-cards";
+import { SECTION_CARDS } from "./section-cards";
 import { CARD_TYPE, DOCS_URL, VERSION } from "./const";
 import { t } from "./localize";
 
@@ -18,6 +20,12 @@ if (!window.customCards.some((c) => c.type === CARD_TYPE)) {
     preview: true,
     documentationURL: DOCS_URL,
   });
+}
+
+for (const info of SECTION_CARDS) {
+  if (!window.customCards.some((c) => c.type === info.type)) {
+    window.customCards.push({ type: info.type, name: info.name, description: info.description, preview: true, documentationURL: DOCS_URL });
+  }
 }
 
 console.info(

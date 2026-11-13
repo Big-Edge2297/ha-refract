@@ -2,6 +2,18 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.7.2
+
+### Added
+- **App-style wrap pages**: the monthly wrap now looks like the wraps in the Refract app. Four colored pages (purple *Your month, wrapped*, pink *Your tastes*, teal *Your patterns*, orange *Your moments*) with a story bar on top, one highlight sentence per page, and translucent tiles on a gradient. Turn the pages with a tap on the left or right side, a swipe, the arrow keys or by tapping the story bar. The month arrows stay. The overview page gained items per day, the weekend share and the best streak. The new option `wrap_style` chooses `pages` (default) or `tabs`, the compact look of 0.7.0
+- **Single-section cards**: every section is also a card of its own, to place separately in Sections or masonry dashboards. Twelve new cards in the card picker named *Refract: ...* (`refract-next-up-card`, `refract-monthly-wrap-card`, `refract-most-watched-card`, `refract-catch-up-card`, `refract-airing-card`, `refract-streak-card` and so on). They show only their section, without the header, take the same `entity`, an optional `name` as the title and the settings of that section, and have a card editor trimmed to those settings
+- Translations of the new texts in all seven languages, and tests for the pages, the cards and their editor
+- The demo page has a switch for the wrap style, and the docs have a section on the single-section cards
+
+### Changed
+- **The monthly wrap changes look by default.** Cards that show it now get the pages. Set `wrap_style: tabs` to keep the compact tabs
+- The genre list in the wrap has a wider name column, and the *Most watched* tile choice (`top_picks_items`) also works on its own card
+
 ## 0.7.1
 
 ### Fixed

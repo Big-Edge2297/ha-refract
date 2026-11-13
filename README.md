@@ -75,6 +75,8 @@ entity: sensor.refract_<username>_next_up
 
 The card has three layouts: `full` (everything), `compact` (total watch time, still to finish and next up) and `custom`, where every section has its own switch (`show_average`, `show_last_7_days`, `show_catchup`, `show_airing` and more) and you set the order. See **[docs/dashboard-card.md](docs/dashboard-card.md)** for all options, the **Mark watched** button and troubleshooting.
 
+Every section is also available as a card of its own (Next up, Monthly wrap, Most watched and more), to place separately in your dashboard. See [Single-section cards](docs/dashboard-card.md#single-section-cards). The monthly wrap looks like the one in the Refract app: colored pages you swipe through ([Monthly wrap](docs/dashboard-card.md#monthly-wrap)).
+
 ## Options
 
 **Settings > Devices & services > Refract > Configure**

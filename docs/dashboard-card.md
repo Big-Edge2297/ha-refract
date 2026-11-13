@@ -23,18 +23,51 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 
 Sections hide themselves when their sensors don't exist, so a read-only API key still gives a clean card.
 
+## Single-section cards
+
+Besides the full card, every section is also available as a card of its own, so you can place them separately in a Sections or masonry dashboard. They appear in the card picker as **Refract: ...**. Each one shows just its section, without the header, and takes the same `entity` as the full card, an optional `name` that becomes its title, and the settings that matter for that section.
+
+| Card type | Section | Settings besides `entity` and `name` |
+|---|---|---|
+| `custom:refract-total-watch-time-card` | Total watch time | `duration_format`, `fun_stat`, `fun_stat_mode` |
+| `custom:refract-watch-time-card` | Watch time by kind | `duration_format`, `watch_time_style` |
+| `custom:refract-library-card` | Library | `library_style` |
+| `custom:refract-still-to-finish-card` | Still to finish | `duration_format` |
+| `custom:refract-streak-card` | Streak | none |
+| `custom:refract-average-card` | Average per week | `duration_format` |
+| `custom:refract-last-7-days-card` | Last 7 days | none |
+| `custom:refract-most-watched-card` | Most watched | `top_picks_items` |
+| `custom:refract-monthly-wrap-card` | Monthly wrap | `wrap_style` |
+| `custom:refract-next-up-card` | Next up | `show_posters`, `show_actions`, `confirm_actions` |
+| `custom:refract-catch-up-card` | Catch-up backlog | `queue_length`, `show_posters` |
+| `custom:refract-airing-card` | Airing this week | `airing_length` |
+
+```yaml
+type: custom:refract-next-up-card
+entity: sensor.refract_<username>_next_up
+show_actions: true
+```
+
+A single-section card ignores `layout` and the `show_*` switches, because it is the section. The tiles of *Most watched* are chosen with `top_picks_items`, as in the Custom layout. A card says *Nothing to show here yet* when its section has no data, for instance a Monthly wrap card without watch history. The card editor of a single-section card offers only the settings of its section.
+
 ## Languages
 
 The card shows in the language of your Home Assistant profile: German, French, Spanish, Italian, Dutch, Portuguese and Polish, or English for any other language. The units follow the language too (days, hours, and the short forms such as `j` for jours in French). The card editor itself stays in English. See [Translations](translations.md).
 
 ## Monthly wrap
 
-The *Monthly wrap* section is the integration's own version of the wraps in the Refract app: one summary for each completed month, up to the last 12. Use the arrows to go back through the months, and the tabs to switch between the pages:
+The *Monthly wrap* section is the integration's own version of the wraps in the Refract app: one summary for each completed month, up to the last 12.
 
-- **Overview**: the hours watched, with the change against the month before, and how many episodes, movies, shows and anime.
-- **Tastes**: shows, anime and movies as a share of the titles you watched, your top genres, and how much was a first watch and how much a rewatch.
-- **Patterns**: items and hours per day, a bar for every day of the month with the busiest day highlighted, the share watched on weekends, your best streak and the days you watched something.
-- **Moments**: the three most watched titles with their posters, and the countries you watched a title from for the first time.
+![The four pages of the monthly wrap](monthly-wrap.png)
+
+By default it looks like the app: four colored **pages**, with a story bar on top. Turn the pages with a tap on the left or right side, a swipe, the arrow keys, or by tapping a segment of the story bar. The arrows next to the month go back and forward through the months. The pages are:
+
+- **Your month, wrapped** (purple): the hours watched, with the change against the month before, how many episodes, movies, shows and anime, and your items per day, weekend share and best streak.
+- **Your tastes** (pink): shows, anime and movies as a share of the titles you watched, your top genres, and how much was a first watch and how much a rewatch.
+- **Your patterns** (teal): items and hours per day, a bar for every day of the month with the busiest day highlighted, your busiest day of the week, the share watched on weekends, your best streak and the days you watched something.
+- **Your moments** (orange): the three most watched titles with their posters, and the countries you watched a title from for the first time.
+
+Each page opens with one sentence about the month, like the highlights in the app. If you prefer the compact version, set `wrap_style: tabs` (or choose *Tabs* in the editor): the same pages as four tabs in a small card.
 
 It is built from your watch history, so it needs **Fetch watch history** turned on in the integration options. Genres, posters and the first countries also need the TMDB API key, and show up as the TMDB details come in (the same details *Most watched* uses). Without a key you still get everything else.
 
@@ -168,6 +201,7 @@ Cards from before 0.4.4 that have no `layout` but hide sections or set a `sectio
 | `show_last_7_days` | `true` | Last 7 days chart and busiest day |
 | `show_top_picks` | `true` | Most watched (needs a TMDB key in the integration options) |
 | `show_monthly_wrap` | `true` | Monthly wrap (needs watch history) |
+| `wrap_style` | `pages` | `pages` (app-style colored pages) or `tabs` (a compact card with four tabs) |
 | `show_next_up` | `true` | Next up tile |
 | `show_catchup` | `true` | Catch-up backlog |
 | `show_airing` | `true` | Airing this week |

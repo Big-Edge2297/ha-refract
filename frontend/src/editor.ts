@@ -1,7 +1,7 @@
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 import { property, state } from "lit/decorators.js";
 import { defineOnce } from "./define";
-import { DOMAIN, EDITOR_TYPE } from "./const";
+import { DOMAIN, EDITOR_TYPE, SECTION_EDITOR_TYPE } from "./const";
 import { editorStyles } from "./styles";
 import { DEFAULT_CONFIG, SECTION_IDS, hasSectionCustomization, resolveLayout, resolveSectionOrder, type HomeAssistant, type RefractCardConfig, type SectionId } from "./types";
 
@@ -25,6 +25,7 @@ const LABELS: Record<string, string> = {
   show_last_7_days: "Last 7 days",
   show_top_picks: "Most watched",
   show_monthly_wrap: "Monthly wrap",
+  wrap_style: "Monthly wrap style",
   top_picks_items: "Most watched shows",
   show_next_up: "Next up",
   show_catchup: "Catch-up backlog",
@@ -60,6 +61,7 @@ const HELPERS: Record<string, string> = {
   show_last_7_days: "Needs watch history turned on in the integration options.",
   show_top_picks: "Needs a TMDB API key in the Refract integration options.",
   show_monthly_wrap: "Needs watch history turned on in the integration options. Genres and firsts need a TMDB API key.",
+  wrap_style: "App-style pages to swipe through, or compact tabs.",
   top_picks_items: "Only for the Custom layout. Full shows all six, Compact hides this section.",
   show_average: "Needs watch history turned on in the integration options.",
   color_movies: "Hex color such as #2a78d6. Leave empty for the default.",
@@ -68,7 +70,7 @@ const HELPERS: Record<string, string> = {
 const option = (value: string, label: string) => ({ value, label });
 const select = (options: Array<{ value: string; label: string }>) => ({ select: { mode: "dropdown", options } });
 
-const buildSchema = (custom: boolean) => [
+const buildSchema = (custom: boolean, compact = false) => [
   { name: "entity", required: true, selector: { entity: { integration: DOMAIN, domain: "sensor" } } },
   { name: "name", selector: { text: {} } },
   {
@@ -134,6 +136,7 @@ const buildSchema = (custom: boolean) => [
     ]
     : []),
   { name: "show_posters", selector: { boolean: {} } },
+  ...(compact ? [] : [{ name: "wrap_style", selector: select([option("pages", "App-style pages"), option("tabs", "Tabs")]) }]),
   {
     type: "expandable",
     name: "",
@@ -189,12 +192,33 @@ const buildSchema = (custom: boolean) => [
   },
 ];
 
+type Field = { name?: string; schema?: Field[] };
+const flatten = (fields: Field[]): Field[] => fields.flatMap((f) => (f.schema ? flatten(f.schema) : [f]));
+
+/** The settings that matter to each single-section card, besides the entity and the name. */
+const SECTION_FIELDS: Record<SectionId, string[]> = {
+  hero: ["duration_format", "fun_stat", "fun_stat_mode"],
+  watch_time: ["duration_format", "watch_time_style"],
+  library: ["library_style"],
+  still_to_finish: ["duration_format"],
+  streak: [],
+  average: ["duration_format"],
+  last_7_days: [],
+  top_picks: ["top_picks_items"],
+  monthly_wrap: ["wrap_style"],
+  next_up: ["show_posters", "show_actions", "confirm_actions"],
+  catchup: ["queue_length", "show_posters"],
+  airing: ["airing_length"],
+};
+
 @defineOnce(EDITOR_TYPE)
 export class RefractStatsCardEditor extends LitElement {
   static styles = editorStyles;
 
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config?: RefractCardConfig;
+  /** Set for the single-section cards: only the settings of that section are offered. */
+  @property({ attribute: false }) public section?: SectionId;
 
   public setConfig(config: RefractCardConfig): void {
     this._config = config;
@@ -202,12 +226,13 @@ export class RefractStatsCardEditor extends LitElement {
 
   protected render(): TemplateResult | typeof nothing {
     if (!this.hass || !this._config) return nothing;
+    if (this.section) return this._sectionForm(this.section);
     const layout = resolveLayout(this._config);
     const data: Record<string, unknown> = { ...DEFAULT_CONFIG, ...this._config, layout };
     if (this._config.show_queue !== undefined && this._config.show_catchup === undefined) data.show_catchup = this._config.show_queue;
     const actionMissing = !!this._config.show_actions && !this.hass.services?.[DOMAIN]?.mark_episode_watched;
     // In the custom layout the section order sits right under the Sections switches, so the form is split around it.
-    const full = buildSchema(layout === "custom");
+    const full = buildSchema(layout === "custom", layout === "compact");
     const at = layout === "custom" ? full.findIndex((f) => (f as { title?: string }).title === "Sections") + 1 : full.length;
     const form = (schema: unknown[]) => html`<ha-form
       .hass=${this.hass}
@@ -281,6 +306,29 @@ export class RefractStatsCardEditor extends LitElement {
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: out }, bubbles: true, composed: true }));
   }
 
+  private _sectionForm(section: SectionId): TemplateResult {
+    const data: Record<string, unknown> = { ...DEFAULT_CONFIG, ...this._config };
+    const known = new Map(flatten(buildSchema(true) as Field[]).map((f) => [f.name, f]));
+    const schema = ["entity", "name", ...SECTION_FIELDS[section]].map((n) => known.get(n)).filter(Boolean);
+    const actionMissing = section === "next_up" && !!this._config?.show_actions && !this.hass.services?.[DOMAIN]?.mark_episode_watched;
+    return html`<div class="wrap">
+      <ha-form
+        .hass=${this.hass}
+        .data=${data}
+        .schema=${schema}
+        .computeLabel=${(s: { name: string }) => LABELS[s.name] ?? s.name}
+        .computeHelper=${(s: { name: string }) => HELPERS[s.name]}
+        @value-changed=${this._valueChanged}
+      ></ha-form>
+      ${actionMissing
+        ? html`<ha-alert alert-type="warning">
+            The button stays hidden until the <code>refract.mark_episode_watched</code> action is available. Check
+            that your Refract API key allows marking episodes and movies as watched.
+          </ha-alert>`
+        : nothing}
+    </div>`;
+  }
+
   private _valueChanged(ev: CustomEvent): void {
     ev.stopPropagation();
     if (!this._config) return;
@@ -301,7 +349,7 @@ export class RefractStatsCardEditor extends LitElement {
       if (cfg[key] !== undefined && out[key] === undefined) out[key] = cfg[key];
     }
     // A card with no layout and hidden sections reads as custom, so choosing Full has to be written down.
-    if (out.layout === undefined && value.layout === "full" && hasSectionCustomization(out)) out.layout = "full";
+    if (!this.section && out.layout === undefined && value.layout === "full" && hasSectionCustomization(out)) out.layout = "full";
     this._config = out as unknown as RefractCardConfig;
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: out }, bubbles: true, composed: true }));
   }
@@ -312,3 +360,7 @@ declare global {
     "refract-stats-card-editor": RefractStatsCardEditor;
   }
 }
+
+/** The editor of the single-section cards: the same editor, trimmed to one section. */
+export class RefractSectionCardEditor extends RefractStatsCardEditor {}
+defineOnce(SECTION_EDITOR_TYPE)(RefractSectionCardEditor);

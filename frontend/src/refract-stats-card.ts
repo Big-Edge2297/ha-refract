@@ -40,7 +40,11 @@ export class RefractStatsCard extends LitElement {
   @state() private _actionState: ActionState = "idle";
   @state() private _actionError = "";
 
+  /** Set by the single-section cards: the one section this card shows. */
+  protected _only?: SectionId;
   private _cfg!: ResolvedConfig;
+  private _swipe?: { x: number; y: number };
+  private _swipedAt = 0;
   private _disc?: Discovery;
   private _discFor?: { config: RefractCardConfig; entities: unknown; devices: unknown };
   private _actionTimer?: number;
@@ -79,7 +83,6 @@ export class RefractStatsCard extends LitElement {
   public getCardSize(): number {
     if (!this._cfg) return 12;
     const c = this._cfg;
-    const shown = layoutSections(resolveLayout(this._config), c);
     const sizes: Record<SectionId, number> = {
       hero: 3,
       watch_time: 2,
@@ -94,6 +97,8 @@ export class RefractStatsCard extends LitElement {
       catchup: 2 + Math.min(c.queue_length, 5),
       airing: 2 + Math.min(c.airing_length, 5),
     };
+    if (this._only) return Math.max(1, sizes[this._only] || sizes.streak);
+    const shown = layoutSections(resolveLayout(this._config), c);
     return 1 + shown.reduce((sum, id) => sum + sizes[id], 0);
   }
 
@@ -166,6 +171,15 @@ export class RefractStatsCard extends LitElement {
       catchup: () => this._catchup(m, posters),
       airing: () => this._airing(m),
     };
+
+    // A single-section card shows just its section, without the header
+    if (this._only) {
+      const part = all[this._only]();
+      return html`<ha-card class="single single-${this._only}" style=${styleMap(this._colorVars())}>
+        ${c.name ? html`<div class="single-title">${c.name}</div>` : nothing}
+        ${part === nothing ? html`<div class="empty">${t(this.hass, "empty.section")}</div>` : part}
+      </ha-card>`;
+    }
 
     // Streak and average share a row when they end up next to each other.
     const body: Array<TemplateResult | typeof nothing> = [];
@@ -839,7 +853,7 @@ export class RefractStatsCard extends LitElement {
     if (!tp) return nothing;
     const lang = languageOf(this.hass);
     // Full shows every tile; only the custom layout picks them (Compact doesn't show this section).
-    const wanted = resolveLayout(this._config) === "custom" ? this._cfg.top_picks_items : [...PICK_KINDS];
+    const wanted = this._only || resolveLayout(this._config) === "custom" ? this._cfg.top_picks_items : [...PICK_KINDS];
     const tiles = wanted
       .filter((k, i, all) => (PICK_KINDS as readonly string[]).includes(k) && all.indexOf(k) === i)
       .map((kind) => ({ kind, picks: tp.picks[kind] ?? [] }))
@@ -1024,6 +1038,13 @@ export class RefractStatsCard extends LitElement {
             ["wrap.anime", cur.animeTitles],
           ].map(([key, value]) => html`<div class="tile"><div class="value">${fmtNumber(value as number, lang)}</div><div class="muted">${t(this.hass, key as string)}</div></div>`)}
         </div>
+        ${this._cfg.wrap_style !== "tabs"
+          ? html`<div class="wrap-tiles">
+              <div class="tile"><div class="value">${fmtNumber(cur.items / daysInMonth, lang, 1)}</div><div class="muted">${t(this.hass, "wrap.items_day")}</div></div>
+              <div class="tile"><div class="value">${fmtNumber(cur.weekendShare, lang)}%</div><div class="muted">${t(this.hass, "wrap.weekend")}</div></div>
+              <div class="tile"><div class="value">${fmtNumber(cur.bestStreak, lang)} <span class="muted">${tn(this.hass, "unit.day", cur.bestStreak)}</span></div><div class="muted">${t(this.hass, "wrap.streak")}</div></div>
+            </div>`
+          : nothing}
         ${cur.estimated ? html`<div class="picks-foot">${t(this.hass, "wrap.estimated")}</div>` : nothing}`;
     } else if (this._wrapTab === "tastes") {
       const parts = [
@@ -1123,11 +1144,83 @@ export class RefractStatsCard extends LitElement {
             : html`<div class="empty">${t(this.hass, "wrap.firsts_none")}</div>`}`;
     }
 
+    const nav = html`<span class="wrap-nav">
+      <button type="button" class="wrap-arrow" aria-label=${t(this.hass, "wrap.older")} ?disabled=${index >= months.length - 1} @click=${() => go(index + 1)}><ha-icon icon="mdi:chevron-left"></ha-icon></button>
+      <button type="button" class="wrap-arrow" aria-label=${t(this.hass, "wrap.newer")} ?disabled=${index <= 0} @click=${() => go(index - 1)}><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+    </span>`;
+
+    if (this._cfg.wrap_style !== "tabs") {
+      const order = ["overview", "tastes", "patterns", "moments"] as const;
+      const at = order.indexOf(this._wrapTab);
+      const step = (delta: number) => {
+        this._wrapTab = order[Math.max(0, Math.min(order.length - 1, at + delta))];
+      };
+      // one sentence for each page, like the app's highlights
+      let insight: string | undefined;
+      if (this._wrapTab === "overview") {
+        insight = tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) });
+      } else if (this._wrapTab === "tastes") {
+        insight = cur.items ? t(this.hass, "wrap.insight_new", { pct: fmtNumber(pct(cur.firstWatch, cur.items), lang) }) : undefined;
+      } else if (this._wrapTab === "patterns") {
+        const perWeekday = new Array(7).fill(0);
+        cur.days.forEach((n, i) => (perWeekday[new Date(Date.UTC(year, month - 1, i + 1)).getUTCDay()] += n));
+        const top = perWeekday.indexOf(Math.max(...perWeekday));
+        const weekday = new Intl.DateTimeFormat(lang, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 7 + top)));
+        insight = cur.items ? t(this.hass, "wrap.insight_weekday", { weekday }) : undefined;
+      } else if (cur.top[0]) {
+        insight = t(this.hass, "wrap.insight_top", { title: cur.top[0].title });
+      }
+      const label = (tab: string) => t(this.hass, `wrap.tab.${tab}`);
+      return html`<div
+        class="panel wrap wrap-pages page-${this._wrapTab}"
+        tabindex="0"
+        role="group"
+        aria-label=${t(this.hass, "wrap.title")}
+        @keydown=${(e: KeyboardEvent) => {
+          if (e.key === "ArrowRight") step(1);
+          else if (e.key === "ArrowLeft") step(-1);
+          else return;
+          e.preventDefault();
+        }}
+        @pointerdown=${(e: PointerEvent) => (this._swipe = { x: e.clientX, y: e.clientY })}
+        @pointercancel=${() => (this._swipe = undefined)}
+        @pointerup=${(e: PointerEvent) => {
+          const start = this._swipe;
+          this._swipe = undefined;
+          if (!start) return;
+          const dx = e.clientX - start.x;
+          if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(e.clientY - start.y) * 1.5) {
+            this._swipedAt = Date.now();
+            step(dx < 0 ? 1 : -1);
+          }
+        }}
+      >
+        <div class="wrap-progress">
+          ${order.map(
+            (tab, i) => html`<button
+              type="button"
+              class="wrap-seg ${i <= at ? "done" : ""}"
+              aria-label=${label(tab)}
+              aria-current=${i === at ? "page" : "false"}
+              @click=${() => (this._wrapTab = tab)}
+            ></button>`,
+          )}
+        </div>
+        <div class="wrap-brand">
+          <span class="wrap-brand-name"><ha-icon icon="mdi:chart-donut"></ha-icon>${m.accountMain}</span>
+          ${m.accountSub ? html`<span class="wrap-brand-user">@${m.accountSub}</span>` : nothing}
+        </div>
+        <div class="wrap-kicker-row"><span class="wrap-kicker">${monthName(year, month)}</span>${nav}</div>
+        <div class="wrap-title">${t(this.hass, `wrap.page.${this._wrapTab}`)}</div>
+        ${insight ? html`<div class="wrap-insight"><ha-icon icon="mdi:shimmer"></ha-icon><span>${insight}</span></div>` : nothing}
+        <div class="wrap-body">${body}</div>
+        <button type="button" class="wrap-tap prev" tabindex="-1" aria-label=${t(this.hass, "wrap.prev_page")} ?hidden=${at === 0} @click=${() => Date.now() - this._swipedAt > 400 && step(-1)}></button>
+        <button type="button" class="wrap-tap next" tabindex="-1" aria-label=${t(this.hass, "wrap.next_page")} ?hidden=${at === order.length - 1} @click=${() => Date.now() - this._swipedAt > 400 && step(1)}></button>
+      </div>`;
+    }
+
     return html`<div class="panel wrap">
-      ${header(html`<span class="wrap-nav">
-        <button type="button" class="wrap-arrow" aria-label=${t(this.hass, "wrap.older")} ?disabled=${index >= months.length - 1} @click=${() => go(index + 1)}><ha-icon icon="mdi:chevron-left"></ha-icon></button>
-        <button type="button" class="wrap-arrow" aria-label=${t(this.hass, "wrap.newer")} ?disabled=${index <= 0} @click=${() => go(index - 1)}><ha-icon icon="mdi:chevron-right"></ha-icon></button>
-      </span>`)}
+      ${header(nav)}
       <div class="wrap-month">${monthName(year, month)}</div>
       <div class="muted">${tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) })}</div>
       <div class="wrap-tabs" role="tablist">${tabs}</div>

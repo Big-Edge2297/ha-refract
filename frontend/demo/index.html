@@ -25,6 +25,7 @@
   <label>Width <input id="width" type="range" min="300" max="900" value="520" /> <span id="wv">520</span>px</label>
   <label>Layout <select id="layout"><option>full</option><option>compact</option><option>custom</option></select></label>
   <label>Library <select id="libstyle"><option>list</option><option>bar</option></select></label>
+  <label>Wrap <select id="wrapstyle"><option>pages</option><option>tabs</option></select></label>
   <label>Watch time <select id="watchstyle"><option>list</option><option>bar</option></select></label>
   <label><input id="posters" type="checkbox" checked /> Posters (placeholder art)</label>
   <label>Duration <select id="dur"><option>days_hours</option><option>hours</option><option>auto</option></select></label>
@@ -200,7 +201,7 @@
     $("wv").textContent = $("width").value;
     card.setConfig({
       type: "custom:refract-stats-card", entity: `sensor.${P}next_up`,
-      layout: $("layout").value, library_style: $("libstyle").value, watch_time_style: $("watchstyle").value, duration_format: $("dur").value,
+      layout: $("layout").value, library_style: $("libstyle").value, watch_time_style: $("watchstyle").value, wrap_style: $("wrapstyle").value, duration_format: $("dur").value,
       show_actions: $("actions").checked,
     });
     card.hass = { ...hass, locale: { ...hass.locale, language: $("lang").value }, language: $("lang").value, states: { ...states, ...dynamic($("posters").checked) } };

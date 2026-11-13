@@ -1,4 +1,5 @@
 export const CARD_TYPE = "refract-stats-card";
+export const SECTION_EDITOR_TYPE = "refract-section-card-editor";
 export const EDITOR_TYPE = "refract-stats-card-editor";
 export const DOMAIN = "refract";
 export const DOCS_URL = "https://github.com/Big-Edge2297/ha-refract/blob/main/docs/dashboard-card.md";

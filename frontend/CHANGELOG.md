@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2
+
+- **New:** `wrap_style: pages` (default) renders the monthly wrap as app-style pages (story bar, swipe, tap zones, arrow keys, one highlight per page); `tabs` keeps the 0.7.0 look. New texts in all languages
+- **New:** single-section cards, generated from `SECTION_CARDS` in `src/section-cards.ts` (a subclass of the main card that sets `_only`) and a trimmed editor (`refract-section-card-editor`, `section` property). `getConfigElement` of each card creates that editor for its section
+- A single-section card ignores `layout` and the `show_*` switches; `top_picks_items` applies to it
+
 ## 0.7.1
 
 - **Fixed:** *Next up* passes over a show with 0 episodes remaining (to the next show with episodes waiting, or the empty state) when the integration still offers it
