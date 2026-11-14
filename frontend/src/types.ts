@@ -73,6 +73,7 @@ export const SECTION_IDS = [
   "last_7_days",
   "top_picks",
   "monthly_wrap",
+  "year_heatmap",
   "next_up",
   "catchup",
   "airing",
@@ -156,6 +157,9 @@ export interface RefractCardConfig {
   show_last_7_days?: boolean;
   show_top_picks?: boolean;
   show_monthly_wrap?: boolean;
+  show_year_heatmap?: boolean;
+  /** A blurred poster behind Next up and the moments page of the wrap. */
+  show_backdrops?: boolean;
   /** Monthly wrap look: colored app-style pages, or the compact tabs. */
   wrap_style?: "pages" | "tabs";
   show_next_up?: boolean;
@@ -201,6 +205,8 @@ export const DEFAULT_CONFIG = {
   show_last_7_days: true,
   show_top_picks: true,
   show_monthly_wrap: true,
+  show_year_heatmap: true,
+  show_backdrops: true,
   wrap_style: "pages" as "pages" | "tabs",
   show_next_up: true,
   show_catchup: true,

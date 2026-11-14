@@ -605,16 +605,20 @@ def test_watch_records_read_both_history_payloads():
     assert a.iter_watch_records("nope", None) == []
 
 
-def test_wrap_months_are_the_completed_ones_newest_first():
+def test_wrap_months_are_the_running_one_then_the_completed_ones_newest_first():
     records = [
-        rec("2026-11-02"),  # the running month is not wrapped yet
+        rec("2026-11-02"),  # the running month comes first, marked as so far
         rec("2026-10-31"), rec("2026-08-05"),
         rec("2025-10-15"),  # a year and a month ago
         rec("2025-11-20"),  # 12th completed month back
     ]
     wraps = a.build_wraps(records, {}, TODAY)
-    assert [m["month"] for m in wraps["months"]] == ["2026-10", "2026-08", "2025-11"]
+    assert [m["month"] for m in wraps["months"]] == ["2026-11", "2026-10", "2026-08", "2025-11"]
+    running = wraps["months"][0]
+    assert running["partial"] is True and running["elapsed_days"] == 10 and len(running["days"]) == 30
+    assert all("partial" not in m for m in wraps["months"][1:]), "only the running month is partial"
     assert a.build_wraps([], {}, TODAY)["months"] == []
+    assert a.build_wraps([rec("2026-10-31")], {}, TODAY)["months"][0]["month"] == "2026-10", "nothing yet this month: no running month"
     january = a.build_wraps([rec("2025-12-31")], {}, date(2026, 1, 15))
     assert [m["month"] for m in january["months"]] == ["2025-12"], "the previous month across a new year"
 
@@ -630,6 +634,7 @@ def test_wrap_month_amounts_days_and_patterns():
     )
     profiles = {"movie:3": {"runtime": 120, "genres": ["Action"], "countries": [], "poster": "/m.jpg"}}
     month = a.build_wraps(records, profiles, TODAY, episode_minutes=40, image_base="https://img")["months"][0]
+    assert "partial" not in month, "October is complete"
     assert (month["items"], month["episodes"], month["movies"], month["titles"]) == (6, 5, 1, 3)
     assert (month["show_titles"], month["anime_titles"], month["movie_titles"]) == (1, 1, 1)
     assert month["minutes"] == 50 * 4 + 24 + 120 and month["estimated"] is False

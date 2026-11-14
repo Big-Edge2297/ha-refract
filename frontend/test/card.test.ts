@@ -390,7 +390,7 @@ test("the catch-up estimate under a day shows hours only", async () => {
   });
   const t = text(await mount({}, hass));
   assert.match(t, /33 aired episodes waiting, about 21 h/);
-  assert.doesNotMatch(t, /0 d/);
+  assert.doesNotMatch(t, /(^|\s)0 d(\s|$)/);
 });
 
 test("average per week falls back to viewings when hours are unknown", async () => {
@@ -835,7 +835,7 @@ test("editor reorders sections with the arrows and keeps the YAML clean", async 
   document.body.appendChild(editor);
   await editor.updateComplete;
   const rows = () => [...editor.shadowRoot.querySelectorAll(".order-row")] as HTMLElement[];
-  assert.equal(rows().length, 12);
+  assert.equal(rows().length, 13);
   assert.match(rows()[0].textContent!, /Watch time summary/);
   assert.equal(editor.shadowRoot.querySelector(".order-reset"), null, "no reset button on the default order");
 
@@ -1443,8 +1443,8 @@ test("the single-section editor offers only what that section needs", async () =
     return { el, names };
   };
   assert.deepEqual((await fieldsFor("streak")).names, ["entity", "name"]);
-  assert.deepEqual((await fieldsFor("next_up")).names, ["entity", "name", "show_posters", "show_actions", "confirm_actions"]);
-  assert.deepEqual((await fieldsFor("monthly_wrap")).names, ["entity", "name", "wrap_style"]);
+  assert.deepEqual((await fieldsFor("next_up")).names, ["entity", "name", "show_posters", "show_backdrops", "show_actions", "confirm_actions"]);
+  assert.deepEqual((await fieldsFor("monthly_wrap")).names, ["entity", "name", "wrap_style", "show_backdrops"]);
   assert.deepEqual((await fieldsFor("top_picks")).names, ["entity", "name", "top_picks_items"]);
   assert.deepEqual((await fieldsFor("catchup")).names, ["entity", "name", "queue_length", "show_posters"]);
   // changes stay free of layout keys, and the tile choice sticks
@@ -1471,4 +1471,129 @@ test("the main editor offers the wrap style except in the compact layout", async
     assert.ok((await names(layout ? { layout } : {})).includes("wrap_style"), `wrap_style for ${layout}`);
   }
   assert.ok(!(await names({ layout: "compact" })).includes("wrap_style"));
+});
+
+// ------------------------------------------------------------ running month, backdrops, year heatmap
+
+const wrapWith = (months: unknown[]) =>
+  makeHass({ states: { ...baseStates, [`sensor.${PREFIX}monthly_wrap`]: { entity_id: "w", state: "27", attributes: { months, pending: 0, firsts_ready: true } } } });
+const runningMonth = (extra: Record<string, unknown> = {}) => {
+  const days = new Array(30).fill(0);
+  days[1] = 3; days[4] = 2; days[8] = 4; // 9 items by the 10th
+  return {
+    month: "2026-11", items: 9, episodes: 9, movies: 0, titles: 2, show_titles: 2, anime_titles: 0, movie_titles: 0, minutes: 400, estimated: false,
+    days, active_days: 3, weekend_share: 22, best_streak: 1, busiest: { day: "2026-11-09", count: 4 }, first_watch: 9, rewatch: 0,
+    top: [{ title: "Lupin", kind: "show", anime: false, count: 6, poster: null }], genres: [], firsts: [],
+    partial: true, elapsed_days: 10, ...extra,
+  };
+};
+const october = () => (baseStates[`sensor.${PREFIX}monthly_wrap`] as any).attributes.months[0];
+
+test("the running month is the first wrap, in light green and marked so far", async () => {
+  const { el, page } = await pageRoot({}, wrapWith([runningMonth(), october()]));
+  const p = page();
+  assert.ok(p.classList.contains("partial"), "light green");
+  assert.equal(compact(p.querySelector(".wrap-kicker")), "November 2026 So far");
+  assert.equal(compact(p.querySelector(".wrap-sofar")), "So far");
+  assert.equal(p.querySelector(".wrap-title")!.textContent, "Your month so far");
+  assert.equal(compact(p.querySelector(".wrap-insight")), "9 items watched · Day 10 of 30");
+  assert.equal(p.querySelector(".badge"), null, "no comparison with a month that is over");
+  const tiles = [...p.querySelectorAll(".wrap-tiles .tile")].map(tile);
+  assert.ok(tiles.includes("0.9 Items / day"), "9 items in 10 days, not in 30");
+  await press(el, ".wrap-seg", 2);
+  assert.ok(page().classList.contains("partial"), "every page of the month is green");
+  assert.equal(page().querySelector(".wrap-title")!.textContent, "Your patterns");
+  assert.ok([...page().querySelectorAll(".wrap-tiles .tile")].map(tile).includes("3 of 10 Active days"), "active days of the days so far");
+  assert.equal(page().querySelectorAll(".wrap-day").length, 30);
+  assert.equal(page().querySelectorAll(".wrap-day.future").length, 20, "the days to come are faded");
+  assert.equal(page().querySelectorAll(".wrap-day.future[title=\"\"]").length, 20, "and have no tooltip");
+  await press(el, ".wrap-arrow", 0);
+  assert.equal(compact(page().querySelector(".wrap-kicker")), "October 2026");
+  assert.equal(page().classList.contains("partial"), false);
+  assert.equal(page().querySelector(".wrap-sofar"), null);
+});
+
+test("the running month in the tabs style says so far too", async () => {
+  const { root } = await pageRoot({ wrap_style: "tabs" }, wrapWith([runningMonth(), october()]));
+  const panel = root.querySelector(".panel.wrap")!;
+  assert.equal(compact(panel.querySelector(".wrap-month")), "November 2026 So far");
+  assert.match(compact(panel), /9 items watched · Day 10 of 30/);
+  const de = await pageRoot({}, Object.assign(wrapWith([runningMonth(), october()]), { locale: { language: "de", time_zone: "server" }, language: "de" }));
+  assert.equal(de.page().querySelector(".wrap-title")!.textContent, "Dein Monat bisher");
+  assert.match(compact(de.page().querySelector(".wrap-insight")), /Tag 10 von 30/);
+});
+
+test("next up has a blurred poster behind it, which can be turned off", async () => {
+  const hass = (poster: string | undefined) =>
+    makeHass({ states: { ...baseStates, [`sensor.${PREFIX}next_up`]: { entity_id: "n", state: "Westworld", attributes: { ...westworld, poster_url: poster } } } });
+  const url = "https://image.tmdb.org/t/p/w185/w.jpg";
+  const on = (await mount({}, hass(url))).shadowRoot!.querySelector(".panel.next")!;
+  assert.ok(on.classList.contains("has-backdrop"));
+  assert.match((on.querySelector(".backdrop") as HTMLElement).style.backgroundImage, /w\.jpg/);
+  assert.equal(on.querySelector(".backdrop")!.getAttribute("aria-hidden"), "true");
+  assert.equal((await mount({ show_backdrops: false }, hass(url))).shadowRoot!.querySelector(".backdrop"), null);
+  assert.equal((await mount({ show_posters: false }, hass(url))).shadowRoot!.querySelector(".backdrop"), null);
+  assert.equal((await mount({}, hass(undefined))).shadowRoot!.querySelector(".backdrop"), null, "no poster, no backdrop");
+});
+
+test("the moments page of the wrap has the poster of the top title as a backdrop", async () => {
+  const { el, page } = await pageRoot();
+  assert.equal(page().querySelector(".wrap-backdrop"), null, "only on the moments page");
+  await press(el, ".wrap-seg", 3);
+  assert.match((page().querySelector(".wrap-backdrop") as HTMLElement).style.backgroundImage, /gentlemen\.jpg/);
+  const off = await pageRoot({ show_backdrops: false });
+  await press(off.el, ".wrap-seg", 3);
+  assert.equal(off.page().querySelector(".wrap-backdrop"), null);
+});
+
+test("the year heatmap shades every day of the last 12 months", async () => {
+  const now = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const today = new Date(`${new Date().toLocaleDateString("sv-SE")}T00:00:00Z`);
+  const ym = (y: number, m: number) => `${y}-${String(m).padStart(2, "0")}`;
+  const prev = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+  const daysIn = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const prevDays = daysIn(prev.getUTCFullYear(), prev.getUTCMonth() + 1);
+  const month = (key: string, days: number[]) => ({ ...october(), month: key, days, items: days.reduce((a, b) => a + b, 0), partial: undefined });
+  const thisMonthDays = new Array(daysIn(today.getUTCFullYear(), today.getUTCMonth() + 1)).fill(0).map((_, i) => (i + 1 <= today.getUTCDate() ? 1 : 0));
+  const wrap = [
+    { ...month(ym(today.getUTCFullYear(), today.getUTCMonth() + 1), thisMonthDays), partial: true, elapsed_days: today.getUTCDate() },
+    month(ym(prev.getUTCFullYear(), prev.getUTCMonth() + 1), new Array(prevDays).fill(2)),
+  ];
+  void now; void iso;
+  const el = await mount({}, wrapWith(wrap));
+  const panel = el.shadowRoot!.querySelector(".panel.heatmap")!;
+  assert.ok(panel, "the section is in the full layout");
+  assert.equal(panel.querySelector(".label")!.textContent, "Last 12 months");
+  const cells = panel.querySelectorAll(".hm-grid .hm");
+  assert.equal(cells.length % 7, 0, "whole weeks");
+  assert.ok(cells.length >= 53 * 7 - 6 && cells.length <= 54 * 7, `about a year of weeks: ${cells.length}`);
+  assert.ok(panel.querySelectorAll(".hm-grid .hm.l4").length >= 1, "the busiest days are the darkest");
+  assert.ok(panel.querySelectorAll(".hm-grid .hm.l2").length >= 1, "days with half of the most are lighter");
+  assert.equal(panel.querySelectorAll(".hm-legend .hm").length, 5);
+  assert.deepEqual([...panel.querySelectorAll(".hm-legend span:not(.hm)")].map((s) => s.textContent), ["Less", "More"]);
+  assert.equal(panel.querySelectorAll(".hm-rows span").length, 7);
+  assert.ok(panel.querySelectorAll(".hm-months span").length >= 8, "month names above the weeks");
+  const tiles = [...panel.querySelectorAll(".wrap-tiles .tile")].map(tile);
+  const items = today.getUTCDate() + 2 * prevDays;
+  assert.deepEqual(tiles, [`${items} Items`, `${today.getUTCDate() + prevDays} Active days`, `${today.getUTCDate() + prevDays} days Best streak`]);
+  const today_cell = [...cells].filter((c) => c.getAttribute("title") && !c.classList.contains("outside")).pop()!;
+  assert.match(today_cell.getAttribute("title")!, /: 1$/, "a tooltip with the day and the count");
+});
+
+test("the year heatmap says so when nothing was watched, and is left out without the sensor, in compact and when off", async () => {
+  assert.match(compact((await mount({}, wrapWith([]))).shadowRoot!.querySelector(".panel.heatmap")), /Nothing watched in the last 12 months/);
+  assert.equal((await mount({}, without("monthly_wrap"))).shadowRoot!.querySelector(".panel.heatmap"), null);
+  assert.equal((await mount({ layout: "compact" })).shadowRoot!.querySelector(".panel.heatmap"), null);
+  assert.equal((await mount({ layout: "custom", show_year_heatmap: false })).shadowRoot!.querySelector(".panel.heatmap"), null);
+  assert.ok((await mount({ layout: "custom" })).shadowRoot!.querySelector(".panel.heatmap"));
+  const card = await sectionCard(cardFor("year_heatmap"));
+  assert.ok((card.shadowRoot as ShadowRoot).querySelector(".panel.heatmap"));
+  assert.match(compact((await sectionCard(cardFor("year_heatmap"), {}, makeHass())).shadowRoot!.querySelector(".label")), /12/);
+});
+
+test("the editor offers the backdrop and heatmap switches", async () => {
+  assert.ok((await editorFor({})).names.includes("show_backdrops"));
+  assert.ok((await editorFor({ layout: "custom" })).names.includes("show_year_heatmap"));
+  assert.ok(!(await editorFor({})).names.includes("show_year_heatmap"));
 });

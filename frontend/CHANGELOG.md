@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.4
+
+- **New:** the running month as the first wrap (`partial`, `elapsed_days` in the month data): light green (`.wrap-pages.partial`), *So far* pill, rates over the days so far, faded future days
+- **New:** `show_backdrops` (default on): blurred poster behind `.panel.next` and the moments wrap page
+- **New:** the `year_heatmap` section (`_yearHeatmap`) and `refract-year-heatmap-card`, option `show_year_heatmap`; the calendar scrolls sideways on narrow cards (`.hm-scroll`, scrolled to the end in `updated()`)
+
 ## 0.7.3
 
 - **Changed:** *Most watched* keeps two columns on narrow cards and uses a container query (`@container picks (max-width: 400px)`) for smaller tiles, instead of switching to one column

@@ -2,6 +2,18 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.7.4
+
+### Added
+- **The running month in the monthly wrap.** The first wrap is now the current month, in **light green** with a *So far* label and the title *Your month so far*. It has the same four pages as the finished months, for the days that have passed: items and hours per day and the active days count only those days, the days to come are faded in the daily bars, and there is no comparison with the month before. The month before keeps its own colors, and the arrows go back through the months as before
+- **Poster backdrops.** A blurred, faded poster sits behind the Next up tile and behind the *Your moments* wrap page, so the card feels less flat. The new option `show_backdrops` (a switch in the editor, default on) turns it off; it needs posters
+- **Year heatmap.** A new card section, a calendar of the last 12 months like GitHub's activity graph: a square for each day, a column for each week, darker for a busier day, with the month names above, a legend, and tiles for the items, the days you watched something and your best streak. On a phone the squares keep a readable size and the calendar scrolls sideways, starting at the latest weeks. It is built from the monthly wrap's per-day data, so it needs watch history and no TMDB key. Switch in the Custom layout: `show_year_heatmap`. Also available as its own card, `refract-year-heatmap-card`
+- Translations of the new texts in all seven languages, with tests
+
+### Changed
+- The `months` attribute of `sensor.*_monthly_wrap` now starts with the running month (`partial: true`, `elapsed_days`). The sensor's state is still the number of items of the newest *finished* month
+- The default section order puts *Year heatmap* after *Monthly wrap*. Cards with a custom `section_order` get it at the end
+
 ## 0.7.3
 
 ### Changed

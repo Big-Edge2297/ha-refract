@@ -134,28 +134,43 @@
       e("airing_this_week", 3, { episodes: airing }),
       e("monthly_wrap", 41, {
         pending: 0, firsts_ready: true,
-        months: [
-          {
-            month: "2026-10", items: 41, episodes: 36, movies: 5, titles: 11, show_titles: 5, anime_titles: 1, movie_titles: 5,
-            minutes: 2430, estimated: false,
-            days: [2, 0, 1, 3, 2, 0, 0, 1, 2, 0, 4, 1, 0, 0, 2, 3, 0, 1, 2, 2, 0, 0, 1, 0, 3, 2, 1, 0, 2, 0, 3],
-            active_days: 22, weekend_share: 27, best_streak: 4, busiest: { day: "2026-10-11", count: 4 },
-            first_watch: 36, rewatch: 5,
-            top: [
-              { title: "Westworld", kind: "show", anime: false, count: 14, poster: on ? art.Westworld : null },
-              { title: "The Bear", kind: "show", anime: false, count: 9, poster: on ? art["The Bear"] : null },
-              { title: "Silo", kind: "show", anime: false, count: 6, poster: on ? art.Silo : null },
-            ],
-            genres: [{ name: "Drama", titles: 7 }, { name: "Science Fiction", titles: 5 }, { name: "Thriller", titles: 4 }, { name: "Comedy", titles: 3 }, { name: "Action", titles: 2 }],
-            firsts: [{ code: "KR", name: "South Korea", title: "Parasite" }, { code: "FR", name: "France", title: "Lupin" }],
-          },
-          {
-            month: "2026-09", items: 34, episodes: 31, movies: 3, titles: 9, show_titles: 5, anime_titles: 1, movie_titles: 3,
-            minutes: 1980, estimated: false, days: new Array(30).fill(0).map((_, i) => (i % 3 === 0 ? 2 : i % 5 === 0 ? 1 : 1)),
-            active_days: 28, weekend_share: 31, best_streak: 9, busiest: { day: "2026-09-04", count: 2 },
-            first_watch: 31, rewatch: 3, top: [], genres: [], firsts: [],
-          },
-        ],
+        months: (() => {
+          // the running month and the 12 before it, relative to today, with made-up activity
+          const now = new Date();
+          const out = [];
+          for (let k = 0; k <= 12; k++) {
+            const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - k, 1));
+            const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1;
+            const dim = new Date(Date.UTC(y, m, 0)).getUTCDate();
+            const elapsed = k === 0 ? now.getUTCDate() : dim;
+            let seed = 1000 + k * 37 + m;
+            const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+            const days = Array.from({ length: dim }, (_, i) => (i < elapsed && rnd() > 0.38 ? 1 + Math.floor(rnd() * 3.2) : 0));
+            const items = days.reduce((a, b) => a + b, 0);
+            if (!items) continue;
+            let best = 0, run = 0;
+            days.forEach((n) => { run = n ? run + 1 : 0; best = Math.max(best, run); });
+            const peak = days.indexOf(Math.max(...days));
+            const episodes = Math.round(items * 0.88), movies = items - episodes;
+            const month = {
+              month: `${y}-${String(m).padStart(2, "0")}`, items, episodes, movies, titles: Math.max(4, Math.round(items / 4)),
+              show_titles: Math.max(2, Math.round(items / 8)), anime_titles: k % 3 === 0 ? 1 : 0, movie_titles: movies,
+              minutes: items * 56, estimated: false, days, active_days: days.filter(Boolean).length,
+              weekend_share: 24 + (k * 3) % 11, best_streak: best, busiest: { day: `${y}-${String(m).padStart(2, "0")}-${String(peak + 1).padStart(2, "0")}`, count: days[peak] },
+              first_watch: items - (k % 4), rewatch: k % 4,
+              top: [
+                { title: "Westworld", kind: "show", anime: false, count: Math.max(3, Math.round(items * 0.32)), poster: on ? art.Westworld : null },
+                { title: "The Bear", kind: "show", anime: false, count: Math.max(2, Math.round(items * 0.22)), poster: on ? art["The Bear"] : null },
+                { title: "Silo", kind: "show", anime: false, count: Math.max(1, Math.round(items * 0.15)), poster: on ? art.Silo : null },
+              ],
+              genres: [{ name: "Drama", titles: 7 }, { name: "Science Fiction", titles: 5 }, { name: "Thriller", titles: 4 }, { name: "Comedy", titles: 3 }, { name: "Action", titles: 2 }],
+              firsts: k === 0 ? [] : [{ code: "KR", name: "South Korea", title: "Parasite" }, { code: "FR", name: "France", title: "Lupin" }].slice(0, k % 3),
+            };
+            if (k === 0) { month.partial = true; month.elapsed_days = elapsed; }
+            out.push(month);
+          }
+          return out;
+        })(),
       }),
       e("top_picks", 812, {
         total: 896, pending: 0,

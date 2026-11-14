@@ -832,7 +832,8 @@ def build_wraps(
     image_base: str = "",
     months: int = WRAP_MONTHS,
 ) -> dict[str, Any]:
-    """A summary per completed month (newest first, only months with something watched).
+    """A summary per month: the running month first (marked `partial`, "so far"), then the completed ones
+    (newest first), only months with something watched.
 
     Each month has the amounts (items, episodes, movies, titles, minutes), the day by day activity,
     the share on weekends, the best streak, first watches against rewatches, the most watched
@@ -840,7 +841,8 @@ def build_wraps(
     `pending` counts titles of those months still waiting for their TMDB details; the countries
     "firsts" need every title of the whole history, so they only show once nothing is pending there.
     """
-    wanted = _previous_months(today, months)
+    current = (today.year, today.month)
+    wanted = [current, *_previous_months(today, months)]
     in_window = set(wanted)
     by_month: dict[tuple[int, int], list[dict[str, Any]]] = {}
     first_seen: dict[str, str] = {}
@@ -957,6 +959,9 @@ def build_wraps(
                     if day[:7] == f"{year:04d}-{month:02d}" and first_key == key:
                         firsts.append({"code": code, "name": name, "title": titles_by_key.get(key, row["title"]), "day": day})
             month_info["firsts"] = sorted(firsts, key=lambda f: (f["day"], f["name"]))[:_WRAP_FIRSTS]
+        if (year, month) == current:
+            month_info["partial"] = True
+            month_info["elapsed_days"] = today.day
         out.append(month_info)
 
     return {"months": out, "pending": len(window_pending), "firsts_ready": not history_pending}

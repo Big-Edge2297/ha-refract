@@ -145,6 +145,9 @@ export interface WrapMonth {
   rewatch: number;
   top: { title: string; kind: "show" | "movie"; anime: boolean; count: number; poster?: string }[];
   genres: { name: string; titles: number }[];
+  /** The running month: only the days up to `elapsedDays` have happened. */
+  partial?: boolean;
+  elapsedDays?: number;
   /** Countries first seen this month; undefined until every title has its TMDB details. */
   firsts?: { code: string; name: string; title: string }[];
 }
@@ -364,6 +367,8 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
           movieTitles: num(r.movie_titles) ?? 0,
           minutes: num(r.minutes) ?? 0,
           estimated: !!r.estimated,
+          partial: r.partial === true ? true : undefined,
+          elapsedDays: num(r.elapsed_days),
           days: r.days.map((d: unknown) => num(d) ?? 0),
           activeDays: num(r.active_days) ?? 0,
           weekendShare: num(r.weekend_share) ?? 0,

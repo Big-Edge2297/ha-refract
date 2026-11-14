@@ -127,7 +127,8 @@ def _average_attrs(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _wrap_value(data: dict[str, Any]) -> int | None:
-    months = (data.get("wraps") or {}).get("months") or []
+    # the state is the newest finished month; the running month is the first of the `months` attribute
+    months = [m for m in (data.get("wraps") or {}).get("months") or [] if not m.get("partial")]
     return months[0]["items"] if months else None
 
 

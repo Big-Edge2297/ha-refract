@@ -110,7 +110,7 @@ Each show is looked up once for its poster, and the episode counts and runtimes 
 | `calendar.*_upcoming_episodes` | library |
 | `todo.*_watchlist` (items can be removed) | library |
 | `sensor.*_shows_waiting`, `sensor.*_next_up` (with `poster_url` when a TMDB key is set) | history |
-| `sensor.*_monthly_wrap` (items in the newest completed month; one summary per month, up to 12, in the `months` attribute) | history |
+| `sensor.*_monthly_wrap` (items in the newest finished month; one summary per month in the `months` attribute: the running month first, then up to 12 finished ones) | history |
 | `sensor.*_top_picks` (titles analysed; the top 3 actors, directors, writers, decades, genres and countries with hours and titles in the attributes; needs the TMDB key) | library |
 | `sensor.*_still_to_finish` (estimated time left for movies and shows not finished yet, with counts, episodes and started / not started per kind; needs the TMDB key for shows you haven't started) | library |
 | `sensor.*_catch_up` (aired episodes waiting across all shows, per-show counts and next episode, estimated minutes) | history |

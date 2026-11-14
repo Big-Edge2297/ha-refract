@@ -22,6 +22,7 @@ export const SECTION_CARDS: SectionCardInfo[] = [
   { section: "last_7_days", type: "refract-last-7-days-card", name: "Refract: Last 7 days", description: "Episodes and movies of the last seven days." },
   { section: "top_picks", type: "refract-most-watched-card", name: "Refract: Most watched", description: "Your top actor, director, writer, decade, genre and country." },
   { section: "monthly_wrap", type: "refract-monthly-wrap-card", name: "Refract: Monthly wrap", description: "A wrap of every completed month, as app-style pages." },
+  { section: "year_heatmap", type: "refract-year-heatmap-card", name: "Refract: Year heatmap", description: "A calendar of the last 12 months, shaded by how much you watched each day." },
   { section: "next_up", type: "refract-next-up-card", name: "Refract: Next up", description: "The next episode to watch, with progress and a button to mark it watched." },
   { section: "catchup", type: "refract-catch-up-card", name: "Refract: Catch-up backlog", description: "Aired episodes waiting for you, by show." },
   { section: "airing", type: "refract-airing-card", name: "Refract: Airing this week", description: "The shows airing in the next seven days." },

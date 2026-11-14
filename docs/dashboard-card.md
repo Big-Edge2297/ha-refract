@@ -16,7 +16,8 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
 | **Last 7 days** | Episodes and movies per day as stacked bars, with the busiest day named | watch history |
 | **Most watched** | Your top actor, director, writer, decade, genre and country, each with a profile photo (people), a flag (country) or an icon, and the number of titles and hours behind it. Worked out from TMDB, see [Most watched](#most-watched) | library + TMDB key |
-| **Monthly wrap** | One page per completed month with four tabs: Overview, Tastes, Patterns and Moments. See [Monthly wrap](#monthly-wrap) | watch history |
+| **Monthly wrap** | One set of pages for the running month and for each finished month, with four pages: Overview, Tastes, Patterns and Moments. See [Monthly wrap](#monthly-wrap) | watch history |
+| **Year heatmap** | A calendar of the last 12 months, one square for each day, shaded by how much you watched. See [Year heatmap](#year-heatmap) | watch history |
 | **Next up** | The show (with poster), episode number and name, progress through aired episodes, premiere or finale badges and an optional **Mark watched** button. A show with nothing left to watch is skipped. Tap a show in the catch-up backlog to show it here instead | history |
 | **Catch-up backlog** | How many aired episodes are waiting across all your shows, an estimate of the time, and a row for each backlog. The bar shows how many of that show's aired episodes you have already watched, like the Next up bar, so it is never full while episodes are waiting; the number is how many are waiting | history |
 | **Airing this week** | Episodes airing in the next 7 days for the shows you follow, with premiere and finale pills and the air time when Refract knows it | library |
@@ -37,8 +38,9 @@ Besides the full card, every section is also available as a card of its own, so 
 | `custom:refract-average-card` | Average per week | `duration_format` |
 | `custom:refract-last-7-days-card` | Last 7 days | none |
 | `custom:refract-most-watched-card` | Most watched | `top_picks_items` |
-| `custom:refract-monthly-wrap-card` | Monthly wrap | `wrap_style` |
-| `custom:refract-next-up-card` | Next up | `show_posters`, `show_actions`, `confirm_actions` |
+| `custom:refract-monthly-wrap-card` | Monthly wrap | `wrap_style`, `show_backdrops` |
+| `custom:refract-year-heatmap-card` | Year heatmap | none |
+| `custom:refract-next-up-card` | Next up | `show_posters`, `show_backdrops`, `show_actions`, `confirm_actions` |
 | `custom:refract-catch-up-card` | Catch-up backlog | `queue_length`, `show_posters` |
 | `custom:refract-airing-card` | Airing this week | `airing_length` |
 
@@ -58,7 +60,7 @@ The card shows in the language of your Home Assistant profile: German, French, S
 
 The *Monthly wrap* section is the integration's own version of the wraps in the Refract app: one summary for each completed month, up to the last 12.
 
-![The four pages of the monthly wrap](monthly-wrap.png)
+![The running month in light green, and the four pages of a finished month](monthly-wrap.png)
 
 By default it looks like the app: four colored **pages**, with a story bar on top. Turn the pages with a tap on the left or right side, a swipe, the arrow keys, or by tapping a segment of the story bar. The arrows next to the month go back and forward through the months. The pages are:
 
@@ -71,9 +73,11 @@ Each page opens with one sentence about the month, like the highlights in the ap
 
 It is built from your watch history, so it needs **Fetch watch history** turned on in the integration options. Genres, posters and the first countries also need the TMDB API key, and show up as the TMDB details come in (the same details *Most watched* uses). Without a key you still get everything else.
 
-Differences from the Refract app, because the API doesn't provide them: there is **no time of day** (the history only has the day, so no peak hour or hourly chart), **no community rank** and **no ratings**. The hours use the runtimes in your history where they exist, and average runtimes otherwise; a `~` before the hours says they are partly estimated. A rewatch is counted when Refract says so for a movie, or an episode has been rewatched. The "first from a country" needs the TMDB details of every title in your history, so it says *Still collecting details from TMDB* until they are all there. The newest month is the last one that has finished, so the current month appears on the 1st of next month.
+Differences from the Refract app, because the API doesn't provide them: there is **no time of day** (the history only has the day, so no peak hour or hourly chart), **no community rank** and **no ratings**. The hours use the runtimes in your history where they exist, and average runtimes otherwise; a `~` before the hours says they are partly estimated. A rewatch is counted when Refract says so for a movie, or an episode has been rewatched. The "first from a country" needs the TMDB details of every title in your history, so it says *Still collecting details from TMDB* until they are all there. 
 
-The section is part of the Full layout and not shown in Compact. In the Custom layout, `show_monthly_wrap` switches it on or off. The sensor is `sensor.*_monthly_wrap`: its state is the number of items in the newest month, and the `months` attribute has all the months for your own cards.
+**The running month comes first.** The first wrap is always the current month, in **light green** with a *So far* label, and its title reads *Your month so far*. It shows the same four pages as the finished months, for the days that have passed: the rates (items and hours per day, active days) count only those days, the days to come are faded in the daily bars, and there is no comparison with the month before, because that month is over. When a month ends, the next one starts and the finished one takes its own color. The running month appears as soon as there is something watched in it.
+
+The section is part of the Full layout and not shown in Compact. In the Custom layout, `show_monthly_wrap` switches it on or off. The sensor is `sensor.*_monthly_wrap`: its state is the number of items in the newest **finished** month, and the `months` attribute has all the months for your own cards, with the running month first (marked `partial: true`, with `elapsed_days`).
 
 ## Most watched
 
@@ -88,9 +92,21 @@ The Refract API doesn't say which actors, directors, genres or countries you wat
 - **Flags** are drawn with a small flag font built into the card, so they look the same on Windows, which has no flag emoji, and everywhere else. Nothing is loaded for them from the internet.
 - **Layouts.** The Full layout shows all six tiles and Compact doesn't show this section. Only the Custom layout lets you pick which tiles to show, and in which order, with `top_picks_items` (for example `[actor, director, writer, decade]`), and hide the whole section with `show_top_picks`. In the editor both are under **Sections**.
 
+## Year heatmap
+
+![The year heatmap on a wide card and on a phone](year-heatmap.png)
+
+The *Year heatmap* is a calendar of the last 12 months, like the activity graph on GitHub. Each square is a day and each column a week (Monday to Sunday), from the oldest week on the left to this week on the right. A darker square is a day with more episodes and movies, scaled to your busiest day. Point at a square to see the day and the count. Under it are the items watched, the days you watched something and your best streak in those 12 months.
+
+On a narrow card, such as a phone, the squares keep a readable size and the calendar scrolls sideways. It starts at the latest weeks, so you scroll back to see the earlier months. A wide card shows the whole year at once.
+
+It is built from the same per-day data as the monthly wrap (the running month and up to 12 finished months), so it needs **Fetch watch history** and no TMDB key. It is part of the Full layout and not shown in Compact; in the Custom layout, `show_year_heatmap` switches it on or off. As a card of its own it is `custom:refract-year-heatmap-card`.
+
 ## Posters
 
 Posters appear beside **Next up** and in the **Catch-up backlog** when you add a free [TMDB](https://www.themoviedb.org) API key to the integration: **Settings → Devices & services → Refract → Configure → TMDB API key**. Without a key the card shows no posters and nothing changes. A show without a poster shows its first letter instead.
+
+With posters on, a **blurred poster backdrop** sits behind the Next up tile and behind the *Your moments* page of the monthly wrap, faded so the text stays readable. Turn it off with `show_backdrops: false` (a switch in the editor). It uses the posters the card already has, so it needs no extra setup.
 
 Turn posters off in the card with `show_posters: false`.
 
@@ -173,7 +189,7 @@ section_order:
   - hero
 ```
 
-The default order is `hero`, `watch_time`, `library`, `still_to_finish`, `streak`, `average`, `last_7_days`, `top_picks`, `monthly_wrap`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other.
+The default order is `hero`, `watch_time`, `library`, `still_to_finish`, `streak`, `average`, `last_7_days`, `top_picks`, `monthly_wrap`, `year_heatmap`, `next_up`, `catchup`, `airing`. `streak` and `average` share a row when they are next to each other.
 
 Cards from before 0.4.4 that have no `layout` but hide sections or set a `section_order` are treated as `custom`, so they keep looking the same. A card that sets `layout: full` explicitly now always shows everything.
 
@@ -201,12 +217,14 @@ Cards from before 0.4.4 that have no `layout` but hide sections or set a `sectio
 | `show_last_7_days` | `true` | Last 7 days chart and busiest day |
 | `show_top_picks` | `true` | Most watched (needs a TMDB key in the integration options) |
 | `show_monthly_wrap` | `true` | Monthly wrap (needs watch history) |
+| `show_year_heatmap` | `true` | Year heatmap (needs watch history) |
 | `wrap_style` | `pages` | `pages` (app-style colored pages) or `tabs` (a compact card with four tabs) |
 | `show_next_up` | `true` | Next up tile |
 | `show_catchup` | `true` | Catch-up backlog |
 | `show_airing` | `true` | Airing this week |
 | `top_picks_items` | all six | Tiles of Most watched, in order: `actor`, `director`, `writer`, `decade`, `genre`, `country`. Only used by `layout: custom` |
 | `show_posters` | `true` | Posters (needs a TMDB key in the integration options) |
+| `show_backdrops` | `true` | A blurred poster behind Next up and behind the moments page of the wrap (needs posters) |
 | `show_actions` | `false` | Show the "Mark watched" button on the next up tile |
 | `confirm_actions` | `true` | Ask for a second tap before marking watched |
 | `config_entry_id` | | Only for "Mark watched" with several Refract accounts when you're not an admin |

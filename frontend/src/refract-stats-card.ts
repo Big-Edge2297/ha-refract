@@ -93,6 +93,7 @@ export class RefractStatsCard extends LitElement {
       last_7_days: 3,
       top_picks: 6,
       monthly_wrap: 7,
+      year_heatmap: 5,
       next_up: 3,
       catchup: 2 + Math.min(c.queue_length, 5),
       airing: 2 + Math.min(c.airing_length, 5),
@@ -145,6 +146,15 @@ export class RefractStatsCard extends LitElement {
 
   // ------------------------------------------------------------ render
 
+  protected updated(changed: PropertyValues): void {
+    super.updated?.(changed);
+    // the heatmap is wider than a phone: start at the latest weeks, once
+    this.renderRoot?.querySelectorAll<HTMLElement>(".hm-scroll:not([data-init])").forEach((el) => {
+      el.scrollLeft = el.scrollWidth;
+      el.setAttribute("data-init", "1");
+    });
+  }
+
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
     const c = this._cfg;
@@ -167,6 +177,7 @@ export class RefractStatsCard extends LitElement {
       last_7_days: () => this._last7(m),
       top_picks: () => this._topPicks(m),
       monthly_wrap: () => this._monthlyWrap(m),
+      year_heatmap: () => this._yearHeatmap(m),
       next_up: () => this._next(m, posters),
       catchup: () => this._catchup(m, posters),
       airing: () => this._airing(m),
@@ -643,7 +654,9 @@ export class RefractStatsCard extends LitElement {
     const watched = aired !== undefined && item.remaining !== undefined ? Math.max(0, aired - item.remaining) : undefined;
     const pct = aired && watched !== undefined ? Math.min(100, (watched / aired) * 100) : undefined;
 
-    return html`<div class="panel next ${posters ? "with-poster" : ""}">
+    const backdrop = posters && this._cfg.show_backdrops && item.posterUrl ? item.posterUrl : undefined;
+    return html`<div class="panel next ${posters ? "with-poster" : ""} ${backdrop ? "has-backdrop" : ""}">
+      ${backdrop ? html`<div class="backdrop" aria-hidden="true" style=${styleMap({ backgroundImage: `url("${backdrop}")` })}></div>` : nothing}
       ${posters ? this._poster(item.posterUrl, item.title, "lg") : nothing}
       <div class="next-body">
         <div class="next-head">
@@ -970,6 +983,110 @@ export class RefractStatsCard extends LitElement {
     </div>`;
   }
 
+  private _yearHeatmap(m: Model): TemplateResult | typeof nothing {
+    const wrap = m.wrap;
+    if (!wrap) return nothing;
+    const lang = languageOf(this.hass);
+    const DAY = 86_400_000;
+    let todayIso: string;
+    try {
+      const tz = this.hass?.config?.time_zone;
+      todayIso = new Date().toLocaleDateString("sv-SE", tz ? { timeZone: tz } : undefined);
+    } catch {
+      todayIso = new Date().toISOString().slice(0, 10);
+    }
+    const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+    const end = Date.parse(`${todayIso}T00:00:00Z`);
+    const windowStart = end - 364 * DAY;
+    const mondayIndex = (ms: number) => (new Date(ms).getUTCDay() + 6) % 7;
+    const start = windowStart - mondayIndex(windowStart) * DAY;
+    const weeks = Math.floor((end - start) / (7 * DAY)) + 1;
+
+    // the days of every month the wrap knows, by date
+    const counts = new Map<string, number>();
+    for (const month of wrap.months) month.days.forEach((n, i) => counts.set(`${month.month}-${String(i + 1).padStart(2, "0")}`, n));
+
+    const cells: { date: string; n: number; future: boolean; inWindow: boolean }[] = [];
+    let items = 0;
+    let active = 0;
+    let streak = 0;
+    let best = 0;
+    for (let w = 0; w < weeks; w++) {
+      for (let r = 0; r < 7; r++) {
+        const ms = start + (w * 7 + r) * DAY;
+        const date = iso(ms);
+        const future = ms > end;
+        const inWindow = ms >= windowStart && !future;
+        const n = inWindow ? (counts.get(date) ?? 0) : 0;
+        cells.push({ date, n, future, inWindow });
+        if (inWindow) {
+          items += n;
+          if (n > 0) {
+            active += 1;
+            streak += 1;
+            best = Math.max(best, streak);
+          } else {
+            streak = 0;
+          }
+        }
+      }
+    }
+    const max = Math.max(1, ...cells.map((c) => c.n));
+    const level = (n: number) => (n === 0 ? 0 : Math.min(4, Math.ceil((n / max) * 4)));
+    const dayLabel = (date: string) =>
+      new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+    const monthShort = (date: string) => new Intl.DateTimeFormat(lang, { month: "short", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+    const weekdayNarrow = (row: number) =>
+      new Intl.DateTimeFormat(lang, { weekday: "narrow", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1 + row)));
+
+    // a month name above the first week that starts in it, with room for the name
+    const labels: { week: number; text: string }[] = [];
+    let lastMonth = "";
+    let lastWeek = -9;
+    for (let w = 0; w < weeks; w++) {
+      const first = cells[w * 7].date;
+      const month = first.slice(0, 7);
+      if (month !== lastMonth) {
+        lastMonth = month;
+        labels.push({ week: w, text: monthShort(first) });
+        lastWeek = w;
+      }
+    }
+    if (labels.length > 1 && labels[1].week - labels[0].week < 4) labels.shift();
+    void lastWeek;
+    const head = html`<div class="panel-head"><span class="label">${t(this.hass, "heatmap.title")}</span></div>`;
+    if (items === 0) return html`<div class="panel heatmap">${head}<div class="empty">${t(this.hass, "heatmap.none")}</div></div>`;
+    const columns = `repeat(${weeks}, minmax(0, 1fr))`;
+    return html`<div class="panel heatmap">
+      ${head}
+      <div class="hm-layout">
+        <div class="hm-rows" aria-hidden="true">${[0, 1, 2, 3, 4, 5, 6].map((r) => html`<span>${r % 2 === 0 ? weekdayNarrow(r) : ""}</span>`)}</div>
+        <div class="hm-main hm-scroll">
+          <div class="hm-inner" style=${styleMap({ minWidth: `${weeks * 12}px` })}>
+          <div class="hm-months" aria-hidden="true" style=${styleMap({ gridTemplateColumns: columns })}>
+            ${labels.map((l) => html`<span style=${styleMap({ gridColumn: `${l.week + 1}`, gridRow: "1" })}>${l.text}</span>`)}
+          </div>
+          <div class="hm-grid" role="img" aria-label=${t(this.hass, "heatmap.title")} style=${styleMap({ gridTemplateColumns: columns })}>
+            ${cells.map((c) =>
+              c.future
+                ? html`<span class="hm future"></span>`
+                : html`<span class="hm l${level(c.n)} ${c.inWindow ? "" : "outside"}" title=${c.inWindow ? t(this.hass, "wrap.day", { day: dayLabel(c.date), n: fmtNumber(c.n, lang) }) : ""}></span>`,
+            )}
+          </div>
+          </div>
+        </div>
+      </div>
+      <div class="hm-legend" aria-hidden="true">
+        <span>${t(this.hass, "heatmap.less")}</span>${[0, 1, 2, 3, 4].map((l) => html`<span class="hm l${l}"></span>`)}<span>${t(this.hass, "heatmap.more")}</span>
+      </div>
+      <div class="wrap-tiles">
+        <div class="tile"><div class="value">${fmtNumber(items, lang)}</div><div class="muted">${t(this.hass, "heatmap.items")}</div></div>
+        <div class="tile"><div class="value">${fmtNumber(active, lang)}</div><div class="muted">${t(this.hass, "wrap.active")}</div></div>
+        <div class="tile"><div class="value">${fmtNumber(best, lang)} <span class="muted">${tn(this.hass, "unit.day", best)}</span></div><div class="muted">${t(this.hass, "wrap.streak")}</div></div>
+      </div>
+    </div>`;
+  }
+
   private _monthlyWrap(m: Model): TemplateResult | typeof nothing {
     const wrap = m.wrap;
     if (!wrap) return nothing;
@@ -995,6 +1112,10 @@ export class RefractStatsCard extends LitElement {
     const hoursOf = (minutes: number) => minutes / 60;
     const hoursText = (h: number) => fmtNumber(h, lang, h < 10 ? 1 : 0);
     const daysInMonth = cur.days.length;
+    // the running month only has its first days: rates and totals count those
+    const partial = !!cur.partial;
+    const elapsed = partial ? Math.max(1, Math.min(daysInMonth, cur.elapsedDays ?? daysInMonth)) : daysInMonth;
+    const soFar = partial ? t(this.hass, "wrap.day_of", { day: fmtNumber(elapsed, lang), total: fmtNumber(daysInMonth, lang) }) : "";
     const go = (to: number) => {
       this._wrapIndex = Math.max(0, Math.min(months.length - 1, to));
     };
@@ -1002,7 +1123,7 @@ export class RefractStatsCard extends LitElement {
     // the month before this one, when it is in the list too
     const before = months[index + 1];
     const previousKey = month === 1 ? `${year - 1}-12` : `${year}-${String(month - 1).padStart(2, "0")}`;
-    const prev = before && before.month === previousKey && before.minutes > 0 ? before : undefined;
+    const prev = !partial && before && before.month === previousKey && before.minutes > 0 ? before : undefined;
     let change: string | undefined;
     if (prev) {
       const pct = Math.round(((cur.minutes - prev.minutes) / prev.minutes) * 100);
@@ -1040,7 +1161,7 @@ export class RefractStatsCard extends LitElement {
         </div>
         ${this._cfg.wrap_style !== "tabs"
           ? html`<div class="wrap-tiles">
-              <div class="tile"><div class="value">${fmtNumber(cur.items / daysInMonth, lang, 1)}</div><div class="muted">${t(this.hass, "wrap.items_day")}</div></div>
+              <div class="tile"><div class="value">${fmtNumber(cur.items / elapsed, lang, 1)}</div><div class="muted">${t(this.hass, "wrap.items_day")}</div></div>
               <div class="tile"><div class="value">${fmtNumber(cur.weekendShare, lang)}%</div><div class="muted">${t(this.hass, "wrap.weekend")}</div></div>
               <div class="tile"><div class="value">${fmtNumber(cur.bestStreak, lang)} <span class="muted">${tn(this.hass, "unit.day", cur.bestStreak)}</span></div><div class="muted">${t(this.hass, "wrap.streak")}</div></div>
             </div>`
@@ -1079,7 +1200,7 @@ export class RefractStatsCard extends LitElement {
         </div>`;
     } else if (this._wrapTab === "patterns") {
       const max = Math.max(1, ...cur.days);
-      const perDay = (x: number) => fmtNumber(x / daysInMonth, lang, 1);
+      const perDay = (x: number) => fmtNumber(x / elapsed, lang, 1);
       body = html`<div class="wrap-tiles two">
           <div class="tile"><div class="value">${perDay(cur.items)}</div><div class="muted">${t(this.hass, "wrap.items_day")}</div></div>
           <div class="tile"><div class="value">${perDay(hoursOf(cur.minutes))}</div><div class="muted">${t(this.hass, "wrap.hours_day")}</div></div>
@@ -1089,9 +1210,9 @@ export class RefractStatsCard extends LitElement {
           ${cur.days.map((n, i) => {
             const iso = `${cur.month}-${String(i + 1).padStart(2, "0")}`;
             return html`<span
-              class="wrap-day ${n === 0 ? "empty" : ""} ${iso === cur.busiest.day && n > 0 ? "peak" : ""}"
+              class="wrap-day ${n === 0 ? "empty" : ""} ${i >= elapsed ? "future" : ""} ${iso === cur.busiest.day && n > 0 ? "peak" : ""}"
               style=${styleMap({ height: n === 0 ? "3px" : `${Math.max(8, Math.round((n / max) * 100))}%` })}
-              title=${t(this.hass, "wrap.day", { day: dayName(iso), n: fmtNumber(n, lang) })}
+              title=${i >= elapsed ? "" : t(this.hass, "wrap.day", { day: dayName(iso), n: fmtNumber(n, lang) })}
             ></span>`;
           })}
         </div>
@@ -1102,7 +1223,7 @@ export class RefractStatsCard extends LitElement {
         <div class="wrap-tiles">
           <div class="tile"><div class="value">${fmtNumber(cur.weekendShare, lang)}%</div><div class="muted">${t(this.hass, "wrap.weekend")}</div></div>
           <div class="tile"><div class="value">${fmtNumber(cur.bestStreak, lang)} <span class="muted">${tn(this.hass, "unit.day", cur.bestStreak)}</span></div><div class="muted">${t(this.hass, "wrap.streak")}</div></div>
-          <div class="tile"><div class="value">${t(this.hass, "wrap.active_value", { n: fmtNumber(cur.activeDays, lang), total: fmtNumber(daysInMonth, lang) })}</div><div class="muted">${t(this.hass, "wrap.active")}</div></div>
+          <div class="tile"><div class="value">${t(this.hass, "wrap.active_value", { n: fmtNumber(cur.activeDays, lang), total: fmtNumber(elapsed, lang) })}</div><div class="muted">${t(this.hass, "wrap.active")}</div></div>
         </div>`;
     } else {
       const flag = (code: string) => flagEmoji(code) ?? "";
@@ -1158,7 +1279,7 @@ export class RefractStatsCard extends LitElement {
       // one sentence for each page, like the app's highlights
       let insight: string | undefined;
       if (this._wrapTab === "overview") {
-        insight = tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) });
+        insight = tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) }) + (partial ? ` · ${soFar}` : "");
       } else if (this._wrapTab === "tastes") {
         insight = cur.items ? t(this.hass, "wrap.insight_new", { pct: fmtNumber(pct(cur.firstWatch, cur.items), lang) }) : undefined;
       } else if (this._wrapTab === "patterns") {
@@ -1172,7 +1293,7 @@ export class RefractStatsCard extends LitElement {
       }
       const label = (tab: string) => t(this.hass, `wrap.tab.${tab}`);
       return html`<div
-        class="panel wrap wrap-pages page-${this._wrapTab}"
+        class="panel wrap wrap-pages page-${this._wrapTab} ${partial ? "partial" : ""}"
         tabindex="0"
         role="group"
         aria-label=${t(this.hass, "wrap.title")}
@@ -1195,6 +1316,9 @@ export class RefractStatsCard extends LitElement {
           }
         }}
       >
+        ${this._wrapTab === "moments" && this._cfg.show_backdrops && cur.top[0]?.poster
+          ? html`<div class="wrap-backdrop" aria-hidden="true" style=${styleMap({ backgroundImage: `url("${cur.top[0].poster}")` })}></div>`
+          : nothing}
         <div class="wrap-progress">
           ${order.map(
             (tab, i) => html`<button
@@ -1210,8 +1334,8 @@ export class RefractStatsCard extends LitElement {
           <span class="wrap-brand-name"><ha-icon icon="mdi:chart-donut"></ha-icon>${m.accountMain}</span>
           ${m.accountSub ? html`<span class="wrap-brand-user">@${m.accountSub}</span>` : nothing}
         </div>
-        <div class="wrap-kicker-row"><span class="wrap-kicker">${monthName(year, month)}</span>${nav}</div>
-        <div class="wrap-title">${t(this.hass, `wrap.page.${this._wrapTab}`)}</div>
+        <div class="wrap-kicker-row"><span class="wrap-kicker">${monthName(year, month)}${partial ? html` <span class="wrap-sofar">${t(this.hass, "wrap.so_far")}</span>` : nothing}</span>${nav}</div>
+        <div class="wrap-title">${t(this.hass, partial && this._wrapTab === "overview" ? "wrap.page.overview_partial" : `wrap.page.${this._wrapTab}`)}</div>
         ${insight ? html`<div class="wrap-insight"><ha-icon icon="mdi:shimmer"></ha-icon><span>${insight}</span></div>` : nothing}
         <div class="wrap-body">${body}</div>
         <button type="button" class="wrap-tap prev" tabindex="-1" aria-label=${t(this.hass, "wrap.prev_page")} ?hidden=${at === 0} @click=${() => Date.now() - this._swipedAt > 400 && step(-1)}></button>
@@ -1221,8 +1345,8 @@ export class RefractStatsCard extends LitElement {
 
     return html`<div class="panel wrap">
       ${header(nav)}
-      <div class="wrap-month">${monthName(year, month)}</div>
-      <div class="muted">${tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) })}</div>
+      <div class="wrap-month">${monthName(year, month)}${partial ? html` <span class="badge accent">${t(this.hass, "wrap.so_far")}</span>` : nothing}</div>
+      <div class="muted">${tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) })}${partial ? ` · ${soFar}` : ""}</div>
       <div class="wrap-tabs" role="tablist">${tabs}</div>
       ${body}
     </div>`;

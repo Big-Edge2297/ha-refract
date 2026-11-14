@@ -548,6 +548,156 @@ export const cardStyles = css`
   .wrap-pages .empty {
     color: rgba(255, 255, 255, 0.74);
   }
+  /* the running month: light green, with a "so far" pill */
+  .wrap-pages.partial,
+  .wrap-pages.partial.page-tastes,
+  .wrap-pages.partial.page-patterns,
+  .wrap-pages.partial.page-moments {
+    --p1: #74d493;
+    --p2: #2f9e63;
+    --p3: #0f3320;
+  }
+  .wrap-sofar {
+    display: inline-block;
+    margin-inline-start: 8px;
+    padding: 1px 9px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.28);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+  .wrap-day.future {
+    opacity: 0.35;
+  }
+  /* blurred poster backdrops */
+  .panel.next.has-backdrop {
+    position: relative;
+    overflow: hidden;
+  }
+  .panel.next .backdrop {
+    position: absolute;
+    inset: -30px;
+    z-index: 0;
+    background-size: cover;
+    background-position: center 25%;
+    filter: blur(28px) saturate(1.3);
+    opacity: 0.24;
+    pointer-events: none;
+  }
+  .panel.next.has-backdrop > :not(.backdrop) {
+    position: relative;
+    z-index: 1;
+  }
+  .wrap-backdrop {
+    position: absolute;
+    top: -30px;
+    right: -50px;
+    z-index: 0;
+    width: 75%;
+    height: 50%;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center 25%;
+    filter: blur(36px) saturate(1.4);
+    opacity: 0.24;
+    pointer-events: none;
+  }
+  /* year heatmap */
+  .hm-layout {
+    display: flex;
+    gap: 6px;
+  }
+  .hm-rows {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-top: 18px;
+    font-size: 10px;
+    line-height: 1;
+    color: var(--secondary-text-color);
+  }
+  .hm-rows span {
+    display: block;
+    min-height: 8px;
+  }
+  .hm-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .hm-scroll {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+  .hm-months {
+    display: grid;
+    height: 14px;
+    margin-bottom: 4px;
+    font-size: 10px;
+    line-height: 14px;
+    color: var(--secondary-text-color);
+  }
+  .hm-months span {
+    white-space: nowrap;
+    overflow: visible;
+  }
+  .hm-inner {
+    width: 100%;
+  }
+  .hm-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, auto);
+    gap: 2px;
+  }
+  .hm-grid .hm {
+    align-self: start;
+    justify-self: stretch;
+  }
+  .hm {
+    display: block;
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: var(--tile-bg);
+  }
+  .hm.future {
+    background: transparent;
+  }
+  .hm.outside {
+    opacity: 0.4;
+  }
+  .hm.l1 {
+    background: color-mix(in srgb, var(--c-accent) 28%, var(--tile-bg));
+  }
+  .hm.l2 {
+    background: color-mix(in srgb, var(--c-accent) 52%, var(--tile-bg));
+  }
+  .hm.l3 {
+    background: color-mix(in srgb, var(--c-accent) 76%, var(--tile-bg));
+  }
+  .hm.l4 {
+    background: var(--c-accent);
+  }
+  .hm-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--secondary-text-color);
+  }
+  .hm-legend .hm {
+    width: 10px;
+    height: 10px;
+    aspect-ratio: auto;
+  }
+  .hm-legend span:first-child {
+    margin-inline-end: 3px;
+  }
+  .hm-legend span:last-child {
+    margin-inline-start: 3px;
+  }
   .wrap-progress {
     display: flex;
     gap: 5px;
