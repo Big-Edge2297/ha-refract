@@ -175,16 +175,12 @@ Not translated: the card editor (the settings you click in the card configuratio
 |---|---|
 | The card isn't in the card picker | Restart Home Assistant, then hard-refresh the browser |
 | No *Last 7 days* / *Average per week* | Your key needs the "See what you watched and when" permission, and *Fetch watch history* must be on |
-| No *Monthly wrap* or *Year heatmap* section | Turn on *Fetch watch history* in the options. The wrap appears as soon as something is watched in the running month |
-| The card says *Refract can't be reached* | Every Refract sensor is unavailable: the integration can't reach Refract, or its key was revoked (Home Assistant then asks you to re-authenticate). The card comes back by itself. *Check the integration* (administrators) opens the integration page |
+| No *Monthly wrap* section | Turn on *Fetch watch history* in the options. It appears when a month has finished with something watched in it |
 | No *Most watched* section | Add a TMDB key in the options. It shows *Still building* while the details are collected, which takes a few updates |
 | No posters | Add a TMDB key in the options, wait for the next update, and check `show_posters` isn't `false` |
-| Posters and *Most watched* stopped | A repair *TMDB rejected your API key* appears under **Settings → System → Repairs**. Open it, enter a new key (or leave it empty to turn TMDB off), and it is applied right away |
 | Setup says the key is rejected | Check it was copied in full (it starts with `rfk_`) and wasn't revoked |
 
-**Diagnostics.** When you report a problem, attach the diagnostics: **Settings → Devices & services → Refract → ⋮ → Download diagnostics**. It has the library size, how far the TMDB lookups are, the leaders of *Most watched* and the months of the wrap. Your keys, your name and the titles in your library are left out.
-
-Enable debug logging as well:
+Enable debug logging when reporting a problem:
 
 ```yaml
 logger:
@@ -201,14 +197,11 @@ git clone https://github.com/Big-Edge2297/ha-refract
 Copy or symlink `custom_components/refract` into your Home Assistant `config/custom_components/` folder and restart.
 
 ```bash
-pip install pytest && python -m pytest -q tests --ignore=tests/ha   # history, backlog, calendar logic, translations
-cd frontend && npm ci && npm test && npm run build                  # the dashboard card
-pip install -r tests/ha/requirements.txt && python -m pytest -p pytest_homeassistant_custom_component -q tests/ha   # the integration inside Home Assistant
+pip install pytest && python -m pytest -q tests       # history, backlog and calendar logic
+cd frontend && npm ci && npm test && npm run build    # the dashboard card
 ```
 
 The card's source is in `frontend/`; the built file is committed in `custom_components/refract/www/` and CI fails if it doesn't match. See [docs/dashboard-card.md](docs/dashboard-card.md#development).
-
-More in [docs/development.md](docs/development.md): the tests, the dependency updates and what to do with a Dependabot pull request.
 
 Releases: tag `vX.Y.Z` to match `manifest.json`'s `version`, and add the changes to [CHANGELOG.md](CHANGELOG.md).
 

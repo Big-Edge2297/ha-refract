@@ -166,8 +166,6 @@ export class RefractStatsCard extends LitElement {
       return this._message(t(this.hass, "empty.not_found", { entity: c.entity ?? c.device_id ?? "" }));
     }
 
-    if (m.status !== "ok") return this._unreachable(m.status);
-
     const posters = c.show_posters && m.hasPosters;
     const all: Record<SectionId, () => TemplateResult | typeof nothing> = {
       hero: () => this._hero(m),
@@ -214,26 +212,6 @@ export class RefractStatsCard extends LitElement {
     flush();
 
     return html`<ha-card style=${styleMap(this._colorVars())}> ${this._header(m)} ${body} </ha-card>`;
-  }
-
-  /** Refract can't be reached (or hasn't answered yet): say so, instead of an empty card. */
-  private _unreachable(status: "unavailable" | "waiting"): TemplateResult {
-    const key = status === "waiting" ? "waiting" : "unavailable";
-    const admin = (this.hass as { user?: { is_admin?: boolean } } | undefined)?.user?.is_admin;
-    const open = () => {
-      window.history.pushState(null, "", "/config/integrations/integration/refract");
-      window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
-    };
-    return html`<ha-card class="${this._only ? "single" : ""} unreachable">
-      <div class="unreachable-body" role="status">
-        <ha-icon icon=${status === "waiting" ? "mdi:timer-sand" : "mdi:cloud-off-outline"}></ha-icon>
-        <div class="unreachable-title">${t(this.hass, `${key}.title`)}</div>
-        <div class="unreachable-text">${t(this.hass, `${key}.text`)}</div>
-        ${admin && status === "unavailable"
-          ? html`<button type="button" class="unreachable-button" @click=${open}>${t(this.hass, "unavailable.check")}</button>`
-          : nothing}
-      </div>
-    </ha-card>`;
   }
 
   private _message(text: string): TemplateResult {
