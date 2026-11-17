@@ -226,5 +226,25 @@
         }
       }
     }
+  },
+  "issues": {
+    "tmdb_key_rejected": {
+      "title": "TMDB heeft je API-sleutel geweigerd",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Je TMDB-API-sleutel bijwerken",
+            "description": "TMDB heeft de API-sleutel geweigerd, daarom staan posters, 'Meest bekeken' en de genres en posters van het maandoverzicht uit. Voer een nieuwe TMDB-API-sleutel in (een v3-sleutel of een v4-leestoken), of laat het veld leeg om ze uit te schakelen. Een gratis sleutel krijg je op https://www.themoviedb.org/settings/api.",
+            "data": {
+              "tmdb_api_key": "TMDB-API-sleutel"
+            }
+          }
+        },
+        "error": {
+          "invalid_tmdb_key": "TMDB heeft die sleutel geweigerd.",
+          "tmdb_unreachable": "Kan TMDB niet bereiken."
+        }
+      }
+    }
   }
 }

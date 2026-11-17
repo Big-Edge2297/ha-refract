@@ -24,6 +24,10 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 
 Sections hide themselves when their sensors don't exist, so a read-only API key still gives a clean card.
 
+## When Refract can't be reached
+
+If every Refract sensor is unavailable, the card says **Refract can't be reached** instead of showing an empty card. This is the case when the integration can't reach Refract, or isn't loaded, for instance after its key was revoked. It shows your data again by itself when Refract answers, so there is nothing to do on the card. Administrators also get a **Check the integration** button that opens the integration's page. Right after Home Assistant starts, before the first update has arrived, the card says **Waiting for Refract**. If only some sensors are unavailable (for instance Most watched without a TMDB key), the card shows the rest as usual. The single-section cards show the same messages.
+
 ## Single-section cards
 
 Besides the full card, every section is also available as a card of its own, so you can place them separately in a Sections or masonry dashboard. They appear in the card picker as **Refract: ...**. Each one shows just its section, without the header, and takes the same `entity` as the full card, an optional `name` that becomes its title, and the settings that matter for that section.
@@ -338,7 +342,7 @@ The card follows your Home Assistant theme. These optional theme variables overr
 
 **A section is missing**: its sensors don't exist for your API key, or are unavailable. Check Developer Tools → States for the sensor. *Last 7 days* and *Average per week* also need **Fetch watch history** turned on in the integration options.
 
-**No Monthly wrap section**: it needs **Fetch watch history** in the integration options, and shows once a month has finished with something watched in it. The sensor is `sensor.*_monthly_wrap`. Genres, posters and firsts need the TMDB key.
+**No Monthly wrap section**: it needs **Fetch watch history** in the integration options, and shows as soon as something is watched in the running month. The sensor is `sensor.*_monthly_wrap`. Genres, posters and firsts need the TMDB key.
 
 **No Most watched section** (the sensor is `sensor.*_top_picks`, or `sensor.*_most_watched` if you first installed 0.5.0; the card finds both): it needs a TMDB API key under **Settings → Devices & services → Refract → Configure**, the library permission on your Refract key, and `show_top_picks` not set to `false` in the Custom layout. Right after adding the key it shows *Still building* for a while.
 

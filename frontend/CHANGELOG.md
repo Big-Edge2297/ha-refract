@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+
+- **New:** `Model.status` (`ok`, `waiting`, `unavailable`) and the card state *Refract can't be reached* / *Waiting for Refract* (`_unreachable`), also for the single-section cards. The demo page has a switch for it
+- Dependabot for npm (`/frontend`) and the GitHub actions, and a weekly `npm audit` workflow; a card update needs `npm run build` committed (see `docs/development.md`)
+
 ## 0.7.4
 
 - **New:** the running month as the first wrap (`partial`, `elapsed_days` in the month data): light green (`.wrap-pages.partial`), *So far* pill, rates over the days so far, faded future days

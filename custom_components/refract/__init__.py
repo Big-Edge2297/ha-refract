@@ -5,11 +5,12 @@ from __future__ import annotations
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
 from .api import RefractApiClient
-from .const import CONF_API_KEY, CONF_TMDB_API_KEY, DOMAIN
+from .const import CONF_API_KEY, CONF_TMDB_API_KEY, DOMAIN, tmdb_issue_id
 from .coordinator import RefractConfigEntry, RefractCoordinator, RefractData
 from .frontend import async_register_card
 from .services import async_setup_services
@@ -30,9 +31,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: RefractConfigEntry) -> b
     session = async_get_clientsession(hass)
     api = RefractApiClient(session, entry.data[CONF_API_KEY])
     tmdb = None
+    # A rejected key is reported again, below, if it is still rejected
+    ir.async_delete_issue(hass, DOMAIN, tmdb_issue_id(entry.entry_id))
     if tmdb_key := entry.options.get(CONF_TMDB_API_KEY):
-        tmdb = TmdbClient(hass, session, tmdb_key)
+        tmdb = TmdbClient(hass, session, tmdb_key, entry.entry_id)
         await tmdb.async_load()
+        entry.async_on_unload(tmdb.async_flush)
     coordinator = RefractCoordinator(hass, entry, api, tmdb)
     await coordinator.async_config_entry_first_refresh()
 
@@ -43,6 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: RefractConfigEntry) -> b
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: RefractConfigEntry) -> bool:
+    ir.async_delete_issue(hass, DOMAIN, tmdb_issue_id(entry.entry_id))
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

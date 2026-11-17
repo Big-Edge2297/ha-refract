@@ -226,5 +226,25 @@
         }
       }
     }
+  },
+  "issues": {
+    "tmdb_key_rejected": {
+      "title": "O TMDB rejeitou sua chave de API",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Atualizar sua chave de API do TMDB",
+            "description": "O TMDB rejeitou a chave de API, por isso os pôsteres, «Mais vistos» e os gêneros e pôsteres do resumo mensal estão desativados. Informe uma nova chave de API do TMDB (uma chave v3 ou um token de acesso de leitura v4) ou deixe o campo vazio para desativá-los. Você pode obter uma chave gratuita em https://www.themoviedb.org/settings/api.",
+            "data": {
+              "tmdb_api_key": "Chave de API do TMDB"
+            }
+          }
+        },
+        "error": {
+          "invalid_tmdb_key": "O TMDB rejeitou essa chave.",
+          "tmdb_unreachable": "Não foi possível acessar o TMDB."
+        }
+      }
+    }
   }
 }

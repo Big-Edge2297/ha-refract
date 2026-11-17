@@ -27,4 +27,10 @@ SCOPE_HISTORY = "history"
 HISTORY_REFRESH_MINUTES = 60
 
 TMDB_API_BASE = "https://api.themoviedb.org/3"
+ISSUE_TMDB_KEY = "tmdb_key_rejected"
+
+
+def tmdb_issue_id(entry_id: str) -> str:
+    """Repair issue id of an account whose TMDB key was rejected."""
+    return f"{ISSUE_TMDB_KEY}_{entry_id}"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w185"  # posters and profile photos

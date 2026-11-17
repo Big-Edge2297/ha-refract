@@ -226,5 +226,25 @@
         }
       }
     }
+  },
+  "issues": {
+    "tmdb_key_rejected": {
+      "title": "TMDB rejected your API key",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Update your TMDB API key",
+            "description": "TMDB rejected the API key, so posters, Most watched and the genres and posters of the monthly wrap are turned off. Enter a new TMDB API key (a v3 key or a v4 read access token), or leave the field empty to turn them off. You can get a free key at https://www.themoviedb.org/settings/api.",
+            "data": {
+              "tmdb_api_key": "TMDB API key"
+            }
+          }
+        },
+        "error": {
+          "invalid_tmdb_key": "TMDB rejected that key.",
+          "tmdb_unreachable": "Could not reach TMDB."
+        }
+      }
+    }
   }
 }

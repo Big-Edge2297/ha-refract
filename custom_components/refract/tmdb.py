@@ -13,10 +13,11 @@ from typing import Any
 import aiohttp
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 
 from .analytics import tmdb_movie_info, tmdb_profile, tmdb_tv_info
-from .const import DOMAIN, LOGGER, TMDB_API_BASE, TMDB_IMAGE_BASE, USER_AGENT
+from .const import DOMAIN, LOGGER, TMDB_API_BASE, TMDB_IMAGE_BASE, USER_AGENT, tmdb_issue_id
 
 _STORE_VERSION = 1
 _LOOKUPS_PER_REFRESH = 15
@@ -59,9 +60,14 @@ async def async_validate_key(session: aiohttp.ClientSession, api_key: str) -> st
 class TmdbClient:
     """Poster paths for shows, cached across restarts."""
 
-    def __init__(self, hass: HomeAssistant, session: aiohttp.ClientSession, api_key: str) -> None:
+    def __init__(
+        self, hass: HomeAssistant, session: aiohttp.ClientSession, api_key: str, entry_id: str | None = None
+    ) -> None:
+        self._hass = hass
+        self._entry_id = entry_id
         self._session = session
         self._api_key = api_key
+        self._dirty: set[str] = set()
         self._store: Store[dict[str, str]] = Store(hass, _STORE_VERSION, f"{DOMAIN}_posters")
         self._cache: dict[str, str] = {}
         self._details_store: Store[dict[str, dict[str, Any]]] = Store(hass, _STORE_VERSION, f"{DOMAIN}_tmdb_details")
@@ -69,6 +75,48 @@ class TmdbClient:
         self._profile_store: Store[dict[str, dict[str, Any]]] = Store(hass, _STORE_VERSION, f"{DOMAIN}_tmdb_profiles")
         self._profiles: dict[str, dict[str, Any]] = {}
         self._disabled = False
+
+    def _key_rejected(self, what: str) -> None:
+        """TMDB said no to the key: turn it off, once, and tell the user with a repair."""
+        if self._disabled:
+            return
+        self._disabled = True
+        LOGGER.warning("TMDB rejected the API key; %s are turned off until it is fixed", what)
+        if self._entry_id:
+            ir.async_create_issue(
+                self._hass,
+                DOMAIN,
+                tmdb_issue_id(self._entry_id),
+                is_fixable=True,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key="tmdb_key_rejected",
+                data={"entry_id": self._entry_id},
+            )
+
+    @property
+    def rejected(self) -> bool:
+        """Whether TMDB has refused the key since the integration started."""
+        return self._disabled
+
+    def stats(self) -> dict[str, Any]:
+        """What is cached, for the diagnostics."""
+        return {
+            "rejected": self._disabled,
+            "posters": len(self._cache),
+            "details": len(self._details),
+            "profiles": len(self._profiles),
+            "profiles_unknown_to_tmdb": sum(1 for p in self._profiles.values() if p.get("missing")),
+        }
+
+    async def async_flush(self) -> None:
+        """Write what changed now: the integration is unloading, so a delayed save must not be left behind."""
+        pending, self._dirty = self._dirty, set()
+        if "posters" in pending:
+            await self._store.async_save(self._cache)
+        if "details" in pending:
+            await self._details_store.async_save(self._details)
+        if "profiles" in pending:
+            await self._profile_store.async_save(self._profiles)
 
     async def async_load(self) -> None:
         self._cache = await self._store.async_load() or {}
@@ -95,8 +143,7 @@ class TmdbClient:
                     timeout=aiohttp.ClientTimeout(total=15),
                 ) as resp:
                     if resp.status in (401, 403):
-                        LOGGER.warning("TMDB rejected the API key; posters are turned off until it is fixed")
-                        self._disabled = True
+                        self._key_rejected("posters")
                         break
                     if resp.status == 429:
                         break
@@ -113,6 +160,7 @@ class TmdbClient:
                 LOGGER.debug("TMDB lookup for %s failed: %s", tmdb_id, err)
                 break
         if changed:
+            self._dirty.add("posters")
             self._store.async_delay_save(lambda: self._cache, 10)
 
     async def async_details(self, show_ids: list[int], movie_ids: list[int]) -> dict[str, dict[str, Any]]:
@@ -149,8 +197,7 @@ class TmdbClient:
                             f"{TMDB_API_BASE}{path}", headers=headers, params=params, timeout=aiohttp.ClientTimeout(total=15)
                         ) as resp:
                             if resp.status in (401, 403):
-                                LOGGER.warning("TMDB rejected the API key; posters and runtimes are turned off until it is fixed")
-                                self._disabled = True
+                                self._key_rejected("posters and runtimes")
                                 return
                             if resp.status == 404:
                                 self._details[key] = {"day": today.isoformat()}
@@ -165,6 +212,7 @@ class TmdbClient:
                 self._details[key] = {**(info or {}), "day": today.isoformat()}
 
             await asyncio.gather(*(fetch(key, path) for key, path in todo))
+            self._dirty.add("details")
             self._details_store.async_delay_save(lambda: self._details, 10)
 
         return {
@@ -211,8 +259,7 @@ class TmdbClient:
                             timeout=aiohttp.ClientTimeout(total=20),
                         ) as resp:
                             if resp.status in (401, 403):
-                                LOGGER.warning("TMDB rejected the API key; posters, runtimes and most watched are turned off until it is fixed")
-                                self._disabled = True
+                                self._key_rejected("posters, runtimes and most watched")
                                 return
                             if resp.status == 404:
                                 self._profiles[key] = {"missing": True, "v": _PROFILE_VERSION, "day": today.isoformat()}
@@ -228,6 +275,7 @@ class TmdbClient:
                     self._profiles[key] = {**profile, "v": _PROFILE_VERSION, "day": today.isoformat()}
 
             await asyncio.gather(*(fetch(*t) for t in todo))
+            self._dirty.add("profiles")
             self._profile_store.async_delay_save(lambda: self._profiles, 10)
 
         return {

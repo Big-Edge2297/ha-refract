@@ -226,5 +226,25 @@
         }
       }
     }
+  },
+  "issues": {
+    "tmdb_key_rejected": {
+      "title": "TMDB hat deinen API-Schlüssel abgelehnt",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "TMDB-API-Schlüssel aktualisieren",
+            "description": "TMDB hat den API-Schlüssel abgelehnt, deshalb sind Poster, „Am häufigsten gesehen“ sowie die Genres und Poster des Monatsrückblicks ausgeschaltet. Gib einen neuen TMDB-API-Schlüssel ein (einen v3-Schlüssel oder ein v4-Lesezugriffstoken) oder lass das Feld leer, um sie auszuschalten. Einen kostenlosen Schlüssel bekommst du unter https://www.themoviedb.org/settings/api.",
+            "data": {
+              "tmdb_api_key": "TMDB-API-Schlüssel"
+            }
+          }
+        },
+        "error": {
+          "invalid_tmdb_key": "TMDB hat diesen Schlüssel abgelehnt.",
+          "tmdb_unreachable": "TMDB konnte nicht erreicht werden."
+        }
+      }
+    }
   }
 }

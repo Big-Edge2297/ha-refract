@@ -181,3 +181,18 @@ test("a sensor registered as most_watched by 0.5.0 is still found as top_picks",
   assert.deepEqual(matchKey("refract_codex_most_watched"), { key: "top_picks", prefix: "refract_codex_" });
   assert.equal(matchKey("most_watched")!.key, "top_picks");
 });
+
+test("the model says whether Refract answers: ok, waiting for the first update, or unavailable", () => {
+  const withState = (state: (id: string) => string) => {
+    const hass = makeHass();
+    const states: Record<string, any> = {};
+    for (const [id, e] of Object.entries(hass.states)) states[id] = { ...(e as any), state: state(id) };
+    return { ...hass, states };
+  };
+  const status = (hass: any) => buildModel(hass, discover(hass, { entity: `sensor.${PREFIX}next_up` }), { type: "x" }).status;
+  assert.equal(status(makeHass()), "ok");
+  assert.equal(status(withState(() => "unavailable")), "unavailable");
+  assert.equal(status(withState(() => "unknown")), "waiting");
+  assert.equal(status(withState((id) => (id.endsWith("next_up") ? "Westworld" : "unavailable"))), "ok", "one working sensor is enough");
+  assert.equal(status(withState((id) => (id.endsWith("next_up") ? "unavailable" : "unknown"))), "waiting");
+});

@@ -226,5 +226,25 @@
         }
       }
     }
+  },
+  "issues": {
+    "tmdb_key_rejected": {
+      "title": "TMDB odrzucił Twój klucz API",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Zaktualizuj klucz API TMDB",
+            "description": "TMDB odrzucił klucz API, dlatego plakaty, „Najczęściej oglądane” oraz gatunki i plakaty podsumowania miesiąca są wyłączone. Wpisz nowy klucz API TMDB (klucz v3 lub token dostępu v4 tylko do odczytu) albo zostaw pole puste, aby je wyłączyć. Darmowy klucz możesz uzyskać na https://www.themoviedb.org/settings/api.",
+            "data": {
+              "tmdb_api_key": "Klucz API TMDB"
+            }
+          }
+        },
+        "error": {
+          "invalid_tmdb_key": "TMDB odrzucił ten klucz.",
+          "tmdb_unreachable": "Nie można połączyć się z TMDB."
+        }
+      }
+    }
   }
 }

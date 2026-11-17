@@ -1597,3 +1597,55 @@ test("the editor offers the backdrop and heatmap switches", async () => {
   assert.ok((await editorFor({ layout: "custom" })).names.includes("show_year_heatmap"));
   assert.ok(!(await editorFor({})).names.includes("show_year_heatmap"));
 });
+
+// ------------------------------------------------------------ Refract can't be reached
+
+const allStates = (state: string, user?: { is_admin: boolean }) => {
+  const states: Record<string, any> = {};
+  for (const [id, e] of Object.entries(baseStates)) states[id] = { ...(e as any), state };
+  return Object.assign(makeHass({ states }), user ? { user } : {});
+};
+
+test("when every Refract sensor is unavailable the card says Refract can't be reached", async () => {
+  const el = await mount({}, allStates("unavailable"));
+  const text = plain(el);
+  assert.match(text, /Refract can't be reached/);
+  assert.match(text, /as soon as the integration can reach Refract/);
+  assert.equal(el.shadowRoot!.querySelector(".panel"), null, "no empty sections");
+  assert.equal(el.shadowRoot!.querySelector(".header"), null);
+  assert.equal(el.shadowRoot!.querySelector(".unreachable-button"), null, "only administrators get the shortcut");
+  assert.equal(el.shadowRoot!.querySelector("[role=status]")!.tagName, "DIV");
+});
+
+test("administrators get a shortcut to the integration", async () => {
+  const el = await mount({}, allStates("unavailable", { is_admin: true }));
+  const button = el.shadowRoot!.querySelector(".unreachable-button") as HTMLButtonElement;
+  assert.equal(button.textContent!.trim(), "Check the integration");
+  let navigated: any;
+  (dom.window as any).addEventListener("location-changed", (e: any) => (navigated = e.detail));
+  button.click();
+  assert.equal(dom.window.location.pathname, "/config/integrations/integration/refract");
+  assert.deepEqual(navigated, { replace: false });
+});
+
+test("before the first update the card says it is waiting, and a working card is not affected", async () => {
+  const waiting = plain(await mount({}, allStates("unknown", { is_admin: true })));
+  assert.match(waiting, /Waiting for Refract/);
+  assert.match(waiting, /first update has not arrived/);
+  assert.doesNotMatch(waiting, /Check the integration/);
+  // one usable sensor is enough for the normal card, with the unavailable sections left out
+  const states: Record<string, any> = {};
+  for (const [id, e] of Object.entries(baseStates)) states[id] = { ...(e as any), state: id.endsWith("_top_picks") ? (e as any).state : "unavailable" };
+  const partly = plain(await mount({}, makeHass({ states })));
+  assert.doesNotMatch(partly, /can't be reached|Waiting for Refract/);
+});
+
+test("single-section cards and other languages show the state too", async () => {
+  const card = await sectionCard(cardFor("next_up"), {}, allStates("unavailable"));
+  assert.ok((card.shadowRoot as ShadowRoot).querySelector("ha-card.single.unreachable"));
+  assert.match(plain(card), /Refract can't be reached/);
+  const de = Object.assign(allStates("unavailable"), { locale: { language: "de", time_zone: "server" }, language: "de" });
+  assert.match(plain(await mount({}, de)), /Refract ist nicht erreichbar/);
+  const pl = Object.assign(allStates("unknown"), { locale: { language: "pl", time_zone: "server" }, language: "pl" });
+  assert.match(plain(await mount({}, pl)), /Oczekiwanie na Refract/);
+});
