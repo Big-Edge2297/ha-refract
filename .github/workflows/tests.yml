@@ -7,6 +7,7 @@ on:
 
 jobs:
   python:
+    name: Analytics and translations
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -14,4 +15,28 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install pytest
-      - run: python -m pytest -q tests
+      # tests/ha need Home Assistant and run in the job below
+      - run: python -m pytest -q tests --ignore=tests/ha
+
+  homeassistant:
+    name: Home Assistant ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The oldest Home Assistant the integration supports (the version in hacs.json).
+          # pycares 4.9 and later start a thread that this Home Assistant's test checks do not expect.
+          - name: oldest (2025.1)
+            python: "3.12"
+            install: pytest-homeassistant-custom-component==0.13.205 "pycares<4.9"
+          - name: newest
+            python: "3.14"
+            install: pytest-homeassistant-custom-component
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install ${{ matrix.install }} home-assistant-frontend
+      - run: python -m pytest -p pytest_homeassistant_custom_component -q tests/ha
