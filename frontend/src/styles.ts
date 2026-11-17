@@ -476,6 +476,47 @@ export const cardStyles = css`
     place-items: center;
     color: var(--secondary-text-color);
   }
+  /* Refract can't be reached */
+  ha-card.unreachable {
+    padding: 8px 16px;
+  }
+  .unreachable-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 8px;
+    text-align: center;
+    --mdc-icon-size: 40px;
+  }
+  .unreachable-body ha-icon {
+    color: var(--secondary-text-color);
+  }
+  .unreachable-title {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .unreachable-text {
+    max-width: 36em;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--secondary-text-color);
+  }
+  .unreachable-button {
+    margin-top: 8px;
+    padding: 6px 14px;
+    border: 1px solid var(--c-accent);
+    border-radius: 16px;
+    background: none;
+    color: var(--c-accent);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .unreachable-button:focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 2px;
+  }
   /* single-section cards */
   ha-card.single {
     padding: 14px;

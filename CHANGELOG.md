@@ -2,6 +2,24 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.8.0
+
+### Added
+- **Tests that run the integration inside Home Assistant.** 21 tests load the integration for real with a mocked Refract and TMDB: the sensors and what they say (Next up skipping a fully watched show, the running month of the wrap, Most watched), an outage and its recovery, a rejected or revoked key, the setup, re-authentication and options flows, the diagnostics and the repair. One of them fails when a sensor gets an entity id the dashboard card does not look for. They run in CI on the oldest Home Assistant the integration supports (2025.1) and on the newest
+- **Diagnostics download** (Settings → Devices & services → Refract → ⋮ → Download diagnostics): the library by status and type, the up-next shows, how much history there is, how far the TMDB lookups are, the leaders of *Most watched* and the months of the wrap. Your keys, your name and the titles of your library are left out
+- **A repair for a rejected TMDB key.** When TMDB refuses the key, a repair *TMDB rejected your API key* appears under Settings → System → Repairs, instead of posters and *Most watched* quietly disappearing. Open it, enter a new key (it is checked first) or leave the field empty to turn TMDB off, and the integration applies it right away. It is shown per account and goes away when the key works
+- **A friendlier unavailable state in the card.** When every Refract sensor is unavailable the card says *Refract can't be reached* (with a *Check the integration* button for administrators) instead of showing an empty card, and *Waiting for Refract* before the first update after a start. It returns by itself. The single-section cards show it too
+- **Dependabot and a dependency audit.** Weekly pull requests for newer npm packages of the card and newer versions of the GitHub actions, and a weekly audit that fails if a library bundled into the card has a known vulnerability (the build tools are only reported). `docs/development.md` explains the tests, the updates and what to do with a Dependabot pull request, because a card update needs a rebuild
+- Translations of the new texts (the repair and the card states) in all seven languages
+
+### Fixed
+- The TMDB cache wrote its files on a timer that could still be pending when the integration unloaded or reloaded. They are now written when the integration unloads
+- The README and the card documentation no longer say that the monthly wrap waits for a month to finish, and the README's test command no longer tries to collect the Home Assistant tests
+
+### Notes
+- A rejected TMDB key is noticed when TMDB is asked for something. While everything is already cached, a revoked key shows up at the first title that needs a lookup
+- Home Assistant keeps a sensor that is no longer provided (such as *Top picks* after you turn TMDB off) as "unavailable"; the card leaves that section out
+
 ## 0.7.4
 
 ### Added

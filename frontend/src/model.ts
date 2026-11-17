@@ -166,6 +166,11 @@ export interface StatusCount {
 
 export interface Model {
   found: boolean;
+  /**
+   * `unavailable`: every Refract sensor is unavailable (the integration can't reach Refract, or isn't
+   * loaded); `waiting`: none has a value yet (right after a start); `ok` otherwise.
+   */
+  status: "ok" | "unavailable" | "waiting";
   accountMain: string;
   accountSub?: string;
   last?: { iso: string; title?: string; season?: number; episode?: number };
@@ -263,6 +268,13 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
   const n = (key: RefractKey) => parseNum(ent(key));
 
   const found = Object.keys(discovery.entities).length > 0;
+  const states = Object.values(discovery.entities).map((id) => hass.states[id as string]?.state ?? "unavailable");
+  const status: Model["status"] =
+    states.length === 0 || states.some((s) => s !== "unavailable" && s !== "unknown")
+      ? "ok"
+      : states.some((s) => s === "unknown")
+        ? "waiting"
+        : "unavailable";
   const name = splitAccountName(config.name ?? accountName(hass, discovery));
 
   const movies = n("movies");
@@ -517,6 +529,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
 
   return {
     found,
+    status,
     accountMain: name.main,
     accountSub: name.sub,
     last,
