@@ -64,3 +64,12 @@ def test_the_options_texts_agree_with_the_card_names_in_each_language():
             line = next(l for l in source.splitlines() if f'"{key}"' in l)
             name = line.split(": ", 1)[1].strip().rstrip(",").strip('"')
             assert name in description, f"{language}: the card calls it {name!r}"
+
+
+def test_no_translation_contains_a_url():
+    """hassfest rejects a URL inside a translated text; it has to be a {placeholder} given by the code."""
+    for name in ["en", *LANGUAGES]:
+        for path, text in paths(load(name)):
+            assert "://" not in str(text), f"{name}: {'.'.join(path)} contains a URL, use a description placeholder"
+    for path, text in paths(json.loads((ROOT / "strings.json").read_text(encoding="utf-8"))):
+        assert "://" not in str(text), f"strings.json: {'.'.join(path)} contains a URL"

@@ -234,7 +234,7 @@
         "step": {
           "confirm": {
             "title": "Aggiorna la tua chiave API TMDB",
-            "description": "TMDB ha rifiutato la chiave API, quindi locandine, «Più guardati» e generi e locandine del riepilogo mensile sono disattivati. Inserisci una nuova chiave API TMDB (una chiave v3 o un token di accesso in lettura v4), oppure lascia il campo vuoto per disattivarli. Puoi ottenere una chiave gratuita su https://www.themoviedb.org/settings/api.",
+            "description": "TMDB ha rifiutato la chiave API, quindi locandine, «Più guardati» e generi e locandine del riepilogo mensile sono disattivati. Inserisci una nuova chiave API TMDB (una chiave v3 o un token di accesso in lettura v4), oppure lascia il campo vuoto per disattivarli. Puoi ottenere una chiave gratuita su {tmdb_url}.",
             "data": {
               "tmdb_api_key": "Chiave API TMDB"
             }

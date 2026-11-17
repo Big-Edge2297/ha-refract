@@ -56,6 +56,8 @@ async def test_the_repair_checks_the_new_key_and_saves_it(hass, rejected, aiocli
     flow = await start_flow(hass, rejected)
     form = await flow.async_step_init()
     assert form["type"] == "form" and form["step_id"] == "confirm"
+    # a URL can't be in the translated text (hassfest), so the form brings it as a placeholder
+    assert form["description_placeholders"] == {"tmdb_url": "https://www.themoviedb.org/settings/api"}
 
     aioclient_mock.clear_requests()
     mock_refract(aioclient_mock)

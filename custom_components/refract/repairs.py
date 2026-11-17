@@ -8,7 +8,7 @@ from homeassistant.components.repairs import RepairsFlow
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_TMDB_API_KEY
+from .const import CONF_TMDB_API_KEY, TMDB_KEY_URL
 from .tmdb import async_validate_key
 
 
@@ -41,6 +41,8 @@ class TmdbKeyRepairFlow(RepairsFlow):
         return self.async_show_form(
             step_id="confirm",
             data_schema=vol.Schema({vol.Optional(CONF_TMDB_API_KEY): str}),
+            # hassfest does not allow a URL inside the translated text, so it is a placeholder
+            description_placeholders={"tmdb_url": TMDB_KEY_URL},
             errors=errors,
         )
 

@@ -234,7 +234,7 @@
         "step": {
           "confirm": {
             "title": "TMDB-API-Schlüssel aktualisieren",
-            "description": "TMDB hat den API-Schlüssel abgelehnt, deshalb sind Poster, „Am häufigsten gesehen“ sowie die Genres und Poster des Monatsrückblicks ausgeschaltet. Gib einen neuen TMDB-API-Schlüssel ein (einen v3-Schlüssel oder ein v4-Lesezugriffstoken) oder lass das Feld leer, um sie auszuschalten. Einen kostenlosen Schlüssel bekommst du unter https://www.themoviedb.org/settings/api.",
+            "description": "TMDB hat den API-Schlüssel abgelehnt, deshalb sind Poster, „Am häufigsten gesehen“ sowie die Genres und Poster des Monatsrückblicks ausgeschaltet. Gib einen neuen TMDB-API-Schlüssel ein (einen v3-Schlüssel oder ein v4-Lesezugriffstoken) oder lass das Feld leer, um sie auszuschalten. Einen kostenlosen Schlüssel bekommst du unter {tmdb_url}.",
             "data": {
               "tmdb_api_key": "TMDB-API-Schlüssel"
             }

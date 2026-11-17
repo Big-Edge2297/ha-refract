@@ -234,7 +234,7 @@
         "step": {
           "confirm": {
             "title": "Actualizar tu clave de API de TMDB",
-            "description": "TMDB rechazó la clave de API, así que los pósteres, «Lo más visto» y los géneros y pósteres del resumen mensual están desactivados. Introduce una nueva clave de API de TMDB (una clave v3 o un token de acceso de lectura v4), o deja el campo vacío para desactivarlos. Puedes obtener una clave gratuita en https://www.themoviedb.org/settings/api.",
+            "description": "TMDB rechazó la clave de API, así que los pósteres, «Lo más visto» y los géneros y pósteres del resumen mensual están desactivados. Introduce una nueva clave de API de TMDB (una clave v3 o un token de acceso de lectura v4), o deja el campo vacío para desactivarlos. Puedes obtener una clave gratuita en {tmdb_url}.",
             "data": {
               "tmdb_api_key": "Clave de API de TMDB"
             }

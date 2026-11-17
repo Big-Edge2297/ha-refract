@@ -234,7 +234,7 @@
         "step": {
           "confirm": {
             "title": "Update your TMDB API key",
-            "description": "TMDB rejected the API key, so posters, Most watched and the genres and posters of the monthly wrap are turned off. Enter a new TMDB API key (a v3 key or a v4 read access token), or leave the field empty to turn them off. You can get a free key at https://www.themoviedb.org/settings/api.",
+            "description": "TMDB rejected the API key, so posters, Most watched and the genres and posters of the monthly wrap are turned off. Enter a new TMDB API key (a v3 key or a v4 read access token), or leave the field empty to turn them off. You can get a free key at {tmdb_url}.",
             "data": {
               "tmdb_api_key": "TMDB API key"
             }

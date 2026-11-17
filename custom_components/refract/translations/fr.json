@@ -234,7 +234,7 @@
         "step": {
           "confirm": {
             "title": "Mettre à jour votre clé API TMDB",
-            "description": "TMDB a rejeté la clé API, donc les affiches, « Les plus regardés » ainsi que les genres et affiches du bilan du mois sont désactivés. Saisissez une nouvelle clé API TMDB (une clé v3 ou un jeton d'accès en lecture v4), ou laissez le champ vide pour les désactiver. Vous pouvez obtenir une clé gratuite sur https://www.themoviedb.org/settings/api.",
+            "description": "TMDB a rejeté la clé API, donc les affiches, « Les plus regardés » ainsi que les genres et affiches du bilan du mois sont désactivés. Saisissez une nouvelle clé API TMDB (une clé v3 ou un jeton d'accès en lecture v4), ou laissez le champ vide pour les désactiver. Vous pouvez obtenir une clé gratuite sur {tmdb_url}.",
             "data": {
               "tmdb_api_key": "Clé API TMDB"
             }

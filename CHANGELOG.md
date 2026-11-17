@@ -2,6 +2,17 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.8.1
+
+### Fixed
+- **hassfest failed on the TMDB repair.** The text of the repair *TMDB rejected your API key* had the address of TMDB's API settings written into the translated text, which hassfest does not allow. The address is now a `{tmdb_url}` placeholder that the repair itself provides, in English and in the seven translations. The repair looks the same. A new test fails when any translated text contains a URL
+- **The Tests workflow failed** ("exit code 2"). It ran the Home Assistant tests in `tests/ha` without Home Assistant installed. They now have their own jobs, on the oldest Home Assistant the integration supports (2025.1) and on the newest, and the plain job leaves them out
+- The files `.github/dependabot.yml` and `.github/workflows/audit.yml`, which 0.8.0 describes, were missing from the repository and are added
+
+### Notes
+- Nothing changes in the sensors, the card or the options. This release only fixes the checks
+- The oldest-Home-Assistant job pins `pycares` below 4.9: newer versions start a background thread that the test checks of Home Assistant 2025.1 do not expect. `docs/development.md` says what to change when the oldest supported Home Assistant changes
+
 ## 0.8.0
 
 ### Added

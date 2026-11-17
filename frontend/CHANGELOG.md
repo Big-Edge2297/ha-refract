@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.1
+
+- No changes to the card; the version follows the integration
+
 ## 0.8.0
 
 - **New:** `Model.status` (`ok`, `waiting`, `unavailable`) and the card state *Refract can't be reached* / *Waiting for Refract* (`_unreachable`), also for the single-section cards. The demo page has a switch for it

@@ -26,6 +26,7 @@ SCOPE_HISTORY = "history"
 # History (weekly stats) is heavy, so it is refreshed less often than the rest.
 HISTORY_REFRESH_MINUTES = 60
 
+TMDB_KEY_URL = "https://www.themoviedb.org/settings/api"  # where a TMDB API key is created
 TMDB_API_BASE = "https://api.themoviedb.org/3"
 ISSUE_TMDB_KEY = "tmdb_key_rejected"
 

@@ -25,7 +25,11 @@ python -m pytest -p pytest_homeassistant_custom_component -q tests/ha
 
 The Home Assistant tests mock Refract and TMDB (`tests/ha/refract_data.py`): they set the integration up for real, read its sensors, make the API fail, and walk through the setup, re-authentication and repair flows. The card is checked against them too: a test fails when a sensor gets an entity id the card does not look for.
 
-The *Tests* workflow runs them on the oldest Home Assistant the integration supports (the version in `hacs.json`) and on the newest.
+The *Tests* workflow runs them on the oldest Home Assistant the integration supports (the version in `hacs.json`) and on the newest. The plain tests (`tests`, without `tests/ha`) run in their own job.
+
+Each release of `pytest-homeassistant-custom-component` is tied to one Home Assistant version (`0.13.205` is Home Assistant 2025.1.4). When the oldest supported version in `hacs.json` changes, pick the matching release on PyPI and update the *oldest* entry in `.github/workflows/tests.yml`. That job also pins `pycares<4.9`, because newer versions start a thread that the test checks of Home Assistant 2025.1 reject.
+
+Translated texts must not contain URLs (the *Validate* workflow's hassfest rejects them). Give the address as a placeholder, as the TMDB repair does with `{tmdb_url}`; a test checks it.
 
 ## Dependency updates
 
