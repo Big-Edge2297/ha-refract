@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      # Keep the types on the same major as the Node version of the workflows (26).
+      # When the workflows move to a newer Node, change node-version and @types/node together.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
