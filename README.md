@@ -2,6 +2,8 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/Big-Edge2297/ha-refract)](https://github.com/Big-Edge2297/ha-refract/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Big-Edge2297/ha-refract/total?label=downloads)](https://github.com/Big-Edge2297/ha-refract/releases)
+[![Latest release downloads](https://img.shields.io/github/downloads/Big-Edge2297/ha-refract/latest/total?label=latest%20release)](https://github.com/Big-Edge2297/ha-refract/releases/latest)
 [![Validate](https://github.com/Big-Edge2297/ha-refract/actions/workflows/validate.yml/badge.svg)](https://github.com/Big-Edge2297/ha-refract/actions/workflows/validate.yml)
 
 Unofficial [Home Assistant](https://www.home-assistant.io/) integration for [Refract](https://getrefract.app/), the cross-media tracker for movies, TV and anime. It uses Refract's official [personal API keys](https://getrefract.app/developers) and [TMDB's API key](https://www.themoviedb.org/settings/api) for posters and your most watched actors, directors, genres and more.
