@@ -14,7 +14,7 @@ export interface SectionCardInfo {
 /** One card for each section of the Refract card, so each can be placed on its own. */
 export const SECTION_CARDS: SectionCardInfo[] = [
   { section: "hero", type: "refract-total-watch-time-card", name: "Refract: Total watch time", description: "Your total watch time, with the library, movie and episode counts and a fun comparison." },
-  { section: "watch_time", type: "refract-watch-time-card", name: "Refract: Watch time", description: "Watch time split between TV shows, movies and anime." },
+  { section: "watch_time", type: "refract-watch-time-card", name: "Refract: Time spent", description: "Time spent on TV shows, movies, anime and games." },
   { section: "library", type: "refract-library-card", name: "Refract: Library", description: "Your library by status." },
   { section: "still_to_finish", type: "refract-still-to-finish-card", name: "Refract: Still to finish", description: "Time left to finish the movies and shows you started." },
   { section: "streak", type: "refract-streak-card", name: "Refract: Streak", description: "Your current and longest streak of days." },

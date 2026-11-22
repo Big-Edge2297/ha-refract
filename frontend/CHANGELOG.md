@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+
+- **New:** the top tiles are Titles, Movies, TV Shows, Anime, Games and Episodes watched, in a grid of three columns (one row for up to three tiles, two rows of two for four). TV Shows and Anime show the different titles watched (`stats_shows_titles`, `stats_anime_titles`), Games the games played (`stats_games_played`), each as a label and a number with nothing under it. Episodes watched still adds up the episodes
+- **New:** the *Time spent* section (formerly *Watch time*) includes the games: a fourth bar and list row from `stats_games_play_minutes`, labeled with `hero.games`, colored with `--c-games` / `color_games` (default `#d6409f`, in the editor). The row is left out when there is no time played. `watch.title` is *Time spent* in all languages; `show_watch_time` and `watch_time_style` keep their names
+- **Changed:** the tiles *Library* and *Movies seen* are *Titles* and *Movies* (translation keys `hero.titles` and `hero.movies`; the Library section keeps its name)
+- Translated in all seven languages; the demo page has the games and title figures
+
 ## 0.8.1
 
 - No changes to the card; the version follows the integration

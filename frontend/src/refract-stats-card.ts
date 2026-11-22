@@ -246,6 +246,7 @@ export class RefractStatsCard extends LitElement {
     if (c.color_movies) vars["--refract-color-movies"] = c.color_movies;
     if (c.color_shows) vars["--refract-color-shows"] = c.color_shows;
     if (c.color_anime) vars["--refract-color-anime"] = c.color_anime;
+    if (c.color_games) vars["--refract-color-games"] = c.color_games;
     if (c.color_accent) vars["--refract-color-accent"] = c.color_accent;
     return vars;
   }
@@ -279,12 +280,18 @@ export class RefractStatsCard extends LitElement {
     const lang = languageOf(this.hass);
     const c = this._cfg;
     const total = m.minutes.total;
+    // [label, value]
     const tiles: Array<[string, number | undefined]> = [
-      [t(this.hass, "hero.library"), m.library.total],
-      [t(this.hass, "hero.movies_seen"), m.moviesWatched],
+      [t(this.hass, "hero.titles"), m.library.total],
+      [t(this.hass, "hero.movies"), m.moviesWatched],
+      [t(this.hass, "hero.tv_shows"), m.showTitlesWatched],
+      [t(this.hass, "hero.anime"), m.animeTitlesWatched],
+      [t(this.hass, "hero.games"), m.gamesPlayed],
       [t(this.hass, "hero.episodes"), m.episodesWatched],
     ];
     const visibleTiles = tiles.filter(([, v]) => v !== undefined) as Array<[string, number]>;
+    // 1-3 tiles in one row, four in two rows of two, five or six in rows of three
+    const columns = visibleTiles.length <= 3 ? Math.max(1, visibleTiles.length) : visibleTiles.length === 4 ? 2 : 3;
     if (total === undefined && visibleTiles.length === 0) return nothing;
 
     const fun = c.fun_stat && total !== undefined ? funStatText(this.hass, total, c.fun_stat_mode) : undefined;
@@ -307,7 +314,7 @@ export class RefractStatsCard extends LitElement {
             </div>`
           : nothing}
         ${visibleTiles.length
-          ? html`<div class="tiles">
+          ? html`<div class="tiles" style="--cols:${columns}">
               ${visibleTiles.map(
                 ([label, value]) =>
                   html`<div class="tile">
@@ -521,6 +528,8 @@ export class RefractStatsCard extends LitElement {
       { key: "library.shows", minutes: m.minutes.shows, color: "var(--c-shows)" },
       { key: "library.movies", minutes: m.minutes.movies, color: "var(--c-movies)" },
       { key: "library.anime", minutes: m.minutes.anime, color: "var(--c-anime)" },
+      // games only when there is time played, so an account without games sees no empty row
+      { key: "hero.games", minutes: m.minutes.games && m.minutes.games > 0 ? m.minutes.games : undefined, color: "var(--c-games)" },
     ].filter((x) => x.minutes !== undefined) as Array<{ key: string; minutes: number; color: string }>;
     if (!cats.length) return nothing;
     const pct = shares(cats.map((x) => x.minutes));
@@ -546,7 +555,7 @@ export class RefractStatsCard extends LitElement {
               </div>`,
             )}
           </div>`
-        : html`<div class="watch-cols">
+        : html`<div class="watch-cols ${cats.length === 4 ? "four" : ""}">
             ${cats.map(
               (x, i) =>
                 html`<div class="watch-col">

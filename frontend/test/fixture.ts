@@ -81,6 +81,8 @@ export const states: Record<string, HassEntity> = Object.fromEntries([
   entity("next_up", "Westworld", westworld),
   entity("stats_anime_episodes_watched", "291"),
   entity("stats_anime_titles", "1"),
+  entity("stats_games_played", "4"),
+  entity("stats_games_play_minutes", "11100"),
   entity("stats_movies_watched", "661"),
   entity("stats_shows_episodes_watched", "7668"),
   entity("stats_shows_titles", "171"),

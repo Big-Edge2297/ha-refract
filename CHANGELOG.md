@@ -2,6 +2,22 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.9.0
+
+### Added
+- **Games.** Refract now tracks games, and the integration already reports them (*Stats games played*, *Stats games finished* and *Stats games play minutes*). The card shows the games you have played in a new *Games* tile
+- **Games in Time spent.** The bars, the list and the percentages of *Time spent* now include the time you played games, from *Stats games play minutes*, with their own color (`color_games`, default `#d6409f`, also in the card settings). A row for games only shows when there is time played, so nothing changes for an account without games
+- **TV Shows and Anime tiles.** Two more tiles under the total watch time show how many different TV shows and how many different anime you have watched (from *Stats shows titles* and *Stats anime titles*). The six tiles are now Titles, Movies, TV Shows, Anime, Games and Episodes watched, in rows of three. *Episodes watched* still counts episodes
+
+### Changed
+- The *Watch time* section is now called **Time spent** (in the card, the editor, the single-section card *Refract: Time spent* and all seven languages). The settings keep their names (`show_watch_time`, `watch_time_style`), so nothing in an existing configuration changes
+- The *Library* tile is now called **Titles**, and *Movies seen* is called **Movies**. The *Library* section (the status breakdown) keeps its name
+- The new tiles are translated into German, French, Spanish, Italian, Dutch, Portuguese and Polish
+
+### Notes
+- A tile whose figure Refract doesn't report is left out, so nothing changes for an account without games
+- No change in the integration itself, the sensors for games came with Refract's update
+
 ## 0.8.1
 
 ### Fixed

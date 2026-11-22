@@ -30,6 +30,8 @@ export const SENSOR_KEYS = [
   "still_to_finish",
   "stats_anime_episodes_watched",
   "stats_anime_titles",
+  "stats_games_played",
+  "stats_games_play_minutes",
   "stats_movies_watched",
   "stats_shows_episodes_watched",
   "stats_shows_titles",

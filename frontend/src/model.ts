@@ -174,7 +174,8 @@ export interface Model {
   accountMain: string;
   accountSub?: string;
   last?: { iso: string; title?: string; season?: number; episode?: number };
-  minutes: { total?: number; shows?: number; movies?: number; anime?: number };
+  /** `total` is Refract's own total; `games` is the time played, shown next to the kinds of watch time. */
+  minutes: { total?: number; shows?: number; movies?: number; anime?: number; games?: number };
   library: {
     total?: number;
     movies?: number;
@@ -189,7 +190,13 @@ export interface Model {
     statuses?: StatusCount[];
   };
   moviesWatched?: number;
+  /** TV and anime episodes together. */
   episodesWatched?: number;
+  /** Different TV shows watched (anime not included). */
+  showTitlesWatched?: number;
+  /** Different anime watched. */
+  animeTitlesWatched?: number;
+  gamesPlayed?: number;
   streak?: { current: number; longest: number };
   next: NextUp;
   last7?: Last7;
@@ -292,6 +299,7 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
   const showsMin = n("stats_watch_time_shows_minutes");
   const moviesMin = n("stats_watch_time_movies_minutes");
   const animeMin = n("stats_watch_time_anime_minutes");
+  const gamesMin = n("stats_games_play_minutes");
   const totalMin = n("stats_watch_time_total_minutes") ?? sum([showsMin, moviesMin, animeMin]);
 
   const lastState = ent("last_watched");
@@ -533,10 +541,13 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
     accountMain: name.main,
     accountSub: name.sub,
     last,
-    minutes: { total: totalMin, shows: showsMin, movies: moviesMin, anime: animeMin },
+    minutes: { total: totalMin, shows: showsMin, movies: moviesMin, anime: animeMin, games: gamesMin },
     library: { total, movies, shows, anime, completed, inProgress, upToDate, watchlist, other, statuses },
     moviesWatched: n("stats_movies_watched"),
     episodesWatched: sum([n("stats_shows_episodes_watched"), n("stats_anime_episodes_watched")]),
+    showTitlesWatched: n("stats_shows_titles"),
+    animeTitlesWatched: n("stats_anime_titles"),
+    gamesPlayed: n("stats_games_played"),
     streak: current !== undefined ? { current, longest: Math.max(longest ?? current, current) } : undefined,
     next,
     last7,

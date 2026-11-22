@@ -18,7 +18,9 @@ test("discovery by name prefix finds every sensor", () => {
   assert.equal(d.prefix, PREFIX);
   assert.equal(d.entities.library_total, `sensor.${PREFIX}library_total`);
   assert.equal(d.entities.watchlist, `sensor.${PREFIX}watchlist`); // sensor, not the todo entity
-  assert.equal(Object.keys(d.entities).length, 29);
+  assert.equal(Object.keys(d.entities).length, 31);
+  assert.equal(d.entities.stats_games_played, `sensor.${PREFIX}stats_games_played`);
+  assert.equal(d.entities.stats_shows_titles, `sensor.${PREFIX}stats_shows_titles`);
   assert.equal(d.entities.catch_up, `sensor.${PREFIX}catch_up`);
   assert.equal(d.entities.last_7_days, `sensor.${PREFIX}last_7_days`);
   assert.equal(d.entities.top_picks, `sensor.${PREFIX}top_picks`);

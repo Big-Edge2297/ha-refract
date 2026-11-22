@@ -63,11 +63,11 @@ test("every translation has every English text, nothing unknown, and the same pl
 });
 
 test("a language and region picks the language, anything unknown falls back to English", () => {
-  assert.equal(t(hassIn("de"), "hero.library"), "Bibliothek");
-  assert.equal(t(hassIn("de-AT"), "hero.library"), "Bibliothek");
-  assert.equal(t(hassIn("pt-BR"), "hero.library"), "Biblioteca");
-  assert.equal(t(hassIn("xx"), "hero.library"), "Library");
-  assert.equal(t(undefined, "hero.library"), "Library");
+  assert.equal(t(hassIn("de"), "hero.titles"), "Titel");
+  assert.equal(t(hassIn("de-AT"), "hero.titles"), "Titel");
+  assert.equal(t(hassIn("pt-BR"), "hero.titles"), "Títulos");
+  assert.equal(t(hassIn("xx"), "hero.titles"), "Titles");
+  assert.equal(t(undefined, "hero.titles"), "Titles");
   assert.equal(t(hassIn("de"), "no.such.key"), "no.such.key");
   assert.equal(t(hassIn("fr"), "empty.not_found", { entity: "sensor.x" }), "Aucune entité Refract trouvée pour sensor.x.");
 });

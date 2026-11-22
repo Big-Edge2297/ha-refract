@@ -182,6 +182,7 @@ export interface RefractCardConfig {
   color_movies?: string;
   color_shows?: string;
   color_anime?: string;
+  color_games?: string;
   color_accent?: string;
   /** Manual overrides for discovery, keyed by sensor key. */
   entities?: Record<string, string>;

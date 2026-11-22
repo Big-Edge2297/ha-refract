@@ -46,14 +46,75 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
+const tileLabels = (el: Card) => [...el.shadowRoot!.querySelectorAll(".tiles .tile")].map((x) => x.querySelector(".label")!.textContent!.trim());
+const withoutStats = (...keys: string[]) =>
+  makeHass({ states: Object.fromEntries(Object.entries(baseStates).filter(([id]) => !keys.some((k) => id.endsWith(`_${k}`)))) });
+
+test("the top tiles: Titles, Movies, TV Shows, Anime, Games and Episodes watched, in a grid of three", async () => {
+  const el = await mount({});
+  assert.deepEqual(tileLabels(el), ["Titles", "Movies", "TV Shows", "Anime", "Games", "Episodes watched"]);
+  const tiles = el.shadowRoot!.querySelector<HTMLElement>(".tiles")!;
+  assert.match(tiles.getAttribute("style")!, /--cols:3/);
+  assert.equal(el.shadowRoot!.querySelectorAll(".tiles .caption").length, 0, "the tiles are a label and a number, nothing under them");
+  const tiles6 = [...el.shadowRoot!.querySelectorAll(".tiles .tile")].map((x) => x.textContent!.replace(/\s+/g, " ").trim());
+  assert.deepEqual(tiles6, ["Titles 896", "Movies 661", "TV Shows 171", "Anime 1", "Games 4", "Episodes watched 7,959"]);
+  assert.doesNotMatch(text(el), /total watched|total played/);
+});
+
+test("TV Shows and Anime count the different titles watched, not the episodes; Games the games played", async () => {
+  const hass = makeHass({
+    states: {
+      ...baseStates,
+      [`sensor.${PREFIX}stats_shows_titles`]: { entity_id: "a", state: "171", attributes: {} },
+      [`sensor.${PREFIX}stats_anime_titles`]: { entity_id: "b", state: "1", attributes: {} },
+      [`sensor.${PREFIX}stats_shows_episodes_watched`]: { entity_id: "d", state: "7699", attributes: {} },
+      [`sensor.${PREFIX}stats_anime_episodes_watched`]: { entity_id: "e", state: "291", attributes: {} },
+      [`sensor.${PREFIX}stats_games_played`]: { entity_id: "c", state: "0", attributes: {} },
+    },
+  });
+  const t = text(await mount({}, hass));
+  assert.match(t, /TV Shows 171\b/);
+  assert.match(t, /Anime 1\b/);
+  assert.doesNotMatch(t, /TV Shows 7,699/, "the episode count is not the TV Shows tile");
+  assert.match(t, /Games 0\b/, "zero is still shown");
+  assert.match(t, /Episodes watched 7,990/, "the episodes tile still adds up the episodes");
+});
+
+test("the TV Shows and Anime tiles do not depend on the episode sensors", async () => {
+  const el = await mount({}, withoutStats("stats_shows_episodes_watched", "stats_anime_episodes_watched"));
+  assert.deepEqual(tileLabels(el), ["Titles", "Movies", "TV Shows", "Anime", "Games"], "only the Episodes watched tile goes");
+  assert.match(text(el), /TV Shows 171\b/);
+});
+
+test("tiles without a sensor are left out and the grid adapts", async () => {
+  const noGames = await mount({}, withoutStats("stats_games_played"));
+  assert.deepEqual(tileLabels(noGames), ["Titles", "Movies", "TV Shows", "Anime", "Episodes watched"]);
+  assert.match(noGames.shadowRoot!.querySelector(".tiles")!.getAttribute("style")!, /--cols:3/);
+
+  const four = await mount({}, withoutStats("stats_games_played", "stats_anime_titles"));
+  assert.deepEqual(tileLabels(four), ["Titles", "Movies", "TV Shows", "Episodes watched"]);
+  assert.match(four.shadowRoot!.querySelector(".tiles")!.getAttribute("style")!, /--cols:2/);
+});
+
+test("the new tiles are translated", async () => {
+  const hass = Object.assign(makeHass(), { locale: { language: "de", time_zone: "server" }, language: "de" }) as any;
+  const el = await mount({}, hass);
+  assert.deepEqual(tileLabels(el).slice(0, 5), ["Titel", "Filme", "Serien", "Anime", "Spiele"]);
+  assert.doesNotMatch(text(el), /insgesamt gesehen|insgesamt gespielt/, "no wording under the tiles");
+});
+
 test("renders the hero with human durations", async () => {
   const el = await mount({ fun_stat_mode: "months" });
   const t = text(el);
   assert.match(t, /Refract Codex/);
   assert.match(t, /Total watch time 266 days 14 hours/);
-  assert.match(t, /Library 896/);
-  assert.match(t, /Movies seen 661/);
+  assert.match(t, /Titles 896/);
+  assert.match(t, /Movies 661/);
+  assert.match(t, /TV Shows 171\b/);
+  assert.match(t, /Anime 1\b/);
+  assert.match(t, /Games 4\b/);
   assert.match(t, /Episodes watched 7,959/);
+  assert.doesNotMatch(t, /Movies seen/);
   assert.match(t, /That's about 8\.8 months of nonstop viewing/);
   assert.doesNotMatch(t, /383,908|298,044|78,542|7,322/, "raw minutes never reach the card");
 });
@@ -70,9 +131,11 @@ test("library status bar and watch-time split", async () => {
   assert.match(t, /206 d 23 h/);
   assert.match(t, /54 d 13 h/);
   assert.match(t, /5 d 2 h/);
-  assert.match(t, /TV shows · 78%/);
+  assert.match(t, /7 d 17 h/);
+  assert.match(t, /TV shows · 75%/);
   assert.match(t, /Movies · 20%/);
   assert.match(t, /Anime · 2%/);
+  assert.match(t, /Games · 3%/);
 });
 
 function withStatuses(byStatus: Record<string, number>) {
@@ -204,10 +267,10 @@ test("still to finish copes with no time data, nothing left, a missing sensor an
 test("watch time breakdown list mirrors the library list: bar on top, one row per kind with time and share", async () => {
   const el = await mount({ watch_time_style: "list" });
   const root = el.shadowRoot!;
-  const panel = [...root.querySelectorAll(".panel")].find((p) => p.querySelector(".label")?.textContent === "Watch time")!;
+  const panel = [...root.querySelectorAll(".panel")].find((p) => p.querySelector(".label")?.textContent === "Time spent")!;
   const rows = [...panel.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
-  assert.deepEqual(rows, ["TV shows 206 d 23 h 78%", "Movies 54 d 13 h 20%", "Anime 5 d 2 h 2%"]);
-  assert.equal(panel.querySelectorAll(".stack > span").length, 3, "the bar stays on top");
+  assert.deepEqual(rows, ["TV shows 206 d 23 h 75%", "Movies 54 d 13 h 20%", "Anime 5 d 2 h 2%", "Games 7 d 17 h 3%"]);
+  assert.equal(panel.querySelectorAll(".stack > span").length, 4, "the bar stays on top");
   assert.equal(panel.querySelector(".watch-cols"), null, "no columns in list style");
   assert.match(panel.querySelectorAll(".stat-dot")[1].getAttribute("style")!, /--c-movies/);
 });
@@ -215,8 +278,69 @@ test("watch time breakdown list mirrors the library list: bar on top, one row pe
 test("watch time bar: percentage after the title with a dot, no brackets", async () => {
   const el = await mount(BARS);
   assert.ok(el.shadowRoot!.querySelector(".watch-cols"));
-  assert.equal([...el.shadowRoot!.querySelectorAll(".panel")].filter((p) => p.querySelector(".label")?.textContent === "Watch time")[0].querySelector(".stat-row"), null);
-  assert.match(text(el), /TV shows · 78%/);
+  assert.equal([...el.shadowRoot!.querySelectorAll(".panel")].filter((p) => p.querySelector(".label")?.textContent === "Time spent")[0].querySelector(".stat-row"), null);
+  assert.match(text(el), /TV shows · 75%/);
+});
+
+const timeSpent = (el: Card) => [...el.shadowRoot!.querySelectorAll(".panel")].find((p) => p.querySelector(".label")?.textContent === "Time spent")!;
+const withoutGames = (minutes?: string) => {
+  const states: Record<string, any> = { ...baseStates };
+  const key = `sensor.${PREFIX}stats_games_play_minutes`;
+  if (minutes === undefined) delete states[key];
+  else states[key] = { ...states[key], state: minutes };
+  return makeHass({ states });
+};
+
+test("the watch time section is called Time spent and has the games as a fourth bar with its own color", async () => {
+  for (const style of ["list", "bar"] as const) {
+    const panel = timeSpent(await mount({ watch_time_style: style }));
+    assert.ok(panel, `${style}: the section is titled Time spent`);
+    assert.equal(panel.querySelectorAll(".stack > span").length, 4, `${style}: four segments`);
+    assert.match(panel.querySelectorAll(".stack > span")[3].getAttribute("style")!, /--c-games/);
+    assert.match(panel.querySelector(".stack")!.getAttribute("aria-label")!, /TV shows 75%, Movies 20%, Anime 2%, Games 3%/);
+    assert.match(panel.textContent!, /Games/);
+    assert.match(panel.textContent!, /7 d 17 h/);
+  }
+  assert.doesNotMatch(text(await mount({})), /Watch time TV shows|Watch time split/);
+  const games = timeSpent(await mount({ watch_time_style: "list" })).querySelectorAll(".stat-dot")[3];
+  assert.match(games.getAttribute("style")!, /--c-games/);
+});
+
+test("four kinds in the compact bar sit in a two by two grid, three keep their row", async () => {
+  assert.ok(timeSpent(await mount(BARS)).querySelector(".watch-cols.four"));
+  assert.equal(timeSpent(await mount(BARS, withoutGames("0"))).querySelector(".watch-cols.four"), null);
+});
+
+test("the games row is left out when there is no time played, and the shares are those of the rest", async () => {
+  for (const hass of [withoutGames("0"), withoutGames(undefined), withoutGames("unavailable")]) {
+    const panel = timeSpent(await mount({ watch_time_style: "list" }, hass));
+    const rows = [...panel.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
+    assert.deepEqual(rows, ["TV shows 206 d 23 h 78%", "Movies 54 d 13 h 20%", "Anime 5 d 2 h 2%"]);
+    assert.equal(panel.querySelectorAll(".stack > span").length, 3);
+  }
+});
+
+test("the games color can be set, and the section name is Time spent everywhere", async () => {
+  const el = await mount({ color_games: "#ff00aa" });
+  assert.match(el.shadowRoot!.querySelector("ha-card")!.getAttribute("style")!, /--refract-color-games:\s*#ff00aa/);
+  const info = SECTION_CARDS.find((c) => c.section === "watch_time")!;
+  assert.equal(info.name, "Refract: Time spent");
+  assert.match(info.description, /games/);
+  const single = await sectionCard(info.type);
+  assert.match(plain(single), /Time spent/);
+  assert.match(plain(single), /Games/);
+});
+
+test("Time spent and the games row are translated", async () => {
+  const titles: Record<string, [string, string]> = {
+    de: ["Verbrachte Zeit", "Spiele"], es: ["Tiempo dedicado", "Juegos"], fr: ["Temps passé", "Jeux"], it: ["Tempo dedicato", "Giochi"],
+    nl: ["Bestede tijd", "Games"], pl: ["Spędzony czas", "Gry"], pt: ["Tempo dedicado", "Jogos"],
+  };
+  for (const [lang, [title, games]] of Object.entries(titles)) {
+    const panel = [...(await mount({}, inLanguage(lang))).shadowRoot!.querySelectorAll(".panel")].find((p) => p.querySelector(".label")?.textContent === title);
+    assert.ok(panel, `${lang}: titled ${title}`);
+    assert.match(panel!.textContent!, new RegExp(games), `${lang}: ${games}`);
+  }
 });
 
 test("the editor offers the watch time style and the still to finish switch", async () => {
@@ -227,8 +351,10 @@ test("the editor offers the watch time style and the still to finish switch", as
   await editor.updateComplete;
   const names: string[] = [];
   const walk = (schema: any[]) => schema.forEach((f) => (f.schema ? walk(f.schema) : names.push(f.name)));
-  walk(editor.shadowRoot.querySelector("ha-form").schema);
+  // the custom layout splits the form around the section order, so look at every form
+  editor.shadowRoot.querySelectorAll("ha-form").forEach((form: any) => walk(form.schema));
   assert.ok(names.includes("watch_time_style") && names.includes("show_still_to_finish") && names.includes("library_style"));
+  assert.ok(names.includes("color_games"), "a color for the games");
 });
 
 test("the editor lists the settings in rows: layout and duration, watch time and library style, then the row counts", async () => {
@@ -246,7 +372,7 @@ test("the editor lists the settings in rows: layout and duration, watch time and
 
 test("sections appear in the designed order", async () => {
   const t = text(await mount({ show_actions: false }));
-  const order = ["Total watch time", "Watch time TV shows", "Library Watched", "Still to finish", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
+  const order = ["Total watch time", "Time spent TV shows", "Library Watched", "Still to finish", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
   const at = order.map((label) => t.indexOf(label));
   assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
   assert.deepEqual([...at].sort((x, y) => x - y), at, "in order");
@@ -293,7 +419,7 @@ test("section_order rearranges the sections", async () => {
     section_order: ["airing", "next_up", "hero", "average", "library"],
   });
   const t = text(el);
-  const labels = ["Airing this week", "Next up", "Total watch time", "Average per week", "Library Watched", "Watch time TV shows", "Still to finish", "Streak", "Last 7 days", "Catch-up backlog"];
+  const labels = ["Airing this week", "Next up", "Total watch time", "Average per week", "Library Watched", "Time spent TV shows", "Still to finish", "Streak", "Last 7 days", "Catch-up backlog"];
   const at = labels.map((label) => t.indexOf(label));
   assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
   assert.deepEqual([...at].sort((x, y) => x - y), at, "listed sections first, the rest in the default order");
@@ -559,7 +685,7 @@ test("compact layout shows total watch time, still to finish and next up only", 
 
 test("full layout shows every section and ignores the switches and the order", async () => {
   const t = text(await mount({ layout: "full", show_hero: false, show_airing: false, section_order: ["airing", "hero"] }));
-  const order = ["Total watch time", "Watch time TV shows", "Library Watched", "Still to finish", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
+  const order = ["Total watch time", "Time spent TV shows", "Library Watched", "Still to finish", "Streak", "Average per week", "Last 7 days", "Next up", "Catch-up backlog", "Airing this week"];
   const at = order.map((l) => t.indexOf(l));
   assert.ok(at.every((i) => i >= 0), `all sections render: ${at}`);
   assert.deepEqual([...at].sort((x, y) => x - y), at);
@@ -845,7 +971,7 @@ test("editor reorders sections with the arrows and keeps the YAML clean", async 
   await editor.updateComplete;
   assert.deepEqual(emitted[0].section_order.slice(0, 3), ["watch_time", "hero", "library"]);
   assert.equal(emitted[0].entity, ENTITY);
-  assert.match(rows()[0].textContent!, /Watch time split/);
+  assert.match(rows()[0].textContent!, /Time spent/);
 
   // other edits keep the order
   const form = editor.shadowRoot.querySelector("ha-form");

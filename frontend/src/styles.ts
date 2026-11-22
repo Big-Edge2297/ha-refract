@@ -8,6 +8,7 @@ export const cardStyles = css`
     --c-movies: var(--refract-color-movies, #2a78d6);
     --c-shows: var(--refract-color-shows, #eb6834);
     --c-anime: var(--refract-color-anime, #1baf7a);
+    --c-games: var(--refract-color-games, #d6409f);
     --c-accent: var(--refract-color-accent, #6250d6);
     --c-completed: var(--refract-color-completed, #6c5ce7);
     --c-up-to-date: var(--refract-color-up-to-date, #1dbf73);
@@ -109,7 +110,8 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
   }
   .tiles {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
     gap: 8px;
     flex: 1 1 240px;
   }
@@ -1158,6 +1160,10 @@ export const cardStyles = css`
   .watch-col {
     flex: 1 1 110px;
     min-width: 0;
+  }
+  /* four kinds (with games) make two rows of two on a phone, and one row when the card is wide */
+  .watch-cols.four .watch-col {
+    flex-basis: 140px;
   }
   .watch-col .row {
     display: flex;
