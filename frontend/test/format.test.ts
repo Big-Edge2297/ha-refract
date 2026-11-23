@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { durationParts, durationText, funStatText, shares, streakDots, timeOfDay } from "../src/format";
+import { DAYS_PER_MONTH, durationParts, durationText, funStatText, shares, streakDots, timeOfDay } from "../src/format";
 
 test("duration: 383,908 minutes is 266 d 14 h", () => {
   assert.equal(durationText(383908), "266 d 14 h");
@@ -116,4 +116,45 @@ test("timeOfDay follows the time zone and the 12/24 hour choice", () => {
   assert.equal(timeOfDay("2026-11-10T08:00:00.000Z", "en", "Asia/Nicosia", false), "10:00");
   assert.match(timeOfDay("2026-11-10T08:00:00.000Z", "en", "UTC", true)!, /^8:00\s?AM$/);
   assert.equal(timeOfDay("not a date", "en"), undefined);
+});
+
+test("months format: 383,908 minutes is 8mo 23d 2h", () => {
+  assert.equal(durationText(383908, "months"), "8mo 23d 2h");
+  assert.deepEqual(durationParts(383908, "months").map((p) => [p.value, p.short, p.unit]), [["8", "mo", "unit.month"], ["23", "d", "unit.day"], ["2", "h", "unit.hour"]]);
+});
+
+test("months format: the category values of the real account", () => {
+  assert.equal(durationText(298044, "months"), "6mo 24d 8h");
+  assert.equal(durationText(78542, "months"), "1mo 24d 2h");
+  assert.equal(durationText(7322, "months"), "5d 2h");
+});
+
+test("months format: a month is 30.4375 days, the edges are exact, days and hours stay when they are 0", () => {
+  const month = 30.4375 * 1440; // 43,830 minutes
+  assert.equal(durationText(month, "months"), "1mo 0d 0h");
+  assert.equal(durationText(month - 1, "months"), "30d 10h");
+  assert.equal(durationText(month + 61, "months"), "1mo 0d 1h");
+  assert.equal(durationText(2 * month + 1440, "months"), "2mo 1d 0h");
+  assert.equal(durationText(14 * month, "months"), "14mo 0d 0h", "no years part: 14 months stay 14 months");
+});
+
+test("months format below a month reads like days and hours, without padding", () => {
+  assert.equal(durationText(26 * 1440 + 5 * 60, "months"), "26d 5h");
+  assert.equal(durationText(21 * 60, "months"), "21h");
+  assert.equal(durationText(45, "months"), "45min");
+  assert.equal(durationText(0, "months"), "0min");
+});
+
+test("months format uses the abbreviations of the language, and only that format drops the space", () => {
+  assert.equal(durationText(383908, "months", "de"), "8Mon. 23d 2h");
+  assert.equal(durationText(383908, "months", "fr"), "8mois 23j 2h");
+  assert.equal(durationText(383908, "months", "nl"), "8mnd 23d 2u");
+  assert.equal(durationText(383908, "months", "pl"), "8mies. 23d 2h");
+  assert.equal(durationText(383908, "days_hours", "en"), "266 d 14 h", "the old formats keep their space");
+});
+
+test("the fun stat and the months format count a month the same way", () => {
+  // 383,908 minutes: the fun stat says about 8.8 months, the format says 8 months and 23 days
+  assert.match(funStatText(undefined, 383908, "months")!, /about 8\.8 months/);
+  assert.equal(DAYS_PER_MONTH, 30.4375);
 });

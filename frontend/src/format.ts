@@ -24,7 +24,7 @@ export function fmtNumber(n: number, lang = "en", maxFractionDigits = 0): string
 }
 
 /** Text keys of the units; the card picks the plural form with `tn(hass, unit, n)`. */
-export type UnitKey = "unit.day" | "unit.hour" | "unit.min";
+export type UnitKey = "unit.month" | "unit.day" | "unit.hour" | "unit.min";
 export interface DurationPart {
   value: string;
   /** The number itself, which decides the plural form of the unit. */
@@ -33,22 +33,34 @@ export interface DurationPart {
   short: string;
 }
 
-/** Abbreviations that differ from "d", "h" and "min": jours, giorni, uur. */
-const ABBREVIATIONS: Record<string, Partial<Record<"d" | "h" | "min", string>>> = {
-  fr: { d: "j" },
-  it: { d: "g" },
-  nl: { h: "u" },
+/** An average month, 365.25 / 12 days. The fun stat counts months the same way. */
+export const DAYS_PER_MONTH = 30.4375;
+const MONTH_MINUTES = DAYS_PER_MONTH * 1440;
+
+/** Abbreviations that differ from "mo", "d", "h" and "min": mois, giorni, uur, maanden. */
+const ABBREVIATIONS: Record<string, Partial<Record<"mo" | "d" | "h" | "min", string>>> = {
+  de: { mo: "Mon." },
+  es: { mo: "m" },
+  fr: { mo: "mois", d: "j" },
+  it: { mo: "m", d: "g" },
+  nl: { mo: "mnd", h: "u" },
+  pl: { mo: "mies." },
+  pt: { mo: "m" },
 };
 
-const part = (n: number, unit: "d" | "h" | "min", lang: string): DurationPart => {
+const part = (n: number, unit: "mo" | "d" | "h" | "min", lang: string): DurationPart => {
   const value = fmtNumber(n, lang);
   const short = ABBREVIATIONS[lang.split("-")[0]]?.[unit] ?? unit;
+  if (unit === "mo") return { value, n, unit: "unit.month", short };
   if (unit === "d") return { value, n, unit: "unit.day", short };
   if (unit === "h") return { value, n, unit: "unit.hour", short };
   return { value, n, unit: "unit.min", short };
 };
 
-/** Breaks a number of minutes into display parts such as 266 days + 14 hours. */
+/**
+ * Breaks a number of minutes into display parts such as 266 days + 14 hours,
+ * or, in the "months" format, 8 months + 23 days + 2 hours.
+ */
 export function durationParts(minutes: number, format: DurationFormat = "days_hours", lang = "en"): DurationPart[] {
   const total = Math.max(0, Math.round(minutes));
   const days = Math.floor(total / 1440);
@@ -58,6 +70,15 @@ export function durationParts(minutes: number, format: DurationFormat = "days_ho
   if (format === "hours") {
     const allHours = Math.floor(total / 60);
     return allHours > 0 ? [part(allHours, "h", lang)] : [part(mins, "min", lang)];
+  }
+  if (format === "months") {
+    const months = Math.floor(total / MONTH_MINUTES);
+    if (months >= 1) {
+      // days and hours stay even when they are 0, so the three parts always line up
+      const rest = total - months * MONTH_MINUTES;
+      return [part(months, "mo", lang), part(Math.floor(rest / 1440), "d", lang), part(Math.floor((rest % 1440) / 60), "h", lang)];
+    }
+    // under a month it reads like "days and hours" below
   }
   if (format === "auto") {
     if (days >= 1) return [part(days, "d", lang), part(hours, "h", lang)];
@@ -70,10 +91,11 @@ export function durationParts(minutes: number, format: DurationFormat = "days_ho
   return [part(mins, "min", lang)];
 }
 
-/** Compact text such as "206 d 23 h". */
+/** Compact text such as "206 d 23 h", or "6mo 24d 8h" in the "months" format. */
 export function durationText(minutes: number, format: DurationFormat = "days_hours", lang = "en"): string {
+  const glue = format === "months" ? "" : " ";
   return durationParts(minutes, format, lang)
-    .map((p) => `${p.value} ${p.short}`)
+    .map((p) => `${p.value}${glue}${p.short}`)
     .join(" ");
 }
 
@@ -130,7 +152,7 @@ function funText(hass: HomeAssistant | undefined, kind: FunKind, minutes: number
   if (kind === "months") {
     if (days < 1) return undefined;
     if (days < 30) return say("fun.days", days);
-    const months = days / 30.4375;
+    const months = days / DAYS_PER_MONTH;
     if (months < 24) return say("fun.months", months, 1);
     return say("fun.years", months / 12, 1);
   }

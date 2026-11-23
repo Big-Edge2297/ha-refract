@@ -86,7 +86,12 @@ const buildSchema = (custom: boolean, compact = false) => [
       { name: "layout", selector: select([option("full", "Full"), option("compact", "Compact"), option("custom", "Custom")]) },
       {
         name: "duration_format",
-        selector: select([option("days_hours", "Days and hours"), option("hours", "Hours only"), option("auto", "Automatic")]),
+        selector: select([
+          option("months", "Months, days and hours"),
+          option("days_hours", "Days and hours"),
+          option("hours", "Hours only"),
+          option("auto", "Automatic"),
+        ]),
       },
       { name: "watch_time_style", selector: select([option("bar", "Compact bar"), option("list", "Breakdown list")]) },
       { name: "library_style", selector: select([option("bar", "Compact bar"), option("list", "Breakdown list")]) },

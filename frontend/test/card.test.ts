@@ -107,7 +107,7 @@ test("renders the hero with human durations", async () => {
   const el = await mount({ fun_stat_mode: "months" });
   const t = text(el);
   assert.match(t, /Refract Codex/);
-  assert.match(t, /Total watch time 266 days 14 hours/);
+  assert.match(t, /Total watch time 8 mo 23 d 2 h/, "383,908 minutes: 8 months, 23 days, 2 hours");
   assert.match(t, /Titles 896/);
   assert.match(t, /Movies 661/);
   assert.match(t, /TV Shows 171\b/);
@@ -128,10 +128,10 @@ test("library status bar and watch-time split", async () => {
   assert.match(t, /Plan to Watch · 63/);
   assert.match(t, /Other · 4/);
   assert.equal(el.shadowRoot!.querySelector("svg.donut"), null, "the donut is gone");
-  assert.match(t, /206 d 23 h/);
-  assert.match(t, /54 d 13 h/);
-  assert.match(t, /5 d 2 h/);
-  assert.match(t, /7 d 17 h/);
+  assert.match(t, /6mo 24d 8h/);
+  assert.match(t, /1mo 24d 2h/);
+  assert.match(t, /5d 2h/);
+  assert.match(t, /7d 17h/);
   assert.match(t, /TV shows · 75%/);
   assert.match(t, /Movies · 20%/);
   assert.match(t, /Anime · 2%/);
@@ -209,11 +209,11 @@ test("still to finish shows just the total and a counter row per kind, with no e
   const el = await mount({});
   const panel = el.shadowRoot!.querySelector(".panel.finish")!;
   const t = panel.textContent!.replace(/\s+/g, " ").trim();
-  assert.equal(t, "Still to finish 26 days 5 hours 26 movies to finish 2 d 2 h 37 TV shows to finish 24 d 3 h");
+  assert.equal(t, "Still to finish 26 d 5 h 26 movies to finish 2d 2h 37 TV shows to finish 24d 3h");
   assert.doesNotMatch(t, /non-stop|Estimate|Not counting|episodes|not started/, "no extra wording");
   assert.equal(panel.querySelector(".finish-hours, .finish-note, .finish-sub"), null);
   const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
-  assert.deepEqual(rows, ["26 movies to finish 2 d 2 h", "37 TV shows to finish 24 d 3 h"]);
+  assert.deepEqual(rows, ["26 movies to finish 2d 2h", "37 TV shows to finish 24d 3h"]);
   assert.match(panel.querySelectorAll(".finish-time")[0].getAttribute("style")!, /--c-movies/);
   assert.match(panel.querySelectorAll(".finish-time")[1].getAttribute("style")!, /--c-shows/);
 });
@@ -229,7 +229,7 @@ test("still to finish adds an anime row only when there is anime, and uses singu
   const el = await mount({}, hass);
   const panel = el.shadowRoot!.querySelector(".panel.finish")!;
   const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
-  assert.deepEqual(rows, ["1 movie to finish 1 h", "1 TV show to finish 40 min", "2 anime to finish 10 h"]);
+  assert.deepEqual(rows, ["1 movie to finish 1h", "1 TV show to finish 40min", "2 anime to finish 10h"]);
 });
 
 test("still to finish stays quiet about shows without an episode count", async () => {
@@ -242,7 +242,7 @@ test("still to finish stays quiet about shows without an episode count", async (
   }, "240");
   const t = text(await mount({}, hass));
   assert.doesNotMatch(t, /Not counting|without an episode count/);
-  assert.match(t, /3 TV shows to finish 4 h/);
+  assert.match(t, /3 TV shows to finish 4h/);
 });
 
 test("still to finish copes with no time data, nothing left, a missing sensor and its switch", async () => {
@@ -269,7 +269,7 @@ test("watch time breakdown list mirrors the library list: bar on top, one row pe
   const root = el.shadowRoot!;
   const panel = [...root.querySelectorAll(".panel")].find((p) => p.querySelector(".label")?.textContent === "Time spent")!;
   const rows = [...panel.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
-  assert.deepEqual(rows, ["TV shows 206 d 23 h 75%", "Movies 54 d 13 h 20%", "Anime 5 d 2 h 2%", "Games 7 d 17 h 3%"]);
+  assert.deepEqual(rows, ["TV shows 6mo 24d 8h 75%", "Movies 1mo 24d 2h 20%", "Anime 5d 2h 2%", "Games 7d 17h 3%"]);
   assert.equal(panel.querySelectorAll(".stack > span").length, 4, "the bar stays on top");
   assert.equal(panel.querySelector(".watch-cols"), null, "no columns in list style");
   assert.match(panel.querySelectorAll(".stat-dot")[1].getAttribute("style")!, /--c-movies/);
@@ -299,7 +299,7 @@ test("the watch time section is called Time spent and has the games as a fourth 
     assert.match(panel.querySelectorAll(".stack > span")[3].getAttribute("style")!, /--c-games/);
     assert.match(panel.querySelector(".stack")!.getAttribute("aria-label")!, /TV shows 75%, Movies 20%, Anime 2%, Games 3%/);
     assert.match(panel.textContent!, /Games/);
-    assert.match(panel.textContent!, /7 d 17 h/);
+    assert.match(panel.textContent!, /7d 17h/);
   }
   assert.doesNotMatch(text(await mount({})), /Watch time TV shows|Watch time split/);
   const games = timeSpent(await mount({ watch_time_style: "list" })).querySelectorAll(".stat-dot")[3];
@@ -315,7 +315,7 @@ test("the games row is left out when there is no time played, and the shares are
   for (const hass of [withoutGames("0"), withoutGames(undefined), withoutGames("unavailable")]) {
     const panel = timeSpent(await mount({ watch_time_style: "list" }, hass));
     const rows = [...panel.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
-    assert.deepEqual(rows, ["TV shows 206 d 23 h 78%", "Movies 54 d 13 h 20%", "Anime 5 d 2 h 2%"]);
+    assert.deepEqual(rows, ["TV shows 6mo 24d 8h 78%", "Movies 1mo 24d 2h 20%", "Anime 5d 2h 2%"]);
     assert.equal(panel.querySelectorAll(".stack > span").length, 3);
   }
 });
@@ -378,8 +378,8 @@ test("sections appear in the designed order", async () => {
   assert.deepEqual([...at].sort((x, y) => x - y), at, "in order");
 });
 
-test("still to finish total looks exactly like Total watch time: same markup, written-out units, no accent color", async () => {
-  const el = await mount({});
+test("still to finish total looks exactly like Total watch time: same markup, written-out units in days and hours, no accent color", async () => {
+  const el = await mount({ duration_format: "days_hours" });
   const hero = el.shadowRoot!.querySelector(".hero-main .big")!;
   const finish = el.shadowRoot!.querySelector(".panel.finish .big")!;
   const norm = (n: Element) => n.textContent!.replace(/\s+/g, " ").trim();
@@ -515,7 +515,7 @@ test("the catch-up estimate under a day shows hours only", async () => {
     states: { ...baseStates, [`sensor.${PREFIX}catch_up`]: { entity_id: "c", state: "33", attributes: { show_count: 1, estimated_minutes: 1260, shows: [{ title: "Westworld", remaining: 33, is_anime: false }] } } },
   });
   const t = text(await mount({}, hass));
-  assert.match(t, /33 aired episodes waiting, about 21 h/);
+  assert.match(t, /33 aired episodes waiting, about 21h/);
   assert.doesNotMatch(t, /(^|\s)0 d(\s|$)/);
 });
 
@@ -541,12 +541,63 @@ test("last 7 days: one bar per day, today marked, busiest day named, totals in t
   assert.equal(tallest, 84, "the busiest day fills the chart");
 });
 
-test("last 7 days shows the episodes watched above each bar", async () => {
+test("last 7 days shows the number of things watched above each bar", async () => {
   const el = await mount({});
   const counts = [...el.shadowRoot!.querySelectorAll(".day")].map((d) => d.querySelector(".day-count")?.textContent?.trim() ?? "");
-  assert.deepEqual(counts, ["1", "", "2", "3", "", "2", ""], "episodes only; days without episodes show nothing");
+  assert.deepEqual(counts, ["1", "", "3", "4", "", "3", ""], "episodes plus movies, like the height of the bar; empty days show nothing");
   const day = el.shadowRoot!.querySelectorAll(".day")[3];
   assert.ok(day.querySelector(".slot")!.firstElementChild!.classList.contains("day-count"), "the number sits above the bar");
+});
+
+test("the total watch time is months, days and hours by default, written like 8mo 23d 2h", async () => {
+  const el = await mount({});
+  const hero = el.shadowRoot!.querySelector(".hero-main .big")!;
+  const parts = (n: Element) => [...n.querySelectorAll(".part")].map((p) => `${p.querySelector(".num")!.textContent}${p.querySelector(".unit")!.textContent}`);
+  assert.deepEqual(parts(hero), ["8mo", "23d", "2h"]);
+  assert.ok(hero.classList.contains("short"), "units sit right against the number");
+  const finish = el.shadowRoot!.querySelector(".panel.finish .big")!;
+  assert.deepEqual(parts(finish), ["26d", "5h"], "still to finish is under a month, so it has no months part");
+  assert.ok(finish.classList.contains("short"), "and looks like the total watch time");
+});
+
+test("the other duration formats are unchanged and still selectable", async () => {
+  const days = await mount({ duration_format: "days_hours" });
+  assert.equal(days.shadowRoot!.querySelector(".hero-main .big")!.textContent!.replace(/\s+/g, " ").trim(), "266 days 14 hours");
+  assert.ok(!days.shadowRoot!.querySelector(".hero-main .big")!.classList.contains("short"));
+  assert.match(text(await mount({ duration_format: "days_hours", watch_time_style: "list" })), /TV shows 206 d 23 h 75%/);
+  assert.match(text(await mount({ duration_format: "hours" })), /Total watch time 6,398 hours/);
+});
+
+test("the editor offers months, days and hours as a duration format", async () => {
+  const editor = document.createElement("refract-stats-card-editor") as any;
+  editor.setConfig({ type: "custom:refract-stats-card", entity: ENTITY });
+  editor.hass = makeHass();
+  document.body.appendChild(editor);
+  await editor.updateComplete;
+  const find = (schema: any[]): any => {
+    for (const item of schema) {
+      if (item.name === "duration_format") return item;
+      if (item.schema) { const hit = find(item.schema); if (hit) return hit; }
+    }
+  };
+  const options = find(editor.shadowRoot.querySelector("ha-form").schema).selector.select.options.map((o: any) => o.value);
+  assert.deepEqual(options, ["months", "days_hours", "hours", "auto"]);
+  assert.equal(editor.shadowRoot.querySelector("ha-form").data.duration_format, "months", "and it is the default");
+});
+
+test("last 7 days: a day with only a movie shows its number too, and a mixed day shows the total", async () => {
+  const days = last7Days.map((d) => ({ ...d }));
+  days[6] = { ...days[6], episodes: 0, movies: 1 }; // today: one movie, no episodes
+  const hass = makeHass({
+    states: { ...baseStates, [`sensor.${PREFIX}last_7_days`]: { entity_id: "l", state: "12", attributes: { days, episodes: 8, movies: 4, busiest_day: { date: days[3].date, count: 4 } } } },
+  });
+  const el = await mount({}, hass);
+  const counts = [...el.shadowRoot!.querySelectorAll(".day")].map((d) => d.querySelector(".day-count")?.textContent?.trim() ?? "");
+  assert.deepEqual(counts, ["1", "", "3", "4", "", "3", "1"]);
+  const today = el.shadowRoot!.querySelectorAll(".day")[6];
+  assert.ok(today.querySelector(".seg.movies"), "the movie segment is there");
+  assert.equal(today.querySelector(".seg.shows"), null);
+  assert.ok(today.querySelector(".slot")!.firstElementChild!.classList.contains("day-count"), "the number sits above the bar");
 });
 
 test("average per week: items line sits in the middle and the trend is the last row of the tile", async () => {
@@ -571,7 +622,7 @@ test("last 7 days with nothing watched says so and names no busiest day", async 
 test("catch-up backlog: headline, estimate and rows, without a ready badge", async () => {
   const el = await mount({});
   const t = text(el);
-  assert.match(t, /Catch-up backlog 39 aired episodes waiting, about 1 d 5 h/);
+  assert.match(t, /Catch-up backlog 39 aired episodes waiting, about 1d 5h/);
   assert.doesNotMatch(t, /Ready now/);
   const rows = [...el.shadowRoot!.querySelectorAll(".c-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
   assert.deepEqual(rows, ["Westworld 30", "Lupin 9"]);
@@ -1212,12 +1263,13 @@ test("the card shows in the language of Home Assistant", async () => {
 });
 
 test("units, counts and the fun stat follow the plural rules of the language", async () => {
-  const pl = text(await mount({}, inLanguage("pl")));
+  const pl = text(await mount({ duration_format: "days_hours" }, inLanguage("pl")));
   assert.match(pl, /266 dni 14 godzin/, "266 days 14 hours");
   assert.match(pl, /Łączny czas oglądania/);
   assert.match(pl, /26 dni 5 godzin/, "still to finish: 26 days, 5 hours");
   assert.match(pl, /Pokaż miejsca|Najczęściej oglądane/);
-  assert.match(text(await mount({}, inLanguage("en"))), /266 days 14 hours/);
+  assert.match(text(await mount({ duration_format: "days_hours" }, inLanguage("en"))), /266 days 14 hours/);
+  assert.match(text(await mount({}, inLanguage("pl"))), /8 mies\. 23 d 2 h/, "the default format, with the Polish abbreviation for months");
 });
 
 // ------------------------------------------------------------ monthly wrap

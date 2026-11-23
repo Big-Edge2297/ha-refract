@@ -13,6 +13,8 @@ export const fr: Dict = {
   "hero.anime": "Animés",
   "hero.games": "Jeux",
   "hero.episodes": "Épisodes vus",
+  "unit.month": "mois",
+  "unit.month_one": "mois",
   "unit.day": "jours",
   "unit.day_one": "jour",
   "unit.hour": "heures",

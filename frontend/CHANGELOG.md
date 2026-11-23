@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+- **Fixed:** the number above a bar in *Last 7 days* is the day's episodes plus movies. It counted only episodes, so a day with just a movie had no number
+- **New:** the duration format `months` (8mo 23d 2h), now the default. A month is 30.4375 days, as in the fun stat. The totals use short units right behind the number; the formats `days_hours`, `hours` and `auto` are unchanged
+- Translated: the unit *month* and its abbreviation in the seven languages
+
 ## 0.9.0
 
 - **New:** the top tiles are Titles, Movies, TV Shows, Anime, Games and Episodes watched, in a grid of three columns (one row for up to three tiles, two rows of two for four). TV Shows and Anime show the different titles watched (`stats_shows_titles`, `stats_anime_titles`), Games the games played (`stats_games_played`), each as a label and a number with nothing under it. Episodes watched still adds up the episodes

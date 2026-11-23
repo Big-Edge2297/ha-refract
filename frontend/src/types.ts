@@ -38,7 +38,7 @@ export interface HomeAssistant {
 }
 
 export type StreakStyle = "gauge" | "dots";
-export type DurationFormat = "days_hours" | "hours" | "auto";
+export type DurationFormat = "months" | "days_hours" | "hours" | "auto";
 export type FunStatMode =
   | "rotate"
   | "months"
@@ -192,7 +192,7 @@ export const DEFAULT_CONFIG = {
   layout: "full",
   library_style: "list",
   watch_time_style: "list",
-  duration_format: "days_hours",
+  duration_format: "months",
   fun_stat: true,
   fun_stat_mode: "rotate",
   queue_length: 5,

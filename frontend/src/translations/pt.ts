@@ -13,6 +13,8 @@ export const pt: Dict = {
   "hero.anime": "Anime",
   "hero.games": "Jogos",
   "hero.episodes": "Episódios vistos",
+  "unit.month": "meses",
+  "unit.month_one": "mês",
   "unit.day": "dias",
   "unit.day_one": "dia",
   "unit.hour": "horas",

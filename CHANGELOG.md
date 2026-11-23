@@ -2,6 +2,19 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.9.1
+
+### Fixed
+- **Last 7 days: a movie had no number above its bar.** The number above a bar counted only episodes, so a day with just a movie showed none, and a day with episodes and a movie showed only the episodes while the bar was as tall as both. The number is now everything watched that day, episodes and movies, and every day with a bar has one. Days with nothing watched still show none
+
+### Changed
+- **Durations are written in months, days and hours.** The total watch time, the times in *Time spent*, *Still to finish* and the catch-up estimate now read like **8mo 23d 2h** instead of 266 days 14 hours. A month is an average month of 30.4375 days, the one the fun stat counts too, so "8mo 23d" and "about 8.8 months" agree. A time under a month reads like before (26d 5h, 21h). The big totals show the units as short letters right behind the number. Other languages use their own abbreviations (*Mon.*, *mois*, *mnd*, *mies.*)
+- The setting *Duration format* has a new first choice, **Months, days and hours**, which is the new default. *Days and hours*, *Hours only* and *Automatic* are unchanged, and a card that sets one of them keeps its look
+
+### Notes
+- There is no years part: 14 months stay 14mo
+- Nothing changes in the integration, only in the card
+
 ## 0.9.0
 
 ### Added

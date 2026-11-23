@@ -300,12 +300,12 @@ export class RefractStatsCard extends LitElement {
         ${total !== undefined
           ? html`<div class="hero-main">
               <div class="label">${t(this.hass, "hero.total")}</div>
-              <div class="big">
+              <div class="big ${c.duration_format === "months" ? "short" : ""}">
                 ${durationParts(total, c.duration_format, lang).map(
                   (p, i) =>
                     html`<span class="part"
                         ><span class="num ${i > 0 ? "second" : ""}">${p.value}</span>
-                        <span class="unit">${tn(this.hass, p.unit, p.n)}</span></span
+                        <span class="unit">${c.duration_format === "months" ? p.short : tn(this.hass, p.unit, p.n)}</span></span
                       >
                     `,
                 )}
@@ -501,7 +501,7 @@ export class RefractStatsCard extends LitElement {
           const height = total === 0 ? 3 : Math.max(8, Math.round((total / max) * SLOT));
           return html`<div class="day ${d.date === today ? "today" : ""}">
             <div class="slot">
-              ${d.episodes > 0 ? html`<span class="day-count">${fmtNumber(d.episodes, lang)}</span>` : nothing}
+              ${total > 0 ? html`<span class="day-count">${fmtNumber(total, lang)}</span>` : nothing}
               <div class="bar ${total === 0 ? "empty" : ""}" style="height:${height}px">
                 ${d.movies ? html`<span class="seg movies" style="flex:${d.movies} 1 0"></span>` : nothing}
                 ${d.episodes ? html`<span class="seg shows" style="flex:${d.episodes} 1 0"></span>` : nothing}
@@ -588,12 +588,12 @@ export class RefractStatsCard extends LitElement {
       <div class="label">${t(this.hass, "finish.title")}</div>
       ${rows.length
         ? html`${total !== undefined && total > 0
-              ? html`<div class="big finish-big">
+              ? html`<div class="big finish-big ${fmt === "months" ? "short" : ""}">
                     ${durationParts(total, fmt, lang).map(
                       (p, i) =>
                         html`<span class="part"
                             ><span class="num ${i > 0 ? "second" : ""}">${p.value}</span>
-                            <span class="unit">${tn(this.hass, p.unit, p.n)}</span></span
+                            <span class="unit">${fmt === "months" ? p.short : tn(this.hass, p.unit, p.n)}</span></span
                           >
                         `,
                     )}

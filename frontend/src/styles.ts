@@ -91,6 +91,15 @@ export const cardStyles = css`
     flex-wrap: wrap;
     gap: 0 12px;
   }
+  .big.short {
+    gap: 0 14px;
+  }
+  .big.short .part {
+    gap: 2px;
+  }
+  .big.short .unit {
+    font-size: 18px;
+  }
   .big .part {
     display: flex;
     align-items: baseline;
