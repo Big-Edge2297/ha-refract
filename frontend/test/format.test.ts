@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DAYS_PER_MONTH, durationParts, durationText, funStatText, shares, streakDots, timeOfDay } from "../src/format";
+import { DAYS_PER_MONTH, blendedBar, blendedBarStyle, durationParts, durationText, funStatText, shares, streakDots, timeOfDay } from "../src/format";
 
 test("duration: 383,908 minutes is 266 d 14 h", () => {
   assert.equal(durationText(383908), "266 d 14 h");
@@ -157,4 +157,39 @@ test("the fun stat and the months format count a month the same way", () => {
   // 383,908 minutes: the fun stat says about 8.8 months, the format says 8 months and 23 days
   assert.match(funStatText(undefined, 383908, "months")!, /about 8\.8 months/);
   assert.equal(DAYS_PER_MONTH, 30.4375);
+});
+
+test("blended bar: one gradient where each boundary blends the two colors over 20 px on either side", () => {
+  const css = blendedBar([
+    { value: 75, color: "red" },
+    { value: 25, color: "blue" },
+  ]);
+  assert.equal(css, "linear-gradient(to right, red 0%, red calc(75% - 20px), blue calc(75% + 20px), blue 100%)");
+});
+
+test("blended bar: a tiny item still gets a share, an empty one is left out", () => {
+  const css = blendedBar([
+    { value: 1000, color: "a" },
+    { value: 1, color: "b" },
+    { value: 0, color: "c" },
+  ]);
+  assert.match(css, /a calc\(98\.8\d*% - 20px\), b calc\(98\.8\d*% \+ 20px\)/, "about 1.2% of the bar, not 0.1%");
+  assert.doesNotMatch(css, /\bc\b/);
+});
+
+test("blended bar: nothing or one item is not a gradient", () => {
+  assert.equal(blendedBar([]), "none");
+  assert.equal(blendedBar([{ value: 0, color: "a" }]), "none");
+  assert.equal(blendedBar([{ value: 5, color: "a" }]), "a");
+});
+
+test("blended bar style: OKLab for browsers that have it, plain for the rest", () => {
+  const style = blendedBarStyle([
+    { value: 1, color: "red" },
+    { value: 1, color: "blue" },
+  ]);
+  const [plain, oklab] = style.split(";");
+  assert.match(plain, /^background:linear-gradient\(to right,/);
+  assert.match(oklab, /^background:linear-gradient\(in oklab to right,/);
+  assert.equal(blendedBarStyle([]), "background:none");
 });

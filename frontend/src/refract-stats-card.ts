@@ -5,7 +5,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import { CARD_TYPE, DOMAIN, EDITOR_TYPE } from "./const";
 import { discover, type Discovery } from "./discovery";
 import { ensureFlagFont, flagEmoji } from "./flags";
-import { durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, timeOfDay, weekdayName } from "./format";
+import { blendedBarStyle, durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, timeOfDay, weekdayName } from "./format";
 import { languageOf, t, tn } from "./localize";
 import { buildModel, showKey, type CatchupShow, type Model, type ShowItem, type TopPick } from "./model";
 import { cardStyles } from "./styles";
@@ -369,10 +369,10 @@ export class RefractStatsCard extends LitElement {
     const total = statuses.reduce((sum, [, v]) => sum + v, 0);
     const bar = html`<div
       class="status-bar ${list ? "spaced" : ""}"
+      style=${blendedBarStyle(statuses.map(([, v, color]) => ({ value: v, color })))}
       role="img"
       aria-label=${statuses.map(([label, v]) => `${label} ${v}`).join(", ")}
     >
-      ${statuses.map(([, v, color]) => html`<span style="flex:${v} 1 0; background:${color}"></span>`)}
     </div>`;
 
     return html`<div class="panel library">
@@ -539,10 +539,10 @@ export class RefractStatsCard extends LitElement {
       <div class="label" style="margin-bottom:${list ? 12 : 8}px">${t(this.hass, "watch.title")}</div>
       <div
         class="stack ${list ? "spaced" : ""}"
+        style=${blendedBarStyle(cats.map((x) => ({ value: x.minutes, color: x.color })))}
         role="img"
         aria-label=${cats.map((x, i) => `${t(this.hass, x.key)} ${pct[i]}%`).join(", ")}
       >
-        ${cats.map((x) => html`<span style="flex:${Math.max(x.minutes, 0)} 1 0; background:${x.color}"></span>`)}
       </div>
       ${list
         ? html`<div class="stat-list">

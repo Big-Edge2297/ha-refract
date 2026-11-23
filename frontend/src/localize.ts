@@ -21,7 +21,7 @@ const en: Dict = {
   "hero.tv_shows": "TV Shows",
   "hero.anime": "Anime",
   "hero.games": "Games",
-  "hero.episodes": "Episodes watched",
+  "hero.episodes": "Episodes",
   "unit.month": "months",
   "unit.month_one": "month",
   "unit.day": "days",

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.2
+
+- **Changed:** the *Time spent* and *Library* bars are one smooth pill where the colors flow into each other (a single gradient, blended in OKLab where the browser supports it), with no gaps or seams at any display scaling
+- **Changed:** the last tile under the total watch time is called *Episodes*, so it stays on one line on a phone; translated in the seven languages
+
 ## 0.9.1
 
 - **Fixed:** the number above a bar in *Last 7 days* is the day's episodes plus movies. It counted only episodes, so a day with just a movie had no number

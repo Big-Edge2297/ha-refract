@@ -2,6 +2,15 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.9.2
+
+### Changed
+- **The *Time spent* and *Library* bars are one smooth pill where the colors flow into each other,** instead of separate boxes with gaps. It is a single gradient, so there are no gaps, seams or thin outlines at any display scaling. The colors are blended in the OKLab color space where the browser supports it, and in plain RGB in older browsers. A very small slice still gets a visible share of the bar
+- **The last tile under the total watch time is called *Episodes* instead of *Episodes watched*,** so it always fits on one line on a phone and the six tiles stay the same height. Translated in the seven languages (Folgen, Episodios, Épisodes, Episodi, Afleveringen, Odcinki, Episódios)
+
+### Notes
+- No change in the integration itself, the sensors or the options
+
 ## 0.9.1
 
 ### Fixed

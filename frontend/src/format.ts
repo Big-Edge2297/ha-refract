@@ -117,6 +117,43 @@ export function shares(values: number[]): number[] {
   return floors;
 }
 
+/**
+ * A CSS gradient for a stacked bar whose colors flow into each other.
+ *
+ * Every item gets the share of the bar its value has (at least `minShare` percent, so a tiny one still
+ * shows), and at each boundary the two colors blend over `blendPx` pixels on either side. Where a
+ * segment is narrower than the blend, its color is a peak the neighbours flow through. It is one
+ * gradient, so there are no seams or gaps at any display scaling.
+ */
+export function blendedBar(items: Array<{ value: number; color: string }>, blendPx = 20, minShare = 1.2, oklab = false): string {
+  const live = items.filter((i) => i.value > 0);
+  if (live.length === 0) return "none";
+  if (live.length === 1) return live[0].color;
+  const total = live.reduce((sum, i) => sum + i.value, 0);
+  const floored = live.map((i) => Math.max(i.value / total, minShare / 100));
+  const sum = floored.reduce((a, b) => a + b, 0);
+  const stops: string[] = [`${live[0].color} 0%`];
+  let at = 0;
+  for (let k = 0; k < live.length - 1; k++) {
+    at += (floored[k] / sum) * 100;
+    const pos = Math.round(at * 1000) / 1000;
+    stops.push(`${live[k].color} calc(${pos}% - ${blendPx}px)`, `${live[k + 1].color} calc(${pos}% + ${blendPx}px)`);
+  }
+  stops.push(`${live[live.length - 1].color} 100%`);
+  return `linear-gradient(${oklab ? "in oklab " : ""}to right, ${stops.join(", ")})`;
+}
+
+/**
+ * The `style` for a blended bar: blended in the OKLab color space where the browser can, which keeps
+ * the mixes between two colors clean instead of gray, and in plain sRGB where it can't.
+ */
+export function blendedBarStyle(items: Array<{ value: number; color: string }>): string {
+  const plain = blendedBar(items);
+  return plain === "none" || !plain.startsWith("linear-gradient")
+    ? `background:${plain}`
+    : `background:${plain};background:${blendedBar(items, 20, 1.2, true)}`;
+}
+
 // ---------------------------------------------------------------- fun stats
 
 type FunKind = Exclude<FunStatMode, "rotate">;

@@ -1036,23 +1036,11 @@ export const cardStyles = css`
   svg .track {
     stroke: var(--track);
   }
+  /* one pill: a single gradient (see blendedBar) so the colors flow into each other with no seams */
   .status-bar,
   .stack {
-    display: flex;
-    gap: 2px;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .status-bar {
     height: 12px;
     border-radius: 6px;
-  }
-  .stack {
-    height: 14px;
-  }
-  .status-bar > span,
-  .stack > span {
-    min-width: 3px;
   }
   .status-legend {
     display: flex;

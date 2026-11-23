@@ -50,14 +50,21 @@ const tileLabels = (el: Card) => [...el.shadowRoot!.querySelectorAll(".tiles .ti
 const withoutStats = (...keys: string[]) =>
   makeHass({ states: Object.fromEntries(Object.entries(baseStates).filter(([id]) => !keys.some((k) => id.endsWith(`_${k}`)))) });
 
-test("the top tiles: Titles, Movies, TV Shows, Anime, Games and Episodes watched, in a grid of three", async () => {
+/** The colors of a blended bar, in order (the bar is one gradient, so there are no segments to count). */
+function barColors(bar: Element): string[] {
+  const first = bar.getAttribute("style")!.split(";")[0];
+  return [...new Set(first.match(/var\(--c-[a-z-]+\)/g) ?? [])];
+}
+
+
+test("the top tiles: Titles, Movies, TV Shows, Anime, Games and Episodes, in a grid of three", async () => {
   const el = await mount({});
-  assert.deepEqual(tileLabels(el), ["Titles", "Movies", "TV Shows", "Anime", "Games", "Episodes watched"]);
+  assert.deepEqual(tileLabels(el), ["Titles", "Movies", "TV Shows", "Anime", "Games", "Episodes"]);
   const tiles = el.shadowRoot!.querySelector<HTMLElement>(".tiles")!;
   assert.match(tiles.getAttribute("style")!, /--cols:3/);
   assert.equal(el.shadowRoot!.querySelectorAll(".tiles .caption").length, 0, "the tiles are a label and a number, nothing under them");
   const tiles6 = [...el.shadowRoot!.querySelectorAll(".tiles .tile")].map((x) => x.textContent!.replace(/\s+/g, " ").trim());
-  assert.deepEqual(tiles6, ["Titles 896", "Movies 661", "TV Shows 171", "Anime 1", "Games 4", "Episodes watched 7,959"]);
+  assert.deepEqual(tiles6, ["Titles 896", "Movies 661", "TV Shows 171", "Anime 1", "Games 4", "Episodes 7,959"]);
   assert.doesNotMatch(text(el), /total watched|total played/);
 });
 
@@ -77,22 +84,22 @@ test("TV Shows and Anime count the different titles watched, not the episodes; G
   assert.match(t, /Anime 1\b/);
   assert.doesNotMatch(t, /TV Shows 7,699/, "the episode count is not the TV Shows tile");
   assert.match(t, /Games 0\b/, "zero is still shown");
-  assert.match(t, /Episodes watched 7,990/, "the episodes tile still adds up the episodes");
+  assert.match(t, /Episodes 7,990/, "the episodes tile still adds up the episodes");
 });
 
 test("the TV Shows and Anime tiles do not depend on the episode sensors", async () => {
   const el = await mount({}, withoutStats("stats_shows_episodes_watched", "stats_anime_episodes_watched"));
-  assert.deepEqual(tileLabels(el), ["Titles", "Movies", "TV Shows", "Anime", "Games"], "only the Episodes watched tile goes");
+  assert.deepEqual(tileLabels(el), ["Titles", "Movies", "TV Shows", "Anime", "Games"], "only the Episodes tile goes");
   assert.match(text(el), /TV Shows 171\b/);
 });
 
 test("tiles without a sensor are left out and the grid adapts", async () => {
   const noGames = await mount({}, withoutStats("stats_games_played"));
-  assert.deepEqual(tileLabels(noGames), ["Titles", "Movies", "TV Shows", "Anime", "Episodes watched"]);
+  assert.deepEqual(tileLabels(noGames), ["Titles", "Movies", "TV Shows", "Anime", "Episodes"]);
   assert.match(noGames.shadowRoot!.querySelector(".tiles")!.getAttribute("style")!, /--cols:3/);
 
   const four = await mount({}, withoutStats("stats_games_played", "stats_anime_titles"));
-  assert.deepEqual(tileLabels(four), ["Titles", "Movies", "TV Shows", "Episodes watched"]);
+  assert.deepEqual(tileLabels(four), ["Titles", "Movies", "TV Shows", "Episodes"]);
   assert.match(four.shadowRoot!.querySelector(".tiles")!.getAttribute("style")!, /--cols:2/);
 });
 
@@ -113,7 +120,7 @@ test("renders the hero with human durations", async () => {
   assert.match(t, /TV Shows 171\b/);
   assert.match(t, /Anime 1\b/);
   assert.match(t, /Games 4\b/);
-  assert.match(t, /Episodes watched 7,959/);
+  assert.match(t, /Episodes 7,959/);
   assert.doesNotMatch(t, /Movies seen/);
   assert.match(t, /That's about 8\.8 months of nonstop viewing/);
   assert.doesNotMatch(t, /383,908|298,044|78,542|7,322/, "raw minutes never reach the card");
@@ -151,7 +158,7 @@ test("library shows every status Refract reports, including on hold and dropped"
   assert.match(t, /On Hold · 2/);
   assert.match(t, /Dropped · 2/);
   assert.doesNotMatch(t, /Other/);
-  assert.equal(el.shadowRoot!.querySelectorAll(".status-bar > span").length, 6);
+  assert.equal(barColors(el.shadowRoot!.querySelector(".status-bar")!).length, 6, "one color per status in the bar");
   const legend = [...el.shadowRoot!.querySelectorAll(".status-legend .swatch")].map((x) => x.getAttribute("style"));
   assert.match(legend[4]!, /--c-on-hold/);
   assert.match(legend[5]!, /--c-dropped/);
@@ -174,7 +181,7 @@ test("library list style mirrors the Refract app's breakdown, with its wording a
   const root = el.shadowRoot!;
   const rows = [...root.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
   assert.deepEqual(rows, ["Watched 802 90%", "Up to Date 23 3%", "Watching 3 0%", "Plan to Watch 64 7%", "On Hold 2 0%", "Dropped 2 0%"]);
-  assert.equal(root.querySelectorAll(".status-bar > span").length, 6, "the bar stays on top");
+  assert.equal(barColors(root.querySelector(".status-bar")!).length, 6, "the bar stays on top");
   assert.equal(root.querySelector(".status-legend"), null, "no legend in list style");
   const dots = [...root.querySelectorAll(".stat-dot")].map((d) => d.getAttribute("style"));
   assert.match(dots[0]!, /--c-completed/);
@@ -270,7 +277,7 @@ test("watch time breakdown list mirrors the library list: bar on top, one row pe
   const panel = [...root.querySelectorAll(".panel")].find((p) => p.querySelector(".label")?.textContent === "Time spent")!;
   const rows = [...panel.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
   assert.deepEqual(rows, ["TV shows 6mo 24d 8h 75%", "Movies 1mo 24d 2h 20%", "Anime 5d 2h 2%", "Games 7d 17h 3%"]);
-  assert.equal(panel.querySelectorAll(".stack > span").length, 4, "the bar stays on top");
+  assert.equal(barColors(panel.querySelector(".stack")!).length, 4, "the bar stays on top");
   assert.equal(panel.querySelector(".watch-cols"), null, "no columns in list style");
   assert.match(panel.querySelectorAll(".stat-dot")[1].getAttribute("style")!, /--c-movies/);
 });
@@ -295,8 +302,9 @@ test("the watch time section is called Time spent and has the games as a fourth 
   for (const style of ["list", "bar"] as const) {
     const panel = timeSpent(await mount({ watch_time_style: style }));
     assert.ok(panel, `${style}: the section is titled Time spent`);
-    assert.equal(panel.querySelectorAll(".stack > span").length, 4, `${style}: four segments`);
-    assert.match(panel.querySelectorAll(".stack > span")[3].getAttribute("style")!, /--c-games/);
+    assert.equal(barColors(panel.querySelector(".stack")!).length, 4, `${style}: four colors`);
+    assert.equal(barColors(panel.querySelector(".stack")!)[3], "var(--c-games)");
+    assert.match(panel.querySelector(".stack")!.getAttribute("style")!, /^background:linear-gradient\(to right,/, `${style}: one blended gradient`);
     assert.match(panel.querySelector(".stack")!.getAttribute("aria-label")!, /TV shows 75%, Movies 20%, Anime 2%, Games 3%/);
     assert.match(panel.textContent!, /Games/);
     assert.match(panel.textContent!, /7d 17h/);
@@ -316,7 +324,7 @@ test("the games row is left out when there is no time played, and the shares are
     const panel = timeSpent(await mount({ watch_time_style: "list" }, hass));
     const rows = [...panel.querySelectorAll(".stat-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
     assert.deepEqual(rows, ["TV shows 6mo 24d 8h 78%", "Movies 1mo 24d 2h 20%", "Anime 5d 2h 2%"]);
-    assert.equal(panel.querySelectorAll(".stack > span").length, 3);
+    assert.equal(barColors(panel.querySelector(".stack")!).length, 3);
   }
 });
 

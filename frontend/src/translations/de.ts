@@ -12,7 +12,7 @@ export const de: Dict = {
   "hero.tv_shows": "Serien",
   "hero.anime": "Anime",
   "hero.games": "Spiele",
-  "hero.episodes": "Gesehene Folgen",
+  "hero.episodes": "Folgen",
   "unit.month": "Monate",
   "unit.month_one": "Monat",
   "unit.day": "Tage",
