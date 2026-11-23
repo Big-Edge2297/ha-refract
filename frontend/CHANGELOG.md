@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.3
+
+- **Fixed:** the legend under *What you watched* on the monthly wrap's *Your tastes* page is light instead of grey, so it can be read on the colored page
+- **Changed:** the monthly wrap shows the hours of an estimated month as a plain number, without the "~"; the note *Hours are estimated from average runtimes* stays
+
 ## 0.9.2
 
 - **Changed:** the *Time spent* and *Library* bars are one smooth pill where the colors flow into each other (a single gradient, blended in OKLab where the browser supports it), with no gaps or seams at any display scaling

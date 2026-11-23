@@ -2,6 +2,17 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.9.3
+
+### Fixed
+- **In the monthly wrap, the legend under *What you watched* (Shows · 67%, Movies · 33%) was grey and hard to read on the colored page.** It now uses the same light text as the rest of the page
+
+### Changed
+- **The monthly wrap no longer puts a "~" before the hours of an estimated month.** The hours are a plain number, and the note *Hours are estimated from average runtimes* under the tiles still says when they are an estimate
+
+### Notes
+- No change in the integration itself, the sensors or the options
+
 ## 0.9.2
 
 ### Changed

@@ -891,6 +891,10 @@ export const cardStyles = css`
   .wrap-pages .swatch {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
   }
+  /* the legends sit on the colored page, so they use the page's light text, not the grey theme text */
+  .wrap-pages .legend-row {
+    color: rgba(255, 255, 255, 0.92);
+  }
   .wrap-pages .wrap-top-row {
     padding: 8px;
     border: 1px solid rgba(255, 255, 255, 0.18);

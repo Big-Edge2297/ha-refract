@@ -1178,7 +1178,7 @@ export class RefractStatsCard extends LitElement {
     if (this._wrapTab === "overview") {
       const hours = hoursOf(cur.minutes);
       body = html`<div class="wrap-hero">
-          <span class="wrap-hours">${cur.estimated ? "~" : ""}${hoursText(hours)}</span>
+          <span class="wrap-hours">${hoursText(hours)}</span>
           <span class="wrap-unit">${t(this.hass, "wrap.hours")}</span>
           ${change ? html`<span class="badge accent">${t(this.hass, "wrap.vs", { change, month: monthName(...(before!.month.split("-").map(Number) as [number, number])) })}</span>` : nothing}
         </div>

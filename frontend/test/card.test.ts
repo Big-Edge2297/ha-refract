@@ -1374,7 +1374,8 @@ test("monthly wrap handles no firsts yet, no firsts at all, estimated hours and 
     weekend_share: 0, best_streak: 1, busiest: { day: "2026-10-04", count: 3 }, first_watch: 3, rewatch: 0, top: [], genres: [], ...extra,
   });
   const waiting = await wrapRoot({}, withMonths([month({})]));
-  assert.match(compact(waiting.root.querySelector(".wrap-hero")), /~1\.5 Hours/, "estimated hours get a tilde");
+  assert.match(compact(waiting.root.querySelector(".wrap-hero")), /^1\.5 Hours/, "estimated hours are a plain number, the note below says they are estimated");
+  assert.doesNotMatch(compact(waiting.root.querySelector(".wrap-hero")), /~/, "no tilde");
   assert.match(compact(waiting.root.querySelector(".panel.wrap")), /Hours are estimated from average runtimes/);
   await press(waiting.el, ".wrap-tab", 3);
   assert.match(compact(waiting.root.querySelector(".panel.wrap")), /Still collecting details from TMDB/, "firsts undefined: not ready");
@@ -1498,6 +1499,15 @@ test("a wrap page has the story bar, the brand, the month, a title, a highlight 
   assert.equal(p.querySelector(".wrap-hours")!.textContent, "26");
   assert.equal((p.querySelector(".wrap-tap.prev") as HTMLElement).hidden, true, "no page before the first");
   assert.equal((p.querySelector(".wrap-tap.next") as HTMLElement).hidden, false);
+});
+
+test("wrap pages: the legend on a colored page uses the page's light text, not the grey theme text", async () => {
+  const { el, page } = await pageRoot();
+  await press(el, ".wrap-tap.next");
+  assert.ok(page().classList.contains("page-tastes"));
+  assert.ok(page().querySelector(".legend-row"), "the tastes page has the legend under What you watched");
+  const css = String((RefractStatsCard as any).styles.cssText);
+  assert.match(css, /\.wrap-pages \.legend-row\s*\{\s*color:\s*rgba\(255,\s*255,\s*255,\s*0\.9\d*\)/);
 });
 
 test("wrap pages turn with taps, the story bar, the arrow keys and swipes", async () => {
