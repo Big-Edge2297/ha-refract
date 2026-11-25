@@ -319,7 +319,31 @@ export const cardStyles = css`
   /* monthly wrap */
   .wrap-nav {
     display: inline-flex;
+    align-items: center;
     gap: 4px;
+  }
+  .wrap-view {
+    height: 32px;
+    padding: 0 12px;
+    margin-right: 2px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--tile-bg);
+    color: var(--primary-text-color);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .wrap-view:focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 2px;
+  }
+  .wrap-months {
+    gap: 4px;
+  }
+  .wrap-months .wrap-day {
+    border-radius: 4px;
   }
   .wrap-arrow {
     display: grid;
@@ -403,11 +427,8 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
   }
   .wrap-split {
-    display: flex;
     height: 14px;
-    gap: 2px;
     border-radius: 7px;
-    overflow: hidden;
   }
   .wrap-genres {
     display: flex;
@@ -557,7 +578,7 @@ export const cardStyles = css`
 
   /* monthly wrap as app-style pages */
   .wrap-pages {
-    --p1: #7b68ee;
+    --p1: #6049ea;
     --p2: #5b46dc;
     --p3: #231d52;
     position: relative;
@@ -578,18 +599,18 @@ export const cardStyles = css`
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.75);
   }
   .wrap-pages.page-tastes {
-    --p1: #ec4899;
+    --p1: #cf1571;
     --p2: #b8307a;
     --p3: #3a1730;
   }
   .wrap-pages.page-patterns {
-    --p1: #22b8d8;
-    --p2: #0f7f9c;
+    --p1: #146e82;
+    --p2: #0d6e88;
     --p3: #11333f;
   }
   .wrap-pages.page-moments {
-    --p1: #f5a623;
-    --p2: #b7761a;
+    --p1: #8d5a06;
+    --p2: #8a5a14;
     --p3: #35250f;
   }
   .wrap-pages .muted,
@@ -598,15 +619,15 @@ export const cardStyles = css`
   .wrap-pages .picks-foot,
   .wrap-pages .wrap-section,
   .wrap-pages .empty {
-    color: rgba(255, 255, 255, 0.74);
+    color: rgba(255, 255, 255, 0.88);
   }
   /* the running month: light green, with a "so far" pill */
   .wrap-pages.partial,
   .wrap-pages.partial.page-tastes,
   .wrap-pages.partial.page-patterns,
   .wrap-pages.partial.page-moments {
-    --p1: #74d493;
-    --p2: #2f9e63;
+    --p1: #24733d;
+    --p2: #1c6b3c;
     --p3: #0f3320;
   }
   .wrap-sofar {
@@ -802,7 +823,8 @@ export const cardStyles = css`
     text-transform: uppercase;
     color: rgba(255, 255, 255, 0.82);
   }
-  .wrap-pages .wrap-arrow {
+  .wrap-pages .wrap-arrow,
+  .wrap-pages .wrap-view {
     background: rgba(255, 255, 255, 0.18);
     color: #fff;
   }
@@ -821,7 +843,7 @@ export const cardStyles = css`
     padding: 12px 14px;
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.12);
     font-size: 15px;
     --mdc-icon-size: 22px;
   }
@@ -975,6 +997,20 @@ export const cardStyles = css`
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  .finish-pace {
+    font-size: 13px;
+    color: var(--secondary-text-color);
+    margin: -4px 0 10px;
+  }
+  .spark {
+    display: block;
+    width: 100%;
+    max-width: 140px;
+    height: 28px;
+    margin-top: 2px;
+    color: var(--c-accent);
+    overflow: visible;
   }
   .metric {
     font-size: 32px;
@@ -1523,6 +1559,16 @@ export const cardStyles = css`
     }
     .last {
       max-width: 55%;
+    }
+  }
+  /* respect "reduce motion": no transitions or animations, the bars just appear */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
     }
   }
 `;

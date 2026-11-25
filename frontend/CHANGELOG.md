@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+- **Added:** the yearly wrap, a **Year** view of the monthly wrap for a whole calendar year (option `wrap_year`: `auto` in December and January, `always`, `never`)
+- **Added:** "About N weeks / months / years at your current pace" under the total in *Still to finish*
+- **Added:** a trend line of the last 12 weeks in *Average per week*
+- **Added:** `npm run docs:screenshot` and `npm run check:visual` (Playwright, installed on demand)
+- **Changed:** the *What you watched* bar of the wrap is a smooth blended bar
+- **Changed:** the wrap's colored pages are deeper so white text has at least 4.5:1 contrast, and the secondary text is lighter
+- **Changed:** transitions are turned off when the viewer asks to reduce motion
+
 ## 0.9.3
 
 - **Fixed:** the legend under *What you watched* on the monthly wrap's *Your tastes* page is light instead of grey, so it can be read on the colored page

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DAYS_PER_MONTH, blendedBar, blendedBarStyle, durationParts, durationText, funStatText, shares, streakDots, timeOfDay } from "../src/format";
+import { DAYS_PER_MONTH, blendedBar, blendedBarStyle, durationParts, durationText, funStatText, pace, shares, sparkPoints, streakDots, timeOfDay } from "../src/format";
 
 test("duration: 383,908 minutes is 266 d 14 h", () => {
   assert.equal(durationText(383908), "266 d 14 h");
@@ -192,4 +192,32 @@ test("blended bar style: OKLab for browsers that have it, plain for the rest", (
   assert.match(plain, /^background:linear-gradient\(to right,/);
   assert.match(oklab, /^background:linear-gradient\(in oklab to right,/);
   assert.equal(blendedBarStyle([]), "background:none");
+});
+
+test("pace: weeks for a short backlog, months for a longer one, years for a very long one", () => {
+  assert.deepEqual(pace(60 * 10, 5), { unit: "week", n: 2 }, "10 hours at 5 hours a week");
+  assert.deepEqual(pace(60, 10), { unit: "week", n: 1 }, "never less than a week");
+  assert.deepEqual(pace(60 * 100, 5), { unit: "month", n: 5 }, "20 weeks is about 5 months");
+  assert.deepEqual(pace(60 * 630, 2.5), { unit: "year", n: 5 }, "252 weeks, rounded to the nearest half year");
+  assert.deepEqual(pace(60 * 400, 4), { unit: "month", n: 23 });
+  assert.deepEqual(pace(60 * 500, 4), { unit: "year", n: 2.5 });
+});
+
+test("pace: nothing without a time left or an average", () => {
+  assert.equal(pace(undefined, 5), undefined);
+  assert.equal(pace(0, 5), undefined);
+  assert.equal(pace(600, undefined), undefined);
+  assert.equal(pace(600, 0), undefined);
+});
+
+test("spark points: left to right, highest at the top, flat in the middle", () => {
+  const pts = sparkPoints([0, 5, 10], 100, 20, 0);
+  assert.deepEqual(pts, [[0, 20], [50, 10], [100, 0]]);
+  assert.deepEqual(sparkPoints([3, 3, 3], 100, 20, 0).map((p) => p[1]), [10, 10, 10]);
+  assert.deepEqual(sparkPoints([4], 100, 20), []);
+  const padded = sparkPoints([1, 2], 100, 20, 3);
+  assert.equal(padded[0][0], 3);
+  assert.equal(padded[1][0], 97);
+  assert.equal(padded[0][1], 17);
+  assert.equal(padded[1][1], 3);
 });

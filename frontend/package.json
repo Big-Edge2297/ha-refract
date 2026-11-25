@@ -1,6 +1,6 @@
 {
   "name": "refract-stats-card",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "Dashboard card bundled with the Refract Home Assistant integration",
   "type": "module",
   "private": true,
@@ -10,7 +10,9 @@
     "watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",
-    "demo": "node scripts/demo-server.mjs"
+    "demo": "node scripts/demo-server.mjs",
+    "docs:screenshot": "node scripts/docs-screenshot.mjs",
+    "check:visual": "node scripts/docs-screenshot.mjs --check"
   },
   "dependencies": {
     "lit": "^3.2.1"

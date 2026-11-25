@@ -162,6 +162,8 @@ export interface RefractCardConfig {
   show_backdrops?: boolean;
   /** Monthly wrap look: colored app-style pages, or the compact tabs. */
   wrap_style?: "pages" | "tabs";
+  /** A Year switch on the wrap: in December and January (the default), always, or never. */
+  wrap_year?: "auto" | "always" | "never";
   show_next_up?: boolean;
   show_catchup?: boolean;
   show_airing?: boolean;
@@ -209,6 +211,7 @@ export const DEFAULT_CONFIG = {
   show_year_heatmap: true,
   show_backdrops: true,
   wrap_style: "pages" as "pages" | "tabs",
+  wrap_year: "auto" as "auto" | "always" | "never",
   show_next_up: true,
   show_catchup: true,
   show_airing: true,

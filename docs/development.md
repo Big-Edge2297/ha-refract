@@ -15,6 +15,9 @@
 # the card: typecheck, tests, and rebuild custom_components/refract/www/refract-stats-card.js
 cd frontend && npm ci && npm run typecheck && npm test && npm run build
 
+# a picture of the demo card for the docs, and checks of the layout at a few widths and scalings (needs Playwright)
+cd frontend && npm install --no-save playwright && npx playwright install chromium && npm run check:visual
+
 # the analytics and translations
 pip install pytest && python -m pytest -q tests --ignore=tests/ha
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test } from "node:test";
+import { beforeEach, mock, test } from "node:test";
 import { JSDOM } from "jsdom";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://localhost/" });
@@ -216,8 +216,8 @@ test("still to finish shows just the total and a counter row per kind, with no e
   const el = await mount({});
   const panel = el.shadowRoot!.querySelector(".panel.finish")!;
   const t = panel.textContent!.replace(/\s+/g, " ").trim();
-  assert.equal(t, "Still to finish 26 d 5 h 26 movies to finish 2d 2h 37 TV shows to finish 24d 3h");
-  assert.doesNotMatch(t, /non-stop|Estimate|Not counting|episodes|not started/, "no extra wording");
+  assert.equal(t, "Still to finish 26 d 5 h About 5 years at your current pace 26 movies to finish 2d 2h 37 TV shows to finish 24d 3h");
+  assert.doesNotMatch(t, /non-stop|Estimate|Not counting|episodes|not started/, "no extra wording besides the pace line");
   assert.equal(panel.querySelector(".finish-hours, .finish-note, .finish-sub"), null);
   const rows = [...panel.querySelectorAll(".finish-row")].map((r) => r.textContent!.replace(/\s+/g, " ").trim());
   assert.deepEqual(rows, ["26 movies to finish 2d 2h", "37 TV shows to finish 24d 3h"]);
@@ -225,6 +225,34 @@ test("still to finish shows just the total and a counter row per kind, with no e
   assert.match(panel.querySelectorAll(".finish-time")[1].getAttribute("style")!, /--c-shows/);
 });
 
+
+test("still to finish says how long it takes at the current pace, and stays quiet without an average", async () => {
+  const el = await mount({});
+  assert.equal(el.shadowRoot!.querySelector(".finish-pace")!.textContent!.trim(), "About 5 years at your current pace");
+  const noAverage = new Map(Object.entries(baseStates));
+  const without = { ...baseStates } as Record<string, unknown>;
+  delete without[`sensor.${PREFIX}average_per_week`];
+  const el2 = await mount({}, makeHass({ states: without as typeof baseStates }));
+  assert.equal(el2.shadowRoot!.querySelector(".finish-pace"), null, "no average per week, no pace");
+  void noAverage;
+});
+
+test("average per week draws the weekly trend when the sensor has it, and nothing otherwise", async () => {
+  const key = `sensor.${PREFIX}average_per_week`;
+  const withWeekly = makeHass({
+    states: { ...baseStates, [key]: { ...baseStates[key], attributes: { ...baseStates[key].attributes, weekly: [2, 3, 1, 4, 5, 3, 2, 6, 4, 5, 7, 3] } } },
+  });
+  const el = await mount({}, withWeekly);
+  const svg = el.shadowRoot!.querySelector(".panel.average svg.spark")!;
+  assert.ok(svg, "the trend line is drawn");
+  assert.equal(svg.querySelector("polyline")!.getAttribute("points")!.split(" ").length, 12, "one point per week");
+  assert.match(svg.getAttribute("aria-label")!, /last 12 weeks/);
+  assert.equal((await mount({})).shadowRoot!.querySelector(".panel.average svg.spark"), null, "no weekly data, no line");
+  const quiet = makeHass({
+    states: { ...baseStates, [key]: { ...baseStates[key], attributes: { ...baseStates[key].attributes, weekly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] } } },
+  });
+  assert.equal((await mount({}, quiet)).shadowRoot!.querySelector(".panel.average svg.spark"), null, "an empty trend is not drawn");
+});
 test("still to finish adds an anime row only when there is anime, and uses singular wording", async () => {
   const hass = finishWith({
     movies: { count: 1, minutes: 100 },
@@ -1330,6 +1358,9 @@ test("monthly wrap tastes: split, top genres and discovery", async () => {
   assert.match(legend, /Shows · 67%/);
   assert.match(legend, /Movies · 33%/);
   assert.doesNotMatch(legend, /Anime/, "no anime this month");
+  const split = panel.querySelector(".wrap-split")!;
+  assert.match(split.getAttribute("style")!, /^background:linear-gradient\(to right,/, "the split is one blended bar like the others");
+  assert.equal(barColors(split).length, 2);
   const genres = [...panel.querySelectorAll(".wrap-genre")].map((g) => compact(g));
   assert.deepEqual(genres, ["Action 2", "Adventure 2", "Crime 2", "Drama 2", "Science Fiction 1"]);
   const bars = [...panel.querySelectorAll(".wrap-genre-bar > span")].map((b) => (b as HTMLElement).style.width);
@@ -1640,7 +1671,7 @@ test("the single-section editor offers only what that section needs", async () =
   };
   assert.deepEqual((await fieldsFor("streak")).names, ["entity", "name"]);
   assert.deepEqual((await fieldsFor("next_up")).names, ["entity", "name", "show_posters", "show_backdrops", "show_actions", "confirm_actions"]);
-  assert.deepEqual((await fieldsFor("monthly_wrap")).names, ["entity", "name", "wrap_style", "show_backdrops"]);
+  assert.deepEqual((await fieldsFor("monthly_wrap")).names, ["entity", "name", "wrap_style", "wrap_year", "show_backdrops"]);
   assert.deepEqual((await fieldsFor("top_picks")).names, ["entity", "name", "top_picks_items"]);
   assert.deepEqual((await fieldsFor("catchup")).names, ["entity", "name", "queue_length", "show_posters"]);
   // changes stay free of layout keys, and the tile choice sticks
@@ -1844,4 +1875,150 @@ test("single-section cards and other languages show the state too", async () => 
   assert.match(plain(await mount({}, de)), /Refract ist nicht erreichbar/);
   const pl = Object.assign(allStates("unknown"), { locale: { language: "pl", time_zone: "server" }, language: "pl" });
   assert.match(plain(await mount({}, pl)), /Oczekiwanie na Refract/);
+});
+
+// ------------------------------------------------------------------ yearly wrap
+
+const yearEntry = (over: Record<string, unknown> = {}) => ({
+  year: 2026, items: 400, episodes: 380, movies: 20, titles: 60, show_titles: 40, anime_titles: 5, movie_titles: 15,
+  minutes: 30000, estimated: false,
+  months: [30, 20, 40, 35, 45, 30, 25, 40, 35, 50, 30, 20],
+  active_days: 200, weekend_share: 40, best_streak: 12,
+  busiest_day: { day: "2026-10-31", count: 6 }, busiest_month: { month: 10, count: 50 },
+  first_watch: 360, rewatch: 40,
+  top: [
+    { title: "Westworld", kind: "show", anime: false, count: 40, poster: null },
+    { title: "Dune", kind: "movie", anime: false, count: 2, poster: null },
+  ],
+  genres: [{ name: "Drama", titles: 20 }, { name: "Comedy", titles: 10 }],
+  ...over,
+});
+const withYears = (years: unknown[]) => {
+  const key = `sensor.${PREFIX}monthly_wrap`;
+  return makeHass({ states: { ...baseStates, [key]: { ...baseStates[key], attributes: { ...baseStates[key].attributes, years } } } });
+};
+const at = (iso: string) => mock.timers.enable({ apis: ["Date"], now: new Date(iso) });
+const yearBody = (el: any) => compact(el.shadowRoot!.querySelector(".panel.wrap"));
+
+test("yearly wrap: the Year switch shows in December and January, always, or never", async () => {
+  const years = [yearEntry({ partial: true, elapsed_days: 160 })];
+  try {
+    at("2026-06-15T12:00:00Z");
+    assert.equal((await wrapRoot({}, withYears(years))).root.querySelector(".wrap-view"), null, "June: not offered");
+    assert.ok((await wrapRoot({ wrap_year: "always" }, withYears(years))).root.querySelector(".wrap-view"), "always");
+    mock.timers.reset();
+    at("2026-12-10T12:00:00Z");
+    assert.equal((await wrapRoot({}, withYears(years))).root.querySelector(".wrap-view")!.textContent!.trim(), "Year", "December");
+    assert.equal((await wrapRoot({ wrap_year: "never" }, withYears(years))).root.querySelector(".wrap-view"), null, "never");
+    assert.equal((await wrapRoot({}, withYears([]))).root.querySelector(".wrap-view"), null, "nothing to show");
+    mock.timers.reset();
+    at("2027-01-05T12:00:00Z");
+    assert.ok((await wrapRoot({}, withYears(years))).root.querySelector(".wrap-view"), "January");
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test("yearly wrap: the year overview, the previous year and the way back to the months", async () => {
+  const years = [yearEntry(), yearEntry({ year: 2025, minutes: 20000 })];
+  const { el } = await wrapRoot({ wrap_year: "always" }, withYears(years));
+  assert.equal(compact(el.shadowRoot!.querySelector(".wrap-month")), "October 2026", "opens on the months");
+  await press(el, ".wrap-view");
+  const t = yearBody(el);
+  assert.equal(el.shadowRoot!.querySelector(".wrap-month")!.textContent!.trim(), "2026");
+  assert.match(t, /Yearly wrap/);
+  assert.match(t, /400 items watched/);
+  assert.equal(el.shadowRoot!.querySelector(".wrap-hours")!.textContent, "500", "30000 minutes");
+  assert.match(t, /\+50% vs 2025/, "against the year before");
+  assert.deepEqual([...el.shadowRoot!.querySelectorAll(".wrap-tiles .tile")].map(tile).slice(0, 4), ["380 Episodes", "15 Movies", "40 Shows", "5 Anime"]);
+  assert.equal(el.shadowRoot!.querySelector(".wrap-view")!.textContent!.trim(), "Months");
+  await press(el, ".wrap-view");
+  assert.equal(compact(el.shadowRoot!.querySelector(".wrap-month")), "October 2026", "back to the months");
+});
+
+test("yearly wrap: the arrows go between years, and the running year says so far", async () => {
+  const years = [yearEntry({ partial: true, elapsed_days: 100 }), yearEntry({ year: 2025 })];
+  const { el } = await wrapRoot({ wrap_year: "always" }, withYears(years));
+  await press(el, ".wrap-view");
+  assert.equal(compact(el.shadowRoot!.querySelector(".wrap-month")), "2026 So far");
+  assert.match(yearBody(el), /Day 100 of 365/);
+  assert.doesNotMatch(yearBody(el), /vs 2025/, "no comparison for a year that is not over");
+  const arrows = el.shadowRoot!.querySelectorAll(".wrap-arrow");
+  assert.equal((arrows[1] as HTMLButtonElement).disabled, true, "already on the newest year");
+  await press(el, ".wrap-arrow", 0);
+  assert.equal(el.shadowRoot!.querySelector(".wrap-month")!.textContent!.trim(), "2025");
+  assert.equal((el.shadowRoot!.querySelectorAll(".wrap-arrow")[0] as HTMLButtonElement).disabled, true, "no older year");
+});
+
+test("yearly wrap: in January it opens on the year that just ended", async () => {
+  try {
+    at("2027-01-05T12:00:00Z");
+    const years = [yearEntry({ year: 2027, partial: true, elapsed_days: 5, items: 3 }), yearEntry()];
+    const { el } = await wrapRoot({}, withYears(years));
+    await press(el, ".wrap-view");
+    assert.equal(el.shadowRoot!.querySelector(".wrap-month")!.textContent!.trim(), "2026");
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test("yearly wrap: tastes, months chart and most watched", async () => {
+  const years = [yearEntry({ partial: true, elapsed_days: 200 })];
+  const { el } = await wrapRoot({ wrap_year: "always" }, withYears(years));
+  await press(el, ".wrap-view");
+  await press(el, ".wrap-tab", 1);
+  const tastes = yearBody(el);
+  assert.match(tastes, /Shows · 67%/);
+  assert.match(tastes, /Drama 20/);
+  assert.match(tastes, /90%First watch · 360 new/);
+  await press(el, ".wrap-tab", 2);
+  const bars = [...el.shadowRoot!.querySelectorAll(".wrap-months .wrap-day")];
+  assert.equal(bars.length, 12, "one bar per month");
+  assert.ok(bars[9].classList.contains("peak"), "October is the busiest");
+  assert.ok(bars[7].classList.contains("future") && !bars[5].classList.contains("future"), "200 days in: July is the last month that has happened");
+  assert.match(yearBody(el), /Busiest month: October · 50/);
+  assert.match(yearBody(el), /Busiest day: Oct 31 · 6 items/);
+  assert.match(yearBody(el), /Jan.*Dec/);
+  await press(el, ".wrap-tab", 3);
+  const top = [...el.shadowRoot!.querySelectorAll(".wrap-top-row")].map((r) => compact(r));
+  assert.deepEqual(top, ["Westworld 40 episodes", "Dune 2 plays"]);
+  assert.doesNotMatch(yearBody(el), /Firsts/, "no countries for a whole year");
+});
+
+test("yearly wrap: the app-style pages say your year, wrapped", async () => {
+  const years = [yearEntry()];
+  const el = await mount({ wrap_year: "always" }, withYears(years));
+  await press(el, ".wrap-view");
+  const root = el.shadowRoot!;
+  assert.equal(compact(root.querySelector(".wrap-title")), "Your year, wrapped");
+  assert.equal(compact(root.querySelector(".wrap-kicker")), "2026");
+  await press(el, ".wrap-tap.next");
+  await press(el, ".wrap-tap.next");
+  assert.equal(compact(root.querySelector(".wrap-title")), "Your year in months");
+  assert.match(compact(root.querySelector(".wrap-insight")), /Your busiest month was October/);
+});
+
+test("wrap pages: white text stays readable on every page color, also inside the glass panels", () => {
+  const css = String((RefractStatsCard as any).styles.cssText);
+  const lum = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  const glass = (hex: string, alpha: number) => {
+    const mixed = [1, 3, 5].map((i) => Math.round(255 * alpha + parseInt(hex.slice(i, i + 2), 16) * (1 - alpha)));
+    return lum("#" + mixed.map((c) => c.toString(16).padStart(2, "0")).join(""));
+  };
+  const rules = [...css.matchAll(/\.wrap-pages[^{]*\{[^}]*--p1:\s*(#[0-9a-f]{6});\s*--p2:\s*(#[0-9a-f]{6});/gi)];
+  assert.ok(rules.length >= 5, "the overview, tastes, patterns, moments and running-month palettes");
+  for (const [rule, p1, p2] of rules) {
+    assert.ok(contrast(1, lum(p1)) >= 4.5, `${rule.slice(0, 40)}: white on ${p1}`);
+    assert.ok(contrast(1, lum(p2)) >= 4.5, `${rule.slice(0, 40)}: white on ${p2}`);
+    assert.ok(contrast(1, glass(p1, 0.12)) >= 4.5, `${p1}: white in the insight panel`);
+  }
+});
+
+test("the card stops its transitions when the viewer asks to reduce motion", () => {
+  const css = String((RefractStatsCard as any).styles.cssText);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\{[^}]*transition:\s*none !important/);
 });

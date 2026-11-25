@@ -19,6 +19,7 @@ from .analytics import (
     build_finish,
     build_top_picks,
     build_wraps,
+    build_year_wraps,
     iter_watch_records,
     finish_lookups,
     busiest_day,
@@ -30,6 +31,7 @@ from .analytics import (
     poster_candidates,
     upcoming,
     watch_counts,
+    weekly_series,
     weekly_stats,
 )
 from .api import (
@@ -201,6 +203,7 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "busiest": busiest_day(days),
                 "average": {
                     **week,
+                    "weekly": weekly_series(history["episodes"], history["movies"], today),
                     "avg_minutes_per_item": round(per_item) if per_item else None,
                     "estimated": True,
                 },
@@ -246,6 +249,14 @@ class RefractCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
         if records:
             wraps = build_wraps(
+                records,
+                profiles,
+                dt_util.now().date(),
+                per_episode or per_item,
+                average_movie_minutes(flat) or per_item,
+                TMDB_IMAGE_BASE,
+            )
+            wraps["years"] = build_year_wraps(
                 records,
                 profiles,
                 dt_util.now().date(),

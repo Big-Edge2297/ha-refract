@@ -47,6 +47,8 @@ export interface Average {
   itemsPerWeek?: number;
   changePct?: number | null;
   estimated: boolean;
+  /** Viewings in each of the last weeks, oldest first, the newest being the 7 days ending today. */
+  weekly?: number[];
 }
 export interface CatchupShow {
   title: string;
@@ -151,8 +153,36 @@ export interface WrapMonth {
   /** Countries first seen this month; undefined until every title has its TMDB details. */
   firsts?: { code: string; name: string; title: string }[];
 }
+/** A calendar year of the wrap: the amounts of a month plus the 12 months, the busiest month and the streak. */
+export interface WrapYear {
+  year: number;
+  items: number;
+  episodes: number;
+  movies: number;
+  titles: number;
+  showTitles: number;
+  animeTitles: number;
+  movieTitles: number;
+  minutes: number;
+  estimated: boolean;
+  /** Items watched in each month, January first. */
+  months: number[];
+  activeDays: number;
+  weekendShare: number;
+  bestStreak: number;
+  busiestDay: { day: string; count: number };
+  busiestMonth: { month: number; count: number };
+  firstWatch: number;
+  rewatch: number;
+  top: { title: string; kind: "show" | "movie"; anime: boolean; count: number; poster?: string }[];
+  genres: { name: string; titles: number }[];
+  /** The running year: only the days up to `elapsedDays` have happened. */
+  partial?: boolean;
+  elapsedDays?: number;
+}
 export interface Wrap {
   months: WrapMonth[];
+  years: WrapYear[];
   /** Titles still waiting for their TMDB details. */
   pending: number;
   firstsReady: boolean;
@@ -416,7 +446,46 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
         };
       })
       .filter((x: WrapMonth | undefined): x is WrapMonth => !!x);
-    wrap = { months, pending: num(a.pending) ?? 0, firstsReady: !!a.firsts_ready };
+    const years: WrapYear[] = (Array.isArray(a.years) ? a.years : [])
+      .map((r: any): WrapYear | undefined => {
+        if (!Number.isInteger(r?.year) || !Array.isArray(r.months) || r.months.length !== 12) return undefined;
+        return {
+          year: r.year,
+          items: num(r.items) ?? 0,
+          episodes: num(r.episodes) ?? 0,
+          movies: num(r.movies) ?? 0,
+          titles: num(r.titles) ?? 0,
+          showTitles: num(r.show_titles) ?? 0,
+          animeTitles: num(r.anime_titles) ?? 0,
+          movieTitles: num(r.movie_titles) ?? 0,
+          minutes: num(r.minutes) ?? 0,
+          estimated: !!r.estimated,
+          months: r.months.map((m: unknown) => num(m) ?? 0),
+          activeDays: num(r.active_days) ?? 0,
+          weekendShare: num(r.weekend_share) ?? 0,
+          bestStreak: num(r.best_streak) ?? 0,
+          busiestDay: { day: typeof r.busiest_day?.day === "string" ? r.busiest_day.day : "", count: num(r.busiest_day?.count) ?? 0 },
+          busiestMonth: { month: num(r.busiest_month?.month) ?? 1, count: num(r.busiest_month?.count) ?? 0 },
+          firstWatch: num(r.first_watch) ?? 0,
+          rewatch: num(r.rewatch) ?? 0,
+          top: (Array.isArray(r.top) ? r.top : [])
+            .filter((x: any) => typeof x?.title === "string")
+            .map((x: any) => ({
+              title: x.title,
+              kind: x.kind === "movie" ? "movie" : "show",
+              anime: !!x.anime,
+              count: num(x.count) ?? 0,
+              poster: typeof x.poster === "string" && x.poster ? x.poster : undefined,
+            })),
+          genres: (Array.isArray(r.genres) ? r.genres : [])
+            .filter((x: any) => typeof x?.name === "string")
+            .map((x: any) => ({ name: x.name, titles: num(x.titles) ?? 0 })),
+          partial: r.partial === true ? true : undefined,
+          elapsedDays: num(r.elapsed_days),
+        };
+      })
+      .filter((x: WrapYear | undefined): x is WrapYear => !!x);
+    wrap = { months, years, pending: num(a.pending) ?? 0, firstsReady: !!a.firsts_ready };
   }
 
   // average per week
@@ -432,6 +501,9 @@ export function buildModel(hass: HomeAssistant, discovery: Discovery, config: Re
         itemsPerWeek: perWeek,
         changePct: typeof change === "number" ? change : null,
         estimated: avgState.attributes.estimated !== false,
+        ...(Array.isArray(avgState.attributes.weekly)
+          ? { weekly: avgState.attributes.weekly.map((n: unknown) => Math.max(0, num(n) ?? 0)) }
+          : {}),
       };
     }
   }

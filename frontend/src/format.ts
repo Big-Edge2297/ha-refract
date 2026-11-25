@@ -154,6 +154,39 @@ export function blendedBarStyle(items: Array<{ value: number; color: string }>):
     : `background:${plain};background:${blendedBar(items, 20, 1.2, true)}`;
 }
 
+/**
+ * How long the time left would take at the current pace, as a number of weeks, months or years
+ * ("about 12 weeks"). `undefined` when either figure is missing or zero.
+ */
+export function pace(
+  minutesLeft: number | undefined,
+  hoursPerWeek: number | undefined,
+): { unit: "week" | "month" | "year"; n: number } | undefined {
+  if (!minutesLeft || minutesLeft <= 0 || !hoursPerWeek || hoursPerWeek <= 0) return undefined;
+  const weeks = minutesLeft / 60 / hoursPerWeek;
+  if (weeks < 9) return { unit: "week", n: Math.max(1, Math.round(weeks)) };
+  const months = weeks / 4.345;
+  if (months < 24) return { unit: "month", n: Math.max(2, Math.round(months)) };
+  const years = weeks / 52.18;
+  return { unit: "year", n: Math.round(years * 2) / 2 };
+}
+
+/**
+ * The points of a small trend line through `values`, for an SVG `viewBox` of `width` x `height`:
+ * evenly spaced from left to right, the highest value at the top, the lowest at the bottom (a flat
+ * series is drawn in the middle). `pad` keeps the stroke inside the box.
+ */
+export function sparkPoints(values: number[], width: number, height: number, pad = 3): Array<[number, number]> {
+  if (values.length < 2) return [];
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const step = (width - 2 * pad) / (values.length - 1);
+  return values.map((v, i) => [
+    Math.round((pad + i * step) * 100) / 100,
+    Math.round((hi === lo ? height / 2 : height - pad - ((v - lo) / (hi - lo)) * (height - 2 * pad)) * 100) / 100,
+  ]);
+}
+
 // ---------------------------------------------------------------- fun stats
 
 type FunKind = Exclude<FunStatMode, "rotate">;

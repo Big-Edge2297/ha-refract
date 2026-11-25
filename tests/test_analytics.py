@@ -4,7 +4,7 @@ The module is loaded by path because importing the package would pull in Home As
 """
 
 import importlib.util
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
@@ -714,3 +714,63 @@ def test_the_poster_of_next_up_is_that_of_the_first_show_with_something_waiting(
     lupin, westworld = up("Lupin", 0, 1), up("Westworld", 20, 2)
     assert a.poster_candidates([lupin, westworld])[0] == 2, "Westworld comes first, not the fully watched Lupin"
     assert a.poster_candidates([lupin, westworld]) == [2, 1]
+
+
+# ------------------------------------------------- weekly trend and the yearly wrap
+
+
+def test_weekly_series_counts_each_of_the_last_weeks_oldest_first():
+    today = date(2026, 11, 24)
+    episodes = [(today, 40), (today - timedelta(days=6), None), (today - timedelta(days=7), None), (today - timedelta(days=83), None)]
+    movies = [today - timedelta(days=13), today - timedelta(days=84), today + timedelta(days=1)]
+    series = a.weekly_series(episodes, movies, today)
+    assert len(series) == 12
+    assert series[-1] == 2, "today and 6 days ago are the newest week"
+    assert series[-2] == 2, "7 and 13 days ago are the week before"
+    assert series[0] == 1, "83 days ago is the oldest week; 84 days ago and the future are outside"
+    assert sum(series) == 5
+    assert a.weekly_series([], [], today) == [0] * 12
+    assert len(a.weekly_series([], [], today, weeks=4)) == 4
+
+
+YEAR_TODAY = date(2026, 12, 10)
+
+
+def test_year_wraps_are_the_running_year_then_earlier_years_with_something_watched():
+    records = [rec("2026-12-01"), rec("2026-03-05"), rec("2025-06-01"), rec("2023-01-01"), rec("2021-01-01")]
+    years = a.build_year_wraps(records, {}, YEAR_TODAY)
+    assert [y["year"] for y in years] == [2026, 2025, 2023], "newest first, at most three, gaps skipped"
+    assert years[0]["partial"] is True and years[0]["elapsed_days"] == 344
+    assert all("partial" not in y for y in years[1:])
+    assert a.build_year_wraps([], {}, YEAR_TODAY) == []
+
+
+def test_year_wrap_amounts_months_streak_and_busiest():
+    records = (
+        [rec("2026-01-31"), rec("2026-02-01"), rec("2026-02-02")]  # a streak across the month boundary
+        + [rec("2026-02-02", tmdb=2, title="Other Show")]
+        + [rec("2026-07-04", kind="movie", tmdb=9, title="A Movie")]
+        + [rec("2026-07-05", rewatch=True)]
+    )
+    year = a.build_year_wraps(records, {}, YEAR_TODAY)[0]
+    assert year["items"] == 6 and year["episodes"] == 5 and year["movies"] == 1
+    assert year["titles"] == 3 and year["show_titles"] == 2 and year["movie_titles"] == 1
+    assert year["months"] == [1, 3, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0]
+    assert year["busiest_month"] == {"month": 2, "count": 3}
+    assert year["busiest_day"] == {"day": "2026-02-02", "count": 2}
+    assert year["best_streak"] == 3, "31 Jan, 1 Feb and 2 Feb"
+    assert year["active_days"] == 5
+    assert year["rewatch"] == 1 and year["first_watch"] == 5
+    assert year["top"][0]["title"] == "A Show" and year["top"][0]["count"] == 4
+    assert year["estimated"] is True, "no runtimes anywhere"
+
+
+def test_year_wrap_minutes_use_known_runtimes_then_the_averages():
+    records = [rec("2026-02-01", minutes=50), rec("2026-02-02"), rec("2026-02-03", kind="movie", tmdb=9, title="M")]
+    profiles = {"movie:9": {"runtime": 100, "genres": ["Drama"], "poster": "/p.jpg"}, "show:1": {"genres": ["Drama", "Sci-Fi"]}}
+    year = a.build_year_wraps(records, profiles, YEAR_TODAY, episode_minutes=40, movie_minutes=110)[0]
+    assert year["minutes"] == 50 + 40 + 100
+    assert year["estimated"] is True, "the second episode had no recorded length"
+    assert year["genres"][0] == {"name": "Drama", "titles": 2}
+    exact = a.build_year_wraps([rec("2026-02-01", minutes=50)], {}, YEAR_TODAY)[0]
+    assert exact["minutes"] == 50 and exact["estimated"] is False

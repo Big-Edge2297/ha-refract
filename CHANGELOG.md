@@ -2,6 +2,23 @@
 
 All notable changes to the Refract integration and its dashboard card.
 
+## 0.10.0
+
+### Added
+- **Yearly wrap.** In December and January the monthly wrap gets a **Year** button that turns it into the same four pages for a whole calendar year: *Your year, wrapped*, *Your tastes*, *Your year in months* (a bar for each month, the busiest month and day, the best streak across the year) and *Your moments*. The running year is marked *so far*, in January the card opens on the year that just ended, and the arrows go between years. New option `wrap_year` (`auto` for December and January, `always`, `never`). The wrap sensor has a new `years` attribute with one summary per year (the running year and up to two earlier ones)
+- **"At your pace" in *Still to finish*.** Under the total it says how long the time left would take at your current average, for example "About 5 years at your current pace". It is worked out from the *Average per week* figure, so it needs watch history and shows nothing without it
+- **A weekly trend in *Average per week*.** A small line with the viewings of each of the last 12 weeks, the current week last. The average sensor has a new `weekly` attribute with the 12 numbers
+- **`npm run docs:screenshot` and `npm run check:visual`** for the card's development: the first redraws `docs/dashboard-card.png` from the demo, the second loads the demo at three widths and three display scalings (100%, 125%, 150%) and fails when something scrolls sideways, a label of the title tiles wraps or the page logs an error. They need Playwright, which is installed on demand and is not a dependency of the card
+
+### Changed
+- **The *What you watched* bar on the monthly wrap's *Your tastes* page is a smooth blended bar** like *Time spent* and *Library*, instead of separate boxes with gaps
+- **The monthly wrap's colored pages are a little deeper, so the white text is easy to read.** The light top of the green (running month), orange (*Your moments*) and teal (*Your year in months*) pages made the title, the kicker and the highlight sentence hard to read, and the grey-white secondary text was faint. All five page colors now give white text at least 4.5:1 contrast, also inside the highlight panel, and a test keeps it that way
+- The card stops its transitions when the viewer has asked their device to reduce motion
+
+### Notes
+- Two new attributes (`years` on the wrap sensor and `weekly` on the average sensor); nothing is removed and no option changes
+- The demo page has sample yearly and weekly data and a *Year* switch
+
 ## 0.9.3
 
 ### Fixed

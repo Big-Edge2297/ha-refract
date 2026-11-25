@@ -163,6 +163,25 @@ def weekly_stats(
     }
 
 
+def weekly_series(
+    episodes: Iterable[tuple[date, int | None]],
+    movies: Iterable[date],
+    today: date,
+    weeks: int = 12,
+) -> list[int]:
+    """Viewings (episodes plus movies) in each of the last `weeks` weeks, oldest first.
+
+    The newest week is the 7 days ending today, the one before it the 7 days before that, and so on.
+    """
+    counts = [0] * weeks
+    dates = [d for d, _ in episodes] + list(movies)
+    for day in dates:
+        back = (today - day).days
+        if 0 <= back < weeks * 7:
+            counts[weeks - 1 - back // 7] += 1
+    return counts
+
+
 def average_minutes(flat_stats: dict[str, float]) -> tuple[float | None, float | None]:
     """Average runtime per watched item and per episode, from the profile stats."""
     total = flat_stats.get("watch_time_total_minutes")
@@ -754,6 +773,7 @@ def build_top_picks(
 # the day. Genres, countries and posters come from the TMDB details when a key is set.
 
 WRAP_MONTHS = 12
+WRAP_YEARS = 3
 _WRAP_TOP_GENRES = 5
 _WRAP_TOP_TITLES = 3
 _WRAP_FIRSTS = 3
@@ -965,6 +985,113 @@ def build_wraps(
         out.append(month_info)
 
     return {"months": out, "pending": len(window_pending), "firsts_ready": not history_pending}
+
+
+def build_year_wraps(
+    records: list[dict[str, Any]],
+    profiles: dict[str, dict[str, Any]],
+    today: date,
+    episode_minutes: float | None = None,
+    movie_minutes: float | None = None,
+    image_base: str = "",
+    years: int = WRAP_YEARS,
+) -> list[dict[str, Any]]:
+    """A summary per calendar year, the running year first (marked `partial`), then earlier years.
+
+    The same figures as a month (items, episodes, movies, titles, minutes, first watches against
+    rewatches, the most watched titles and the top genres) plus the viewings of each of the 12 months,
+    the busiest month and day, the best streak across the whole year and the active days.
+    Only years with something watched are listed, at most `years` of them.
+    """
+    by_year: dict[int, list[dict[str, Any]]] = {}
+    for rec in records:
+        by_year.setdefault(int(rec["day"][:4]), []).append(rec)
+
+    def profile_of(rec: dict[str, Any]) -> dict[str, Any] | None:
+        if rec["id"] is None:
+            return None
+        found = profiles.get(rec["key"])
+        return None if not found or found.get("missing") else found
+
+    out: list[dict[str, Any]] = []
+    for year in sorted(by_year, reverse=True)[:years]:
+        recs = by_year[year]
+        start = date(year, 1, 1)
+        days_in_year = (date(year + 1, 1, 1) - start).days
+        per_day = [0] * days_in_year
+        months = [0] * 12
+        minutes = 0.0
+        estimated = False
+        weekend = rewatches = 0
+        titles: dict[str, dict[str, Any]] = {}
+        genres: dict[str, set[str]] = {}
+        for rec in recs:
+            day = date.fromisoformat(rec["day"])
+            per_day[(day - start).days] += 1
+            months[day.month - 1] += 1
+            if day.weekday() >= 5:
+                weekend += 1
+            if rec["rewatch"]:
+                rewatches += 1
+            prof = profile_of(rec)
+            if rec["kind"] == "movie":
+                runtime = (prof or {}).get("runtime") or movie_minutes
+                if (prof or {}).get("runtime") is None:
+                    estimated = True
+            else:
+                runtime = rec["minutes"] or (prof or {}).get("runtime") or episode_minutes
+                if not rec["minutes"]:
+                    estimated = True
+            if runtime:
+                minutes += runtime
+            row = titles.setdefault(
+                rec["key"],
+                {"title": rec["title"], "kind": rec["kind"], "anime": rec["anime"], "count": 0, "minutes": 0.0, "poster": None},
+            )
+            row["count"] += 1
+            row["minutes"] += runtime or 0
+            if prof and prof.get("poster"):
+                row["poster"] = f"{image_base}{prof['poster']}"
+            for genre in (prof or {}).get("genres") or []:
+                genres.setdefault(genre, set()).add(rec["key"])
+
+        shows = [r for r in titles.values() if r["kind"] == "show"]
+        busiest_index = max(range(days_in_year), key=lambda i: (per_day[i], -i))
+        busiest_month = max(range(12), key=lambda i: (months[i], -i))
+        ranked = sorted(titles.values(), key=lambda r: (-r["count"], -r["minutes"], r["title"]))[:_WRAP_TOP_TITLES]
+        info: dict[str, Any] = {
+            "year": year,
+            "items": len(recs),
+            "episodes": sum(1 for r in recs if r["kind"] == "show"),
+            "movies": sum(1 for r in recs if r["kind"] == "movie"),
+            "titles": len(titles),
+            "show_titles": sum(1 for r in shows if not r["anime"]),
+            "anime_titles": sum(1 for r in shows if r["anime"]),
+            "movie_titles": sum(1 for r in titles.values() if r["kind"] == "movie"),
+            "minutes": round(minutes),
+            "estimated": estimated,
+            "months": months,
+            "active_days": sum(1 for c in per_day if c),
+            "weekend_share": round(100 * weekend / len(recs)),
+            "best_streak": _best_streak(per_day),
+            "busiest_day": {"day": (start + timedelta(days=busiest_index)).isoformat(), "count": per_day[busiest_index]},
+            "busiest_month": {"month": busiest_month + 1, "count": months[busiest_month]},
+            "first_watch": len(recs) - rewatches,
+            "rewatch": rewatches,
+            "top": [
+                {"title": r["title"], "kind": r["kind"], "anime": r["anime"], "count": r["count"], "poster": r["poster"]}
+                for r in ranked
+            ],
+            "genres": [
+                {"name": name, "titles": len(keys)}
+                for name, keys in sorted(genres.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:_WRAP_TOP_GENRES]
+            ],
+        }
+        if year == today.year:
+            info["partial"] = True
+            info["elapsed_days"] = (today - start).days + 1
+        out.append(info)
+    return out
 
 
 # -------------------------------------------------------------- calendar

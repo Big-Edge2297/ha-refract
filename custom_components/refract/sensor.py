@@ -134,7 +134,12 @@ def _wrap_value(data: dict[str, Any]) -> int | None:
 
 def _wrap_attrs(data: dict[str, Any]) -> dict[str, Any]:
     wraps = data.get("wraps") or {}
-    return {"months": wraps.get("months") or [], "pending": wraps.get("pending", 0), "firsts_ready": wraps.get("firsts_ready", False)}
+    return {
+        "months": wraps.get("months") or [],
+        "years": wraps.get("years") or [],
+        "pending": wraps.get("pending", 0),
+        "firsts_ready": wraps.get("firsts_ready", False),
+    }
 
 
 def _top_picks_attrs(data: dict[str, Any]) -> dict[str, Any]:

@@ -27,6 +27,7 @@
   <label>Library <select id="libstyle"><option>list</option><option>bar</option></select></label>
   <label>Refract <select id="conn"><option>online</option><option>unreachable</option><option>waiting</option></select></label>
   <label>Wrap <select id="wrapstyle"><option>pages</option><option>tabs</option></select></label>
+  <label>Year <select id="wrapyear"><option>always</option><option>auto</option><option>never</option></select></label>
   <label>Watch time <select id="watchstyle"><option>list</option><option>bar</option></select></label>
   <label><input id="posters" type="checkbox" checked /> Posters (placeholder art)</label>
   <label>Duration <select id="dur"><option>months</option><option>days_hours</option><option>hours</option><option>auto</option></select></label>
@@ -131,10 +132,39 @@
       e("next_up", "Westworld", a.next),
       e("catch_up", 69, { show_count: 4, estimated_minutes: 3105, shows: a.catchup }),
       e("last_7_days", 13, { days: days7, episodes: 12, movies: 3, busiest_day: { date: day(-3), count: 4 } }),
-      e("average_per_week", 9.4, { items_per_week: 11.5, change_percent: 12, window_days: 28, estimated: true }),
+      e("average_per_week", 9.4, { items_per_week: 11.5, change_percent: 12, window_days: 28, estimated: true, weekly: [7, 9, 6, 11, 8, 10, 12, 9, 13, 10, 14, 12] }),
       e("airing_this_week", 3, { episodes: airing }),
       e("monthly_wrap", 41, {
         pending: 0, firsts_ready: true,
+        years: (() => {
+          // the running year (so far) and the year before it, with made-up activity
+          const now = new Date();
+          const y0 = now.getUTCFullYear();
+          const elapsed = Math.floor((Date.UTC(y0, now.getUTCMonth(), now.getUTCDate()) - Date.UTC(y0, 0, 1)) / 86400000) + 1;
+          const mk = (year, partial) => {
+            const monthsDone = partial ? now.getUTCMonth() + 1 : 12;
+            const months = Array.from({ length: 12 }, (_, i) => (i < monthsDone ? 28 + ((i * 17 + year) % 23) + (i === 9 ? 18 : 0) : 0));
+            const items = months.reduce((a, b) => a + b, 0);
+            const peak = months.indexOf(Math.max(...months));
+            const movies = Math.round(items * 0.1), episodes = items - movies;
+            const out = {
+              year, items, episodes, movies, titles: Math.round(items / 12) + 3 + movies, show_titles: Math.round(items / 12),
+              anime_titles: 3, movie_titles: movies, minutes: items * 54, estimated: false, months,
+              active_days: Math.min(partial ? elapsed : 365, Math.round(items * 0.62)), weekend_share: 31, best_streak: 24,
+              busiest_day: { day: `${year}-${String(peak + 1).padStart(2, "0")}-14`, count: 5 }, busiest_month: { month: peak + 1, count: months[peak] },
+              first_watch: items - 31, rewatch: 31,
+              top: [
+                { title: "Westworld", kind: "show", anime: false, count: Math.round(items * 0.14), poster: on ? art.Westworld : null },
+                { title: "The Bear", kind: "show", anime: false, count: Math.round(items * 0.09), poster: on ? art["The Bear"] : null },
+                { title: "Silo", kind: "show", anime: false, count: Math.round(items * 0.06), poster: on ? art.Silo : null },
+              ],
+              genres: [{ name: "Drama", titles: 58 }, { name: "Science Fiction", titles: 41 }, { name: "Thriller", titles: 33 }, { name: "Comedy", titles: 24 }, { name: "Action", titles: 19 }],
+            };
+            if (partial) { out.partial = true; out.elapsed_days = elapsed; }
+            return out;
+          };
+          return [mk(y0, true), mk(y0 - 1, false)];
+        })(),
         months: (() => {
           // the running month and the 12 before it, relative to today, with made-up activity
           const now = new Date();
@@ -217,7 +247,7 @@
     $("wv").textContent = $("width").value;
     card.setConfig({
       type: "custom:refract-stats-card", entity: `sensor.${P}next_up`,
-      layout: $("layout").value, library_style: $("libstyle").value, watch_time_style: $("watchstyle").value, wrap_style: $("wrapstyle").value, duration_format: $("dur").value,
+      layout: $("layout").value, library_style: $("libstyle").value, watch_time_style: $("watchstyle").value, wrap_style: $("wrapstyle").value, wrap_year: $("wrapyear").value, duration_format: $("dur").value,
       show_actions: $("actions").checked,
     });
     const all = { ...states, ...dynamic($("posters").checked) };

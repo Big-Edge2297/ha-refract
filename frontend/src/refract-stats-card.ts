@@ -5,9 +5,9 @@ import { styleMap } from "lit/directives/style-map.js";
 import { CARD_TYPE, DOMAIN, EDITOR_TYPE } from "./const";
 import { discover, type Discovery } from "./discovery";
 import { ensureFlagFont, flagEmoji } from "./flags";
-import { blendedBarStyle, durationParts, durationText, fmtNumber, funStatText, isoDay, shares, streakDots, timeOfDay, weekdayName } from "./format";
+import { blendedBarStyle, durationParts, durationText, fmtNumber, funStatText, isoDay, pace, shares, sparkPoints, streakDots, timeOfDay, weekdayName } from "./format";
 import { languageOf, t, tn } from "./localize";
-import { buildModel, showKey, type CatchupShow, type Model, type ShowItem, type TopPick } from "./model";
+import { buildModel, showKey, type Average, type CatchupShow, type Model, type ShowItem, type TopPick, type WrapYear } from "./model";
 import { cardStyles } from "./styles";
 import {
   DEFAULT_CONFIG,
@@ -36,6 +36,8 @@ export class RefractStatsCard extends LitElement {
   @state() private _openPicks: PickKind[] = [];
   /** Monthly wrap: which month (0 is the newest) and which tab. */
   @state() private _wrapIndex = 0;
+  @state() private _wrapView: "month" | "year" = "month";
+  @state() private _wrapYear = 0;
   @state() private _wrapTab: "overview" | "tastes" | "patterns" | "moments" = "overview";
   @state() private _actionState: ActionState = "idle";
   @state() private _actionError = "";
@@ -475,8 +477,25 @@ export class RefractStatsCard extends LitElement {
             </div>`
           : nothing}
       </div>
-      ${trend}
+      ${this._spark(a)} ${trend}
     </div>`;
+  }
+
+  /** The viewings of the last weeks as a small line, the current week last. */
+  private _spark(a: Average): TemplateResult | typeof nothing {
+    const weekly = a.weekly;
+    if (!weekly || weekly.length < 4 || weekly.every((n) => n === 0)) return nothing;
+    const w = 120;
+    const h = 28;
+    const pts = sparkPoints(weekly, w, h);
+    const line = pts.map(([x, y]) => `${x},${y}`).join(" ");
+    const last = pts[pts.length - 1];
+    const label = tn(this.hass, "avg.spark", weekly.length, { n: weekly.length });
+    return html`<svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label=${label}>
+      <title>${label}</title>
+      <polyline points=${line} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx=${last[0]} cy=${last[1]} r="3" fill="currentColor" />
+    </svg>`;
   }
 
   private _last7(m: Model): TemplateResult | typeof nothing {
@@ -599,6 +618,7 @@ export class RefractStatsCard extends LitElement {
                     )}
                   </div>`
               : nothing}
+            ${this._pace(m)}
             <div class="finish-rows">
               ${rows.map((r) => {
                 const g = r.group;
@@ -612,6 +632,14 @@ export class RefractStatsCard extends LitElement {
             </div>`
         : html`<div class="empty">${t(this.hass, "finish.none")}</div>`}
     </div>`;
+  }
+
+  /** "About 12 weeks at your current pace": the time left against the average hours per week. */
+  private _pace(m: Model): TemplateResult | typeof nothing {
+    const p = pace(m.finish?.minutes, m.average?.hours);
+    if (!p) return nothing;
+    const lang = languageOf(this.hass);
+    return html`<div class="finish-pace">${tn(this.hass, `finish.pace_${p.unit}`, p.n, { n: fmtNumber(p.n, lang, Number.isInteger(p.n) ? 0 : 1) })}</div>`;
   }
 
   // ----------------------------------------------------------- next up
@@ -1121,6 +1149,7 @@ export class RefractStatsCard extends LitElement {
   private _monthlyWrap(m: Model): TemplateResult | typeof nothing {
     const wrap = m.wrap;
     if (!wrap) return nothing;
+    if (this._wrapView === "year" && this._canShowYear(wrap.years)) return this._yearWrap(m, wrap.years);
     const lang = languageOf(this.hass);
     const months = wrap.months;
     const header = (right: TemplateResult | typeof nothing) =>
@@ -1162,18 +1191,6 @@ export class RefractStatsCard extends LitElement {
     }
     const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
-    const tabs = (["overview", "tastes", "patterns", "moments"] as const).map(
-      (tab) => html`<button
-        type="button"
-        role="tab"
-        class="wrap-tab ${this._wrapTab === tab ? "active" : ""}"
-        aria-selected=${this._wrapTab === tab ? "true" : "false"}
-        @click=${() => (this._wrapTab = tab)}
-      >
-        ${t(this.hass, `wrap.tab.${tab}`)}
-      </button>`,
-    );
-
     let body: TemplateResult;
     if (this._wrapTab === "overview") {
       const hours = hoursOf(cur.minutes);
@@ -1206,9 +1223,12 @@ export class RefractStatsCard extends LitElement {
       ].filter((x) => x.n > 0);
       const maxGenre = Math.max(1, ...cur.genres.map((g) => g.titles));
       body = html`<div class="wrap-section">${t(this.hass, "wrap.split")}</div>
-        <div class="wrap-split" role="img" aria-label=${parts.map((x) => `${t(this.hass, x.key)} ${pct(x.n, cur.titles)}%`).join(", ")}>
-          ${parts.map((x) => html`<span style=${styleMap({ flex: `${x.n} 1 0`, background: x.color })}></span>`)}
-        </div>
+        <div
+          class="wrap-split"
+          style=${blendedBarStyle(parts.map((x) => ({ value: x.n, color: x.color })))}
+          role="img"
+          aria-label=${parts.map((x) => `${t(this.hass, x.key)} ${pct(x.n, cur.titles)}%`).join(", ")}
+        ></div>
         <div class="legend-row">
           ${parts.map((x) => html`<span><span class="swatch" style=${styleMap({ background: x.color })}></span>${t(this.hass, x.key)} · ${fmtNumber(pct(x.n, cur.titles), lang)}%</span>`)}
         </div>
@@ -1296,10 +1316,296 @@ export class RefractStatsCard extends LitElement {
             : html`<div class="empty">${t(this.hass, "wrap.firsts_none")}</div>`}`;
     }
 
-    const nav = html`<span class="wrap-nav">
-      <button type="button" class="wrap-arrow" aria-label=${t(this.hass, "wrap.older")} ?disabled=${index >= months.length - 1} @click=${() => go(index + 1)}><ha-icon icon="mdi:chevron-left"></ha-icon></button>
-      <button type="button" class="wrap-arrow" aria-label=${t(this.hass, "wrap.newer")} ?disabled=${index <= 0} @click=${() => go(index - 1)}><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+    const nav = this._wrapNav({
+      olderLabel: t(this.hass, "wrap.older"),
+      newerLabel: t(this.hass, "wrap.newer"),
+      canOlder: index < months.length - 1,
+      canNewer: index > 0,
+      older: () => go(index + 1),
+      newer: () => go(index - 1),
+      years: wrap.years,
+    });
+
+    // one sentence for each page, like the app's highlights
+    let insight: string | undefined;
+    if (this._wrapTab === "overview") {
+      insight = tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) }) + (partial ? ` · ${soFar}` : "");
+    } else if (this._wrapTab === "tastes") {
+      insight = cur.items ? t(this.hass, "wrap.insight_new", { pct: fmtNumber(pct(cur.firstWatch, cur.items), lang) }) : undefined;
+    } else if (this._wrapTab === "patterns") {
+      const perWeekday = new Array(7).fill(0);
+      cur.days.forEach((n, i) => (perWeekday[new Date(Date.UTC(year, month - 1, i + 1)).getUTCDay()] += n));
+      const top = perWeekday.indexOf(Math.max(...perWeekday));
+      const weekday = new Intl.DateTimeFormat(lang, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 7 + top)));
+      insight = cur.items ? t(this.hass, "wrap.insight_weekday", { weekday }) : undefined;
+    } else if (cur.top[0]) {
+      insight = t(this.hass, "wrap.insight_top", { title: cur.top[0].title });
+    }
+
+    return this._wrapFrame(m, {
+      nav,
+      partial,
+      body,
+      insight,
+      heading: monthName(year, month),
+      sub: tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) }) + (partial ? ` · ${soFar}` : ""),
+      titleKey: partial && this._wrapTab === "overview" ? "wrap.page.overview_partial" : `wrap.page.${this._wrapTab}`,
+      headerKey: "wrap.title",
+      backdrop: cur.top[0]?.poster,
+    });
+  }
+
+  /** The yearly wrap: the same four pages as a month, for a calendar year, with the months as the chart. */
+  private _yearWrap(m: Model, years: WrapYear[]): TemplateResult {
+    const lang = languageOf(this.hass);
+    const index = Math.min(this._wrapYear, years.length - 1);
+    const cur = years[index];
+    const upper = (text: string) => text.charAt(0).toLocaleUpperCase(lang) + text.slice(1);
+    const monthName = (mo: number, style: "long" | "short") =>
+      upper(new Intl.DateTimeFormat(lang, { month: style, timeZone: "UTC" }).format(new Date(Date.UTC(2024, mo - 1, 1))));
+    const dayName = (iso: string) => {
+      const [y, mo, d] = iso.split("-").map(Number);
+      return new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(Date.UTC(y, mo - 1, d)));
+    };
+    const hoursOf = (minutes: number) => minutes / 60;
+    const hoursText = (h: number) => fmtNumber(h, lang, h < 10 ? 1 : 0);
+    const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+    const leap = (cur.year % 4 === 0 && cur.year % 100 !== 0) || cur.year % 400 === 0;
+    const daysInYear = leap ? 366 : 365;
+    // the running year only has its first days: rates and totals count those
+    const partial = !!cur.partial;
+    const elapsed = partial ? Math.max(1, Math.min(daysInYear, cur.elapsedDays ?? daysInYear)) : daysInYear;
+    const lastMonth = partial ? new Date(Date.UTC(cur.year, 0, elapsed)).getUTCMonth() : 11;
+    const soFar = partial ? t(this.hass, "wrap.day_of", { day: fmtNumber(elapsed, lang), total: fmtNumber(daysInYear, lang) }) : "";
+    const go = (to: number) => {
+      this._wrapYear = Math.max(0, Math.min(years.length - 1, to));
+    };
+
+    // the year before this one, when it is in the list too
+    const before = years[index + 1];
+    const prev = !partial && before && before.year === cur.year - 1 && before.minutes > 0 ? before : undefined;
+    let change: string | undefined;
+    if (prev) {
+      const delta = Math.round(((cur.minutes - prev.minutes) / prev.minutes) * 100);
+      change = `${delta > 0 ? "+" : delta < 0 ? "\u2212" : ""}${fmtNumber(Math.abs(delta), lang)}%`;
+    }
+    const streakTile = html`<div class="tile"><div class="value">${fmtNumber(cur.bestStreak, lang)} <span class="muted">${tn(this.hass, "unit.day", cur.bestStreak)}</span></div><div class="muted">${t(this.hass, "wrap.streak")}</div></div>`;
+
+    let body: TemplateResult;
+    if (this._wrapTab === "overview") {
+      body = html`<div class="wrap-hero">
+          <span class="wrap-hours">${hoursText(hoursOf(cur.minutes))}</span>
+          <span class="wrap-unit">${t(this.hass, "wrap.hours")}</span>
+          ${change ? html`<span class="badge accent">${t(this.hass, "wrap.vs", { change, month: String(prev!.year) })}</span>` : nothing}
+        </div>
+        <div class="wrap-tiles">
+          ${[
+            ["wrap.episodes", cur.episodes],
+            ["wrap.movies", cur.movieTitles],
+            ["wrap.shows", cur.showTitles],
+            ["wrap.anime", cur.animeTitles],
+          ].map(([key, value]) => html`<div class="tile"><div class="value">${fmtNumber(value as number, lang)}</div><div class="muted">${t(this.hass, key as string)}</div></div>`)}
+        </div>
+        ${this._cfg.wrap_style !== "tabs"
+          ? html`<div class="wrap-tiles">
+              <div class="tile"><div class="value">${fmtNumber(cur.items / elapsed, lang, 1)}</div><div class="muted">${t(this.hass, "wrap.items_day")}</div></div>
+              <div class="tile"><div class="value">${fmtNumber(cur.weekendShare, lang)}%</div><div class="muted">${t(this.hass, "wrap.weekend")}</div></div>
+              ${streakTile}
+            </div>`
+          : nothing}
+        ${cur.estimated ? html`<div class="picks-foot">${t(this.hass, "wrap.estimated")}</div>` : nothing}`;
+    } else if (this._wrapTab === "tastes") {
+      const parts = [
+        { key: "wrap.shows", n: cur.showTitles, color: "var(--c-shows)" },
+        { key: "wrap.anime", n: cur.animeTitles, color: "var(--c-anime)" },
+        { key: "wrap.movies", n: cur.movieTitles, color: "var(--c-movies)" },
+      ].filter((x) => x.n > 0);
+      const maxGenre = Math.max(1, ...cur.genres.map((g) => g.titles));
+      body = html`<div class="wrap-section">${t(this.hass, "wrap.split")}</div>
+        <div
+          class="wrap-split"
+          style=${blendedBarStyle(parts.map((x) => ({ value: x.n, color: x.color })))}
+          role="img"
+          aria-label=${parts.map((x) => `${t(this.hass, x.key)} ${pct(x.n, cur.titles)}%`).join(", ")}
+        ></div>
+        <div class="legend-row">
+          ${parts.map((x) => html`<span><span class="swatch" style=${styleMap({ background: x.color })}></span>${t(this.hass, x.key)} · ${fmtNumber(pct(x.n, cur.titles), lang)}%</span>`)}
+        </div>
+        <div class="wrap-section">${t(this.hass, "wrap.genres")}</div>
+        ${cur.genres.length
+          ? html`<div class="wrap-genres">
+              ${cur.genres.map(
+                (g) => html`<div class="wrap-genre">
+                  <span class="wrap-genre-name">${g.name}</span>
+                  <span class="wrap-genre-bar"><span style=${styleMap({ width: `${Math.round((g.titles / maxGenre) * 100)}%` })}></span></span>
+                  <b>${fmtNumber(g.titles, lang)}</b>
+                </div>`,
+              )}
+            </div>`
+          : html`<div class="empty">${t(this.hass, "wrap.genres_none")}</div>`}
+        <div class="wrap-section">${t(this.hass, "wrap.discovery")}</div>
+        <div class="wrap-tiles two">
+          <div class="tile"><div class="value">${fmtNumber(pct(cur.firstWatch, cur.items), lang)}%</div><div class="muted">${t(this.hass, "wrap.first_watch")} · ${t(this.hass, "wrap.new", { n: fmtNumber(cur.firstWatch, lang) })}</div></div>
+          <div class="tile"><div class="value">${fmtNumber(pct(cur.rewatch, cur.items), lang)}%</div><div class="muted">${t(this.hass, "wrap.rewatch")} · ${t(this.hass, "wrap.revisited", { n: fmtNumber(cur.rewatch, lang) })}</div></div>
+        </div>`;
+    } else if (this._wrapTab === "patterns") {
+      const max = Math.max(1, ...cur.months);
+      const perDay = (x: number) => fmtNumber(x / elapsed, lang, 1);
+      body = html`<div class="wrap-tiles two">
+          <div class="tile"><div class="value">${perDay(cur.items)}</div><div class="muted">${t(this.hass, "wrap.items_day")}</div></div>
+          <div class="tile"><div class="value">${perDay(hoursOf(cur.minutes))}</div><div class="muted">${t(this.hass, "wrap.hours_day")}</div></div>
+        </div>
+        <div class="wrap-section">${t(this.hass, "wrap.year.monthly")}</div>
+        <div class="wrap-days wrap-months" role="img" aria-label=${t(this.hass, "wrap.year.monthly")}>
+          ${cur.months.map(
+            (n, i) => html`<span
+              class="wrap-day ${n === 0 ? "empty" : ""} ${i > lastMonth ? "future" : ""} ${i + 1 === cur.busiestMonth.month && n > 0 ? "peak" : ""}"
+              style=${styleMap({ height: n === 0 ? "3px" : `${Math.max(8, Math.round((n / max) * 100))}%` })}
+              title=${i > lastMonth ? "" : t(this.hass, "wrap.day", { day: monthName(i + 1, "long"), n: fmtNumber(n, lang) })}
+            ></span>`,
+          )}
+        </div>
+        <div class="wrap-axis"><span>${monthName(1, "short")}</span><span>${monthName(12, "short")}</span></div>
+        ${cur.busiestMonth.count > 0
+          ? html`<div class="picks-foot">${t(this.hass, "wrap.year.busiest_month", { month: monthName(cur.busiestMonth.month, "long"), n: fmtNumber(cur.busiestMonth.count, lang) })}</div>`
+          : nothing}
+        ${cur.busiestDay.count > 0
+          ? html`<div class="picks-foot">${tn(this.hass, "wrap.busiest", cur.busiestDay.count, { day: dayName(cur.busiestDay.day), n: fmtNumber(cur.busiestDay.count, lang) })}</div>`
+          : nothing}
+        <div class="wrap-tiles">
+          <div class="tile"><div class="value">${fmtNumber(cur.weekendShare, lang)}%</div><div class="muted">${t(this.hass, "wrap.weekend")}</div></div>
+          ${streakTile}
+          <div class="tile"><div class="value">${t(this.hass, "wrap.active_value", { n: fmtNumber(cur.activeDays, lang), total: fmtNumber(elapsed, lang) })}</div><div class="muted">${t(this.hass, "wrap.active")}</div></div>
+        </div>`;
+    } else {
+      body = html`<div class="wrap-section">${t(this.hass, "wrap.most_watched")}</div>
+        <div class="wrap-top">
+          ${cur.top.map(
+            (x) => html`<div class="wrap-top-row">
+              ${x.poster ? html`<img src=${x.poster} alt="" loading="lazy" referrerpolicy="no-referrer" />` : html`<span class="wrap-noposter"><ha-icon icon=${x.kind === "movie" ? "mdi:movie-open" : "mdi:television-play"}></ha-icon></span>`}
+              <span class="pick-text">
+                <b class="pick-name">${x.title}</b>
+                <span class="pick-sub">${x.kind === "movie" ? (x.count > 1 ? t(this.hass, "wrap.plays", { n: fmtNumber(x.count, lang) }) : t(this.hass, "wrap.movie_once")) : tn(this.hass, "wrap.episodes_n", x.count, { n: fmtNumber(x.count, lang) })}</span>
+              </span>
+            </div>`,
+          )}
+        </div>`;
+    }
+
+    let insight: string | undefined;
+    if (this._wrapTab === "overview") {
+      insight = tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) }) + (partial ? ` · ${soFar}` : "");
+    } else if (this._wrapTab === "tastes") {
+      insight = cur.items ? t(this.hass, "wrap.insight_new", { pct: fmtNumber(pct(cur.firstWatch, cur.items), lang) }) : undefined;
+    } else if (this._wrapTab === "patterns") {
+      insight = cur.items ? t(this.hass, "wrap.year.insight_month", { month: monthName(cur.busiestMonth.month, "long") }) : undefined;
+    } else if (cur.top[0]) {
+      insight = t(this.hass, "wrap.insight_top", { title: cur.top[0].title });
+    }
+
+    const nav = this._wrapNav({
+      olderLabel: t(this.hass, "wrap.year.older"),
+      newerLabel: t(this.hass, "wrap.year.newer"),
+      canOlder: index < years.length - 1,
+      canNewer: index > 0,
+      older: () => go(index + 1),
+      newer: () => go(index - 1),
+      years,
+    });
+    return this._wrapFrame(m, {
+      nav,
+      partial,
+      body,
+      insight,
+      heading: String(cur.year),
+      sub: tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) }) + (partial ? ` · ${soFar}` : ""),
+      titleKey:
+        this._wrapTab === "overview"
+          ? partial
+            ? "wrap.page.year_overview_partial"
+            : "wrap.page.year_overview"
+          : this._wrapTab === "patterns"
+            ? "wrap.page.year_patterns"
+            : `wrap.page.${this._wrapTab}`,
+      headerKey: "wrap.year.title",
+      backdrop: cur.top[0]?.poster,
+    });
+  }
+
+  /** The arrows (and, when there are yearly wraps to show, the Year / Months switch) in the wrap's corner. */
+  private _wrapNav(o: {
+    olderLabel: string;
+    newerLabel: string;
+    canOlder: boolean;
+    canNewer: boolean;
+    older: () => void;
+    newer: () => void;
+    years: WrapYear[] | undefined;
+  }): TemplateResult {
+    const inYear = this._wrapView === "year";
+    const toggle =
+      o.years && this._canShowYear(o.years)
+        ? html`<button
+            type="button"
+            class="wrap-view"
+            @click=${() => {
+              this._wrapView = inYear ? "month" : "year";
+              if (!inYear) this._wrapYear = this._defaultYear(o.years!);
+            }}
+          >
+            ${t(this.hass, inYear ? "wrap.view.months" : "wrap.view.year")}
+          </button>`
+        : nothing;
+    return html`<span class="wrap-nav">
+      ${toggle}
+      <button type="button" class="wrap-arrow" aria-label=${o.olderLabel} ?disabled=${!o.canOlder} @click=${o.older}><ha-icon icon="mdi:chevron-left"></ha-icon></button>
+      <button type="button" class="wrap-arrow" aria-label=${o.newerLabel} ?disabled=${!o.canNewer} @click=${o.newer}><ha-icon icon="mdi:chevron-right"></ha-icon></button>
     </span>`;
+  }
+
+  /** Whether the Year switch is offered: in December and January (the default), always, or never. */
+  private _canShowYear(years: WrapYear[]): boolean {
+    const mode = this._cfg.wrap_year;
+    if (mode === "never" || years.length === 0) return false;
+    if (mode === "always") return true;
+    const month = Number(isoDay(new Date(), this._timeZone()).slice(5, 7));
+    return month === 12 || month === 1;
+  }
+
+  /** The year to open on: the running year, or in January the year that just ended. */
+  private _defaultYear(years: WrapYear[]): number {
+    const month = Number(isoDay(new Date(), this._timeZone()).slice(5, 7));
+    return month === 1 && years[0]?.partial && years[1] ? 1 : 0;
+  }
+
+  /** The frame around a wrap page: the app-style pages with a story bar, or the compact tabs. */
+  private _wrapFrame(
+    m: Model,
+    o: {
+      nav: TemplateResult;
+      partial: boolean;
+      body: TemplateResult;
+      insight: string | undefined;
+      heading: string;
+      sub: string;
+      titleKey: string;
+      headerKey: string;
+      backdrop: string | undefined;
+      kicker?: TemplateResult;
+    },
+  ): TemplateResult {
+    const { nav, partial, body, insight, heading, sub, titleKey, headerKey, backdrop } = o;
+    const tabs = (["overview", "tastes", "patterns", "moments"] as const).map(
+      (tab) => html`<button
+        type="button"
+        role="tab"
+        class="wrap-tab ${this._wrapTab === tab ? "active" : ""}"
+        aria-selected=${this._wrapTab === tab ? "true" : "false"}
+        @click=${() => (this._wrapTab = tab)}
+      >
+        ${t(this.hass, `wrap.tab.${tab}`)}
+      </button>`,
+    );
 
     if (this._cfg.wrap_style !== "tabs") {
       const order = ["overview", "tastes", "patterns", "moments"] as const;
@@ -1307,27 +1613,12 @@ export class RefractStatsCard extends LitElement {
       const step = (delta: number) => {
         this._wrapTab = order[Math.max(0, Math.min(order.length - 1, at + delta))];
       };
-      // one sentence for each page, like the app's highlights
-      let insight: string | undefined;
-      if (this._wrapTab === "overview") {
-        insight = tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) }) + (partial ? ` · ${soFar}` : "");
-      } else if (this._wrapTab === "tastes") {
-        insight = cur.items ? t(this.hass, "wrap.insight_new", { pct: fmtNumber(pct(cur.firstWatch, cur.items), lang) }) : undefined;
-      } else if (this._wrapTab === "patterns") {
-        const perWeekday = new Array(7).fill(0);
-        cur.days.forEach((n, i) => (perWeekday[new Date(Date.UTC(year, month - 1, i + 1)).getUTCDay()] += n));
-        const top = perWeekday.indexOf(Math.max(...perWeekday));
-        const weekday = new Intl.DateTimeFormat(lang, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 7 + top)));
-        insight = cur.items ? t(this.hass, "wrap.insight_weekday", { weekday }) : undefined;
-      } else if (cur.top[0]) {
-        insight = t(this.hass, "wrap.insight_top", { title: cur.top[0].title });
-      }
       const label = (tab: string) => t(this.hass, `wrap.tab.${tab}`);
       return html`<div
         class="panel wrap wrap-pages page-${this._wrapTab} ${partial ? "partial" : ""}"
         tabindex="0"
         role="group"
-        aria-label=${t(this.hass, "wrap.title")}
+        aria-label=${t(this.hass, headerKey)}
         @keydown=${(e: KeyboardEvent) => {
           if (e.key === "ArrowRight") step(1);
           else if (e.key === "ArrowLeft") step(-1);
@@ -1347,8 +1638,8 @@ export class RefractStatsCard extends LitElement {
           }
         }}
       >
-        ${this._wrapTab === "moments" && this._cfg.show_backdrops && cur.top[0]?.poster
-          ? html`<div class="wrap-backdrop" aria-hidden="true" style=${styleMap({ backgroundImage: `url("${cur.top[0].poster}")` })}></div>`
+        ${this._wrapTab === "moments" && this._cfg.show_backdrops && backdrop
+          ? html`<div class="wrap-backdrop" aria-hidden="true" style=${styleMap({ backgroundImage: `url("${backdrop}")` })}></div>`
           : nothing}
         <div class="wrap-progress">
           ${order.map(
@@ -1365,8 +1656,8 @@ export class RefractStatsCard extends LitElement {
           <span class="wrap-brand-name"><ha-icon icon="mdi:chart-donut"></ha-icon>${m.accountMain}</span>
           ${m.accountSub ? html`<span class="wrap-brand-user">@${m.accountSub}</span>` : nothing}
         </div>
-        <div class="wrap-kicker-row"><span class="wrap-kicker">${monthName(year, month)}${partial ? html` <span class="wrap-sofar">${t(this.hass, "wrap.so_far")}</span>` : nothing}</span>${nav}</div>
-        <div class="wrap-title">${t(this.hass, partial && this._wrapTab === "overview" ? "wrap.page.overview_partial" : `wrap.page.${this._wrapTab}`)}</div>
+        <div class="wrap-kicker-row"><span class="wrap-kicker">${heading}${partial ? html` <span class="wrap-sofar">${t(this.hass, "wrap.so_far")}</span>` : nothing}</span>${nav}</div>
+        <div class="wrap-title">${t(this.hass, titleKey)}</div>
         ${insight ? html`<div class="wrap-insight"><ha-icon icon="mdi:shimmer"></ha-icon><span>${insight}</span></div>` : nothing}
         <div class="wrap-body">${body}</div>
         <button type="button" class="wrap-tap prev" tabindex="-1" aria-label=${t(this.hass, "wrap.prev_page")} ?hidden=${at === 0} @click=${() => Date.now() - this._swipedAt > 400 && step(-1)}></button>
@@ -1375,9 +1666,9 @@ export class RefractStatsCard extends LitElement {
     }
 
     return html`<div class="panel wrap">
-      ${header(nav)}
-      <div class="wrap-month">${monthName(year, month)}${partial ? html` <span class="badge accent">${t(this.hass, "wrap.so_far")}</span>` : nothing}</div>
-      <div class="muted">${tn(this.hass, "wrap.items", cur.items, { n: fmtNumber(cur.items, lang) })}${partial ? ` · ${soFar}` : ""}</div>
+      <div class="panel-head"><span class="label">${t(this.hass, headerKey)}</span>${nav}</div>
+      <div class="wrap-month">${heading}${partial ? html` <span class="badge accent">${t(this.hass, "wrap.so_far")}</span>` : nothing}</div>
+      <div class="muted">${sub}</div>
       <div class="wrap-tabs" role="tablist">${tabs}</div>
       ${body}
     </div>`;

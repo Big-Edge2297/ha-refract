@@ -11,9 +11,9 @@ The dashboard card that ships with the [Refract integration](https://github.com/
 | **Watch time** | Total time as months, days and hours (8mo 23d 2h), six tiles (Titles, Movies, TV Shows, Anime, Games and Episodes) and the fun stat in a highlighted pill ("about 8.8 months of nonstop viewing") | profile stats |
 | **Time spent** | Shows, movies, anime and games as a stacked bar with readable durations and shares (games from *Stats games play minutes*, left out until you have played something). Shown as a breakdown list by default, with the time and share on one row per kind. Choose a compact bar instead, with the share after each title (TV shows · 75%) | profile stats |
 | **Library** | Every status you use, named and colored as in the Refract app: Watched, Up to Date, Watching, Plan to Watch, On Hold, Dropped (and any other status Refract adds). Shown as the full breakdown list with counts and percentages by default. Choose a compact bar instead, with a legend (Watched · 803) | library |
-| **Still to finish** | The time left to watch the movies and shows you haven't finished (Plan to Watch, Watching and On Hold), as in the Refract app: the total, and one row each for movies, TV shows and anime (only when you have anime to finish) with the number of titles and the time left | library |
+| **Still to finish** | The time left to watch the movies and shows you haven't finished (Plan to Watch, Watching and On Hold), as in the Refract app: the total, and one row each for movies, TV shows and anime (only when you have anime to finish) with the number of titles and the time left. Under the total it says how long that would take at your current pace ("About 5 years at your current pace"), worked out from the average per week | library |
 | **Streak** | Current streak in big numbers, seven day dots and your longest streak | profile stats |
-| **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, and the change against the 4 weeks before | watch history |
+| **Average per week** | Estimated hours per week over the last 4 weeks, how many episodes and movies that is, the change against the 4 weeks before, and a small line with the viewings of each of the last 12 weeks | watch history |
 | **Last 7 days** | Episodes and movies per day as stacked bars, with the busiest day named | watch history |
 | **Most watched** | Your top actor, director, writer, decade, genre and country, each with a profile photo (people), a flag (country) or an icon, and the number of titles and hours behind it. Worked out from TMDB, see [Most watched](#most-watched) | library + TMDB key |
 | **Monthly wrap** | One set of pages for the running month and for each finished month, with four pages: Overview, Tastes, Patterns and Moments. See [Monthly wrap](#monthly-wrap) | watch history |
@@ -42,7 +42,7 @@ Besides the full card, every section is also available as a card of its own, so 
 | `custom:refract-average-card` | Average per week | `duration_format` |
 | `custom:refract-last-7-days-card` | Last 7 days | none |
 | `custom:refract-most-watched-card` | Most watched | `top_picks_items` |
-| `custom:refract-monthly-wrap-card` | Monthly wrap | `wrap_style`, `show_backdrops` |
+| `custom:refract-monthly-wrap-card` | Monthly wrap | `wrap_style`, `wrap_year`, `show_backdrops` |
 | `custom:refract-year-heatmap-card` | Year heatmap | none |
 | `custom:refract-next-up-card` | Next up | `show_posters`, `show_backdrops`, `show_actions`, `confirm_actions` |
 | `custom:refract-catch-up-card` | Catch-up backlog | `queue_length`, `show_posters` |
@@ -64,7 +64,7 @@ The card shows in the language of your Home Assistant profile: German, French, S
 
 The *Monthly wrap* section is the integration's own version of the wraps in the Refract app: one summary for each completed month, up to the last 12.
 
-![The running month in light green, and the four pages of a finished month](monthly-wrap.png)
+![The running month in green, and the four pages of a finished month](monthly-wrap.png)
 
 By default it looks like the app: four colored **pages**, with a story bar on top. Turn the pages with a tap on the left or right side, a swipe, the arrow keys, or by tapping a segment of the story bar. The arrows next to the month go back and forward through the months. The pages are:
 
@@ -75,11 +75,19 @@ By default it looks like the app: four colored **pages**, with a story bar on to
 
 Each page opens with one sentence about the month, like the highlights in the app. If you prefer the compact version, set `wrap_style: tabs` (or choose *Tabs* in the editor): the same pages as four tabs in a small card.
 
+### Yearly wrap
+
+In **December and January** the wrap gets a **Year** button next to its arrows. It turns the card into the same four pages for a whole calendar year: *Your year, wrapped* (hours, episodes, movies, shows and anime, and the change against the year before), *Your tastes*, *Your year in months* (a bar for each month, the busiest month and day, the best streak across the whole year and the active days) and *Your moments* (the most watched titles). The running year is marked *so far* and counts the days that have gone by; in January the card opens on the year that just ended. The arrows go between years (the running one and up to two earlier ones with something watched) and the button goes back to the months.
+
+Set `wrap_year: always` to have the button all year round, or `wrap_year: never` to hide it. The yearly figures are in the `years` attribute of the wrap sensor.
+
+![The four pages of the yearly wrap](yearly-wrap.png)
+
 It is built from your watch history, so it needs **Fetch watch history** turned on in the integration options. Genres, posters and the first countries also need the TMDB API key, and show up as the TMDB details come in (the same details *Most watched* uses). Without a key you still get everything else.
 
 Differences from the Refract app, because the API doesn't provide them: there is **no time of day** (the history only has the day, so no peak hour or hourly chart), **no community rank** and **no ratings**. The hours use the runtimes in your history where they exist, and average runtimes otherwise; a note under the tiles (*Hours are estimated from average runtimes*) says when they are partly estimated. A rewatch is counted when Refract says so for a movie, or an episode has been rewatched. The "first from a country" needs the TMDB details of every title in your history, so it says *Still collecting details from TMDB* until they are all there. 
 
-**The running month comes first.** The first wrap is always the current month, in **light green** with a *So far* label, and its title reads *Your month so far*. It shows the same four pages as the finished months, for the days that have passed: the rates (items and hours per day, active days) count only those days, the days to come are faded in the daily bars, and there is no comparison with the month before, because that month is over. When a month ends, the next one starts and the finished one takes its own color. The running month appears as soon as there is something watched in it.
+**The running month comes first.** The first wrap is always the current month, in **green** with a *So far* label, and its title reads *Your month so far*. It shows the same four pages as the finished months, for the days that have passed: the rates (items and hours per day, active days) count only those days, the days to come are faded in the daily bars, and there is no comparison with the month before, because that month is over. When a month ends, the next one starts and the finished one takes its own color. The running month appears as soon as there is something watched in it.
 
 The section is part of the Full layout and not shown in Compact. In the Custom layout, `show_monthly_wrap` switches it on or off. The sensor is `sensor.*_monthly_wrap`: its state is the number of items in the newest **finished** month, and the `months` attribute has all the months for your own cards, with the running month first (marked `partial: true`, with `elapsed_days`).
 
@@ -223,6 +231,7 @@ Cards from before 0.4.4 that have no `layout` but hide sections or set a `sectio
 | `show_monthly_wrap` | `true` | Monthly wrap (needs watch history) |
 | `show_year_heatmap` | `true` | Year heatmap (needs watch history) |
 | `wrap_style` | `pages` | `pages` (app-style colored pages) or `tabs` (a compact card with four tabs) |
+| `wrap_year` | `auto` | When the wrap offers its **Year** view: `auto` (in December and January), `always` or `never` |
 | `show_next_up` | `true` | Next up tile |
 | `show_catchup` | `true` | Catch-up backlog |
 | `show_airing` | `true` | Airing this week |
@@ -364,7 +373,11 @@ npm run typecheck   # TypeScript
 npm test            # unit and DOM tests
 npm run build       # writes ../custom_components/refract/www/refract-stats-card.js
 npm run demo        # preview with sample data at http://localhost:5173
+npm run docs:screenshot   # redraws ../docs/dashboard-card.png from the demo (needs Playwright, see below)
+npm run check:visual      # checks the layout at a few widths and display scalings (needs Playwright)
 ```
+
+`docs:screenshot` and `check:visual` drive a real browser through [Playwright](https://playwright.dev), which is not a dependency of the card because of its size: install it when you need it with `npm install --no-save playwright && npx playwright install chromium`. Add `@fontsource/roboto` (Home Assistant's font) to the same command for a picture that looks like Home Assistant, and `@mdi/font` if the machine has no internet access for the icons. `docs:screenshot` takes `--width`, `--scale`, `--theme light`, `--out` and `--pad`. `check:visual` loads the demo at three card widths and three display scalings (100%, 125%, 150%), fails when something scrolls sideways, a label of the title tiles wraps or the page logs an error, and leaves pictures of the card and the bars in `frontend/.screenshots/` to look at. Set `CHROMIUM_PATH` to use an installed browser.
 
 The demo page has a theme switch, a width slider, a posters switch and options for layout and duration format. It replaces Home Assistant's own elements with simple stand-ins, so fonts and icons look slightly different from the real thing.
 
