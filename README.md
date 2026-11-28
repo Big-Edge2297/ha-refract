@@ -1,4 +1,4 @@
-# Refract for Home Assistant
+<p align="center"><img src="docs/banner.png" alt="Refract for Home Assistant" width="100%"></p>
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/Big-Edge2297/ha-refract)](https://github.com/Big-Edge2297/ha-refract/releases/latest)
